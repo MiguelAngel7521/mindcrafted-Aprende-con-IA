@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MindCrafted — Estudio de aprendizaje basado en juegos con IA</title>
+<style>
+@font-face{font-family:'PixelZH';src:url('/assets/ZhengQingKeNanBeiCiGongPuSongTi-2.ttf') format('truetype');font-display:swap}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#08080b;--bg2:#0d0d12;--card:#0f0f14;--card2:#141420;
+  --border:#1c1c2e;--border2:#26263c;
+  --green:#88ce02;--green2:#a8e800;--greenL:#c8fb50;
+  --greenG:rgba(136,206,2,0.30);--greenD:rgba(136,206,2,0.10);
+  --cyan:#00e5c8;--yellow:#c8fb50;--amber:#ff9f0a;--gold:#ffd54f;
+  --text:#ffffff;--text2:#b0b0c8;--muted:#7878a0;--dim:#4a4a6e;
+  --font:'PixelZH',system-ui,sans-serif;--radius:16px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.6}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(136,206,2,.25);border-radius:4px}
+*{scrollbar-width:thin;scrollbar-color:rgba(136,206,2,.25) transparent}
+
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,8,11,0.35);backdrop-filter:blur(32px) saturate(1.4);border-bottom:1px solid var(--border);box-shadow:0 4px 30px rgba(0,0,0,0.25)}
+.topbar-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.topbar-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:700;font-size:17px}
+.brand-logo{width:30px;height:30px;background:linear-gradient(135deg,#88ce02,#00e5c8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.topbar-nav{display:flex;align-items:center;gap:8px}
+.topbar-link{font-size:12px;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:10px;border:1px solid transparent;transition:all .2s;cursor:pointer;background:none;font-family:inherit}
+.topbar-link:hover{color:var(--text);border-color:var(--border)}
+.topbar-link.active{color:var(--greenL);border-color:rgba(136,206,2,0.25);background:var(--greenD)}
+.gh-link{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;border:1px solid var(--border2);color:var(--text2);text-decoration:none;font-size:11px;transition:all .2s}
+.gh-link:hover{border-color:var(--green);color:var(--greenL)}
+
+/* Lang switcher */
+.lang-sw{position:relative}
+.lang-sw-btn{display:flex;align-items:center;gap:5px;padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .2s;font-family:inherit}
+.lang-sw-btn:hover{border-color:var(--green);color:var(--text)}
+.lang-sw-dd{position:absolute;top:calc(100% + 6px);right:0;min-width:140px;background:rgba(8,8,11,0.96);backdrop-filter:blur(24px);border:1px solid var(--border);border-radius:10px;padding:4px;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,0.6);opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .18s,transform .18s}
+.lang-sw.open .lang-sw-dd{opacity:1;pointer-events:auto;transform:translateY(0)}
+.lang-sw-opt{display:block;width:100%;padding:7px 10px;background:none;border:none;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s;text-align:left;font-family:inherit}
+.lang-sw-opt:hover{background:var(--greenD);color:var(--text)}
+.lang-sw-opt.active{color:var(--greenL);background:rgba(136,206,2,0.08)}
+
+/* Container */
+.container{max-width:1100px;margin:0 auto;padding:24px;position:relative}
+
+/* Panels */
+.panel{background:rgba(17,13,32,0.18);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;backdrop-filter:blur(24px) saturate(1.3);box-shadow:0 2px 24px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.04)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.panel-header h3{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.panel-toggle{font-size:12px;color:var(--muted);transition:transform .2s}
+.panel.open .panel-toggle{transform:rotate(180deg)}
+.panel-body{display:none;margin-top:16px}
+.panel.open .panel-body{display:block}
+
+/* Form */
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.fg input,.fg select,.fg textarea{padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--green)}
+.fg select option{background:var(--bg)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid-1{margin-bottom:12px}
+.hint{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;border-radius:10px;cursor:pointer;transition:all .2s;border:none;white-space:nowrap}
+.btn-primary{background:rgba(136,206,2,0.2);color:var(--greenL);border:1px solid rgba(136,206,2,0.35);backdrop-filter:blur(12px)}
+.btn-primary:hover:not(:disabled){background:rgba(136,206,2,0.35)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover:not(:disabled){border-color:var(--green);color:var(--text2)}
+.btn-danger{background:transparent;color:#ff6b6b;border:1px solid rgba(255,107,107,0.3)}
+.btn-danger:hover:not(:disabled){background:rgba(255,107,107,0.1)}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:var(--radius);padding:4px;margin-bottom:20px}
+.tab{flex:1;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;border:none;color:var(--muted);background:transparent;text-align:center;font-family:inherit}
+.tab.active{background:var(--greenD);color:var(--greenL);border:1px solid rgba(136,206,2,0.25)}
+
+/* Status badge */
+.api-status{font-size:11px;margin-top:8px;display:flex;align-items:center;gap:6px}
+.api-status.ok{color:var(--yellow)}
+.api-status.err{color:#ff6b6b}
+
+/* Editor */
+.editor-card{background:rgba(17,13,32,0.18);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;backdrop-filter:blur(24px) saturate(1.3);box-shadow:0 2px 24px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.04)}
+.editor-split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.editor-pane textarea{width:100%;min-height:500px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font);font-size:12px;padding:14px;resize:vertical;outline:none;line-height:1.6}
+.editor-pane textarea:focus{border-color:var(--green)}
+.preview-pane{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text2);overflow-y:auto;max-height:520px;line-height:1.8}
+.preview-pane h1{color:var(--text);font-size:18px;margin:12px 0 6px}
+.preview-pane h2{color:var(--greenL);font-size:15px;margin:12px 0 6px}
+.preview-pane h3{color:var(--text2);font-size:13px;margin:8px 0 4px}
+.preview-pane ul,.preview-pane ol{padding-left:20px}
+.editor-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+
+/* Structure */
+.structure-card{display:none}
+.structure-card.visible{display:block}
+.course-meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.chunk-list{display:flex;flex-direction:column;gap:8px}
+.chunk-item{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.chunk-header{display:flex;align-items:center;gap:10px}
+.chunk-num{font-size:10px;color:var(--muted);font-weight:700;width:40px}
+.chunk-title-input{flex:1;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:12px;outline:none}
+.chunk-theme select{padding:4px 8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px}
+.chunk-toggle{background:none;border:none;color:var(--dim);font-size:10px;cursor:pointer;padding:2px 6px;border-radius:4px;font-family:inherit}
+.chunk-body{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:none}
+.chunk-body.open{display:block}
+.chunk-body textarea{width:100%;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-family:'Courier New',monospace;font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.6}
+
+/* Generation progress */
+.gen-panel{display:none}
+.gen-panel.visible{display:block}
+.gen-status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:12px}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-progress-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.gen-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--greenL));border-radius:3px;transition:width .4s ease;width:0%}
+.gen-step-label{font-size:12px;color:var(--text2);margin-bottom:16px}
+.gen-games{display:flex;flex-wrap:wrap;gap:8px}
+.gen-game-card{padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;font-size:12px;display:flex;align-items:center;gap:6px;transition:all .2s}
+.gen-game-card.done{border-color:rgba(136,206,2,0.35);background:rgba(136,206,2,0.06)}
+.gen-game-card.active{border-color:var(--green);background:rgba(136,206,2,0.08)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.gen-game-card.pending .dot{background:var(--muted)}
+.gen-game-card.active .dot{background:var(--green);animation:pulse 1s ease infinite}
+.gen-game-card.done .dot{background:var(--yellow)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.gen-game-card a{color:var(--greenL);text-decoration:none;font-weight:600}
+.gen-result{margin-top:12px;padding:12px;background:rgba(136,206,2,0.08);border:1px solid rgba(136,206,2,0.25);border-radius:10px;display:none}
+.gen-result.visible{display:block}
+.gen-result a{color:var(--greenL);text-decoration:none;font-weight:700}
+
+/* My courses */
+.course-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(17,13,32,0.18);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:all .15s}
+.course-item:hover{border-color:var(--border2)}
+.course-info{flex:1}
+.course-title{font-size:13px;font-weight:700;color:var(--text)}
+.course-meta-line{font-size:10px;color:var(--muted);margin-top:2px}
+.course-actions{display:flex;gap:6px}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px 24px;color:var(--muted)}
+.empty-state h3{color:var(--text2);margin-bottom:8px;font-size:15px}
+.empty-state p{font-size:12px;line-height:1.6}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:700;pointer-events:auto;animation:slide-in .2s ease;border:1px solid}
+.toast.success{background:rgba(136,206,2,0.18);border-color:rgba(136,206,2,0.4);color:var(--greenL)}
+.toast.error{background:rgba(255,107,107,0.18);border-color:rgba(255,107,107,0.4);color:#ff6b6b}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Section title */
+.section-title{font-size:18px;font-weight:700;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+
+/* Footer */
+.footer{border-top:1px solid var(--border);padding:24px;text-align:center;font-size:12px;color:var(--muted);margin-top:40px}
+.footer a{color:var(--cyan);text-decoration:none}
+.footer a:hover{color:var(--greenL)}
+
+@media(max-width:700px){
+  .grid-2,.course-meta,.editor-split{grid-template-columns:1fr}
+  .topbar-nav .gh-link,.topbar-nav .lang-sw{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="topbar-brand" href="/">
+      <img src="/readme/mindcrafted_logo.png" alt="MindCrafted" width="30" height="30" style="border-radius:8px;object-fit:contain">
+      MindCrafted
+    </a>
+    <div class="topbar-nav">
+      <a href="/" class="topbar-link active">Inicio</a>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Page heading -->
+  <div style="margin-bottom:28px;padding-top:8px">
+    <h1 style="font-size:24px;font-weight:700;margin-bottom:6px">
+      🎮 <span id="t-heading">Estudio de aprendizaje basado en juegos con IA</span>
+    </h1>
+    <p style="font-size:13px;color:var(--muted)" id="t-subheading">
+      Pega cualquier material educativo → La IA genera minijuegos interactivos → Juega al instante
+    </p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab-create" onclick="switchTab('create')">✨ <span id="t-tab-create">Crear</span></button>
+    <button class="tab" id="tab-courses" onclick="switchTab('courses')">📚 <span id="t-tab-courses">Mis cursos</span></button>
+  </div>
+
+  <!-- ═══════════════════ CREATE TAB ═══════════════════ -->
+  <div id="pane-create">
+
+    <!-- API Config -->
+    <div class="panel" id="apiPanel">
+      <div class="panel-header" onclick="togglePanel('apiPanel')">
+        <h3>⚙️ <span id="t-api-title">Configuración de IA</span></h3>
+        <span class="panel-toggle">▼</span>
+      </div>
+      <div class="panel-body">
+        <div class="grid-2">
+          <div class="fg">
+            <label id="t-api-key-lbl">Clave de API</label>
+            <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+            <span class="hint" id="t-api-key-hint">Clave compatible con OpenAI. Solo se guarda localmente en este navegador.</span>
+          </div>
+          <div class="fg">
+            <label id="t-api-model-lbl">Modelo</label>
+            <input type="text" id="apiModel" placeholder="google/gemini-3-flash-preview">
+          </div>
+        </div>
+        <div class="grid-1">
+          <div class="fg">
+            <label id="t-api-url-lbl">URL base</label>
+            <input type="text" id="apiBaseUrl" placeholder="https://openrouter.ai/api/v1">
+            <span class="hint" id="t-api-url-hint">OpenRouter (recomendado), OpenAI, SiliconFlow o cualquier servicio compatible con OpenAI.</span>
+          </div>
+        </div>
+        <div id="apiStatus" class="api-status" style="display:none"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="testApiKey()" id="t-api-test">Probar conexión</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveApiConfig()" id="t-api-save">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content editor -->
+    <div class="editor-card">
+      <div class="section-title">
+        <span>📝</span> <span id="t-editor-title">Editor de contenido</span>
+      </div>
+      <div class="editor-split">
+        <div class="editor-pane">
+          <textarea id="mdInput" placeholder="# Título del curso&#10;&#10;Escribe aquí la descripción del curso.&#10;&#10;## Lección 1: Primer tema&#10;&#10;Escribe aquí tu contenido. La IA convertirá cada sección ## en un minijuego interactivo.&#10;&#10;## Lección 2: Segundo tema&#10;&#10;Más contenido..."></textarea>
+        </div>
+        <div class="preview-pane" id="mdPreview">
+          <p style="color:var(--dim);font-size:11px" id="t-preview-placeholder">Comienza a escribir para ver la vista previa...</p>
+        </div>
+      </div>
+      <div class="editor-actions">
+        <button class="btn btn-ghost btn-sm" onclick="loadSample()" id="t-load-sample">📄 Cargar ejemplo</button>
+        <button class="btn btn-primary" onclick="parseMd()" id="t-parse-btn">Analizar contenido →</button>
+      </div>
+    </div>
+
+    <!-- Structure editor -->
+    <div class="panel structure-card" id="structureCard">
+      <div class="section-title">
+        <span>🏗️</span> <span id="t-structure-title">Estructura del curso</span>
+      </div>
+      <div class="course-meta" id="courseMeta">
+        <!-- filled by JS -->
+      </div>
+      <div class="chunk-list" id="chunkList">
+        <!-- filled by JS -->
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-size:11px;color:var(--muted)">⚡ Modo rápido · Español · Plantilla espacial fija</div>
+        <button class="btn btn-primary" onclick="startGeneration()" id="genBtn">
+          🎮 <span id="t-gen-btn">Generar juegos</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Generation progress -->
+    <div class="panel gen-panel" id="genPanel">
+      <div class="section-title">
+        <span>⚡</span> <span id="t-gen-title">Generando juegos...</span>
+      </div>
+      <div class="gen-status">
+        <div class="spinner" id="genSpinner"></div>
+        <span id="genStatusText">Iniciando...</span>
+      </div>
+      <div class="gen-progress-bar">
+        <div class="gen-progress-fill" id="genProgressFill"></div>
+      </div>
+      <div class="gen-step-label" id="genStepLabel"></div>
+      <div class="gen-games" id="genGames"></div>
+      <div class="gen-result" id="genResult">
+        <p>✅ <span id="t-gen-done">¡Todos los juegos están listos!</span> <a href="#" id="genResultLink"><span id="t-play-link">Jugar ahora →</span></a></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ COURSES TAB ═══════════════════ -->
+  <div id="pane-courses" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:0">
+        <span>📚</span> <span id="t-courses-title">Mis cursos generados</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadCourses()" id="t-refresh">↻ Actualizar</button>
+    </div>
+    <div id="coursesList">
+      <div class="empty-state">
+        <h3 id="t-no-courses">Todavía no hay cursos</h3>
+        <p id="t-no-courses-hint">¡Genera tu primer curso en la pestaña Crear!</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>
+    <strong>MindCrafted</strong> — Aprendizaje basado en juegos con IA 
+  </p>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// i18n
+// ══════════════════════════════════════════════════════════════════════════════
+const I18N = {
+  es: {
+    heading: 'Estudio de aprendizaje basado en juegos con IA',
+    subheading: 'Pega cualquier material educativo → La IA genera minijuegos interactivos → Juega al instante',
+    'tab-create': 'Crear', 'tab-courses': 'Mis cursos',
+    'api-title': 'Configuración de IA',
+    'api-key-lbl': 'Clave de API',
+    'api-key-hint': 'Es opcional si el servidor tiene API_KEY en .env. De lo contrario, pega una clave; solo se guardará en este navegador.',
+    'api-model-lbl': 'Modelo', 'api-url-lbl': 'URL base',
+    'api-url-hint': 'OpenRouter (recomendado), OpenAI, SiliconFlow o cualquier servicio compatible con OpenAI.',
+    'api-test': 'Probar conexión', 'api-save': 'Guardar',
+    'editor-title': 'Editor de contenido',
+    'preview-placeholder': 'Comienza a escribir para ver la vista previa...',
+    'load-sample': '📄 Cargar ejemplo', 'parse-btn': 'Analizar contenido →',
+    'structure-title': 'Estructura del curso',
+    'gen-btn': 'Generar juegos',
+    'gen-title': 'Generando juegos...',
+    'gen-done': '¡Todos los juegos están listos!',
+    'play-link': 'Jugar ahora →',
+    'courses-title': 'Mis cursos generados',
+    refresh: '↻ Actualizar',
+    'no-courses': 'Todavía no hay cursos',
+    'no-courses-hint': '¡Genera tu primer curso en la pestaña Crear!',
+    'confirm-delete': '¿Quieres eliminar este curso? Esta acción no se puede deshacer.',
+    'err-no-api-key': 'Ingresa una clave de API en el panel o configura API_KEY en el archivo .env del servidor.',
+  },
+};
+
+const _lang = 'es';
+
+function t(key) {
+  return I18N.es[key] || key;
+}
+
+function applyI18n() {
+  document.querySelectorAll('[id^="t-"]').forEach(el => {
+    const key = el.id.replace(/^t-/, '');
+    const val = t(key);
+    if (val) el.textContent = val;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Config persistence
+// ══════════════════════════════════════════════════════════════════════════════
+function loadApiConfig() {
+  const cfg = JSON.parse(localStorage.getItem('edgc_api') || '{}');
+  document.getElementById('apiKey').value = cfg.key || '';
+  document.getElementById('apiModel').value = cfg.model || 'google/gemini-3-flash-preview';
+  document.getElementById('apiBaseUrl').value = cfg.baseUrl || 'https://openrouter.ai/api/v1';
+}
+
+function saveApiConfig() {
+  const cfg = {
+    key: document.getElementById('apiKey').value.trim(),
+    model: document.getElementById('apiModel').value.trim(),
+    baseUrl: document.getElementById('apiBaseUrl').value.trim(),
+  };
+  localStorage.setItem('edgc_api', JSON.stringify(cfg));
+  toast('¡Configuración guardada!', 'success');
+}
+
+function getApiConfig() {
+  const cfg = JSON.parse(localStorage.getItem('edgc_api') || '{}');
+  const srv = window.__edgcServerCfg || {};
+  return {
+    api_key: document.getElementById('apiKey').value.trim() || cfg.key || '',
+    model: document.getElementById('apiModel').value.trim() || cfg.model || srv.model || '',
+    base_url: document.getElementById('apiBaseUrl').value.trim() || cfg.baseUrl || srv.base_url || '',
+  };
+}
+
+async function testApiKey() {
+  const { api_key, model, base_url } = getApiConfig();
+  const statusEl = document.getElementById('apiStatus');
+  statusEl.style.display = 'flex';
+  statusEl.className = 'api-status';
+  statusEl.textContent = '⏳ Probando conexión...';
+  try {
+    const resp = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key, model, base_url, messages: [{ role: 'user', content: 'Responde únicamente con OK.' }], max_tokens: 10 }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || JSON.stringify(data));
+    statusEl.className = 'api-status ok';
+    statusEl.textContent = '✅ Conexión correcta — ' + (data.content || 'funciona').slice(0, 50);
+  } catch (e) {
+    statusEl.className = 'api-status err';
+    statusEl.textContent = '❌ ' + e.message;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Markdown editor & preview
+// ══════════════════════════════════════════════════════════════════════════════
+const SAMPLE_MD = `# Introducción al aprendizaje automático
+
+El aprendizaje automático es un método de análisis de datos que automatiza la creación de modelos analíticos.
+
+## ¿Qué es el aprendizaje automático?
+
+Es una rama de la inteligencia artificial que permite a las aplicaciones mejorar sus predicciones sin programar explícitamente cada resultado.
+
+- Aprendizaje supervisado: aprende con datos de entrenamiento etiquetados
+- Aprendizaje no supervisado: encuentra patrones sin etiquetas
+- Aprendizaje por refuerzo: aprende mediante recompensas y penalizaciones
+
+## Cómo funcionan las redes neuronales
+
+Una red neuronal es un conjunto de algoritmos que reconoce relaciones en los datos mediante un proceso inspirado en el funcionamiento del cerebro humano.
+
+- La capa de entrada recibe los datos sin procesar
+- Las capas ocultas extraen características y patrones
+- La capa de salida produce las predicciones finales
+- La retropropagación ajusta los pesos durante el entrenamiento
+
+## Aplicaciones del aprendizaje automático
+
+El aprendizaje automático impulsa muchas aplicaciones y servicios cotidianos.
+
+- Reconocimiento de imágenes y visión artificial
+- Procesamiento del lenguaje natural y traducción
+- Sistemas de recomendación (Netflix, Spotify)
+- Detección de fraude bancario
+- Vehículos autónomos
+`;
+
+function loadSample() {
+  document.getElementById('mdInput').value = SAMPLE_MD;
+  renderPreview();
+}
+
+function renderPreview() {
+  const md = document.getElementById('mdInput').value;
+  if (!md.trim()) {
+    document.getElementById('mdPreview').innerHTML = '<p style="color:var(--dim);font-size:11px">' + t('preview-placeholder') + '</p>';
+    return;
+  }
+  let html = md
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^\- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, m => '<ul>' + m + '</ul>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n+/g, '<br><br>');
+  document.getElementById('mdPreview').innerHTML = html;
+}
+
+document.getElementById('mdInput').addEventListener('input', renderPreview);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Parse content
+// ══════════════════════════════════════════════════════════════════════════════
+let _parsedContent = null;
+
+async function parseMd() {
+  const md = document.getElementById('mdInput').value.trim();
+  if (!md) { toast('Primero ingresa algún contenido.', 'error'); return; }
+  const btn = document.querySelector('[onclick="parseMd()"]');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/parse-md-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markdown: md }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || 'No se pudo analizar el contenido');
+    _parsedContent = data;
+    renderStructure(data);
+    document.getElementById('structureCard').classList.add('visible');
+    document.getElementById('structureCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    toast('Error al analizar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderStructure(data) {
+  const meta = data.course;
+  const chunks = data.chunks;
+
+  document.getElementById('courseMeta').innerHTML = `
+    <div class="fg"><label>Título del curso</label><input type="text" id="cTitle" value="${escHtml(meta.title)}"></div>
+    <div class="fg"><label>Subtítulo</label><input type="text" id="cSubtitle" value="${escHtml(meta.subtitle || '')}"></div>
+    <div class="fg"><label>Materia</label><input type="text" id="cSubject" value="${escHtml(meta.subject || '')}"></div>
+    <div class="fg"><label>Nivel</label><input type="text" id="cLevel" value="${escHtml(meta.level || '')}"></div>
+  `;
+
+  document.getElementById('chunkList').innerHTML = chunks.map((c, i) => `
+    <div class="chunk-item" id="chunk-${i}">
+      <div class="chunk-header">
+        <span class="chunk-num">Juego ${i+1}</span>
+        <input type="text" class="chunk-title-input" value="${escHtml(c.title)}" id="cChunkTitle${i}">
+        <div class="chunk-theme"><span style="font-size:10px;color:var(--accent)">🚀 Nave oceánica</span></div>
+        <button class="chunk-toggle btn-sm" onclick="toggleChunk(${i})">▶ contenido</button>
+      </div>
+      <div class="chunk-body" id="chunkBody${i}">
+        <textarea id="cChunkContent${i}">${escHtml(c.content)}</textarea>
+      </div>
+    </div>
+  `).join('');
+
+}
+
+function toggleChunk(i) {
+  const body = document.getElementById('chunkBody' + i);
+  body.classList.toggle('open');
+}
+
+function collectContent() {
+  if (!_parsedContent) return null;
+  const chunks = _parsedContent.chunks.map((c, i) => ({
+    ...c,
+    title: document.getElementById(`cChunkTitle${i}`)?.value || c.title,
+    theme: 'ocean-dream',
+    content: document.getElementById(`cChunkContent${i}`)?.value || c.content,
+  }));
+  return {
+    course: {
+      ..._parsedContent.course,
+      title: document.getElementById('cTitle')?.value || _parsedContent.course.title,
+      subtitle: document.getElementById('cSubtitle')?.value || '',
+      subject: document.getElementById('cSubject')?.value || '',
+      level: document.getElementById('cLevel')?.value || '',
+    },
+    chunks,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Generation
+// ══════════════════════════════════════════════════════════════════════════════
+let _pollTimer = null;
+
+async function startGeneration() {
+  const content = collectContent();
+  if (!content) { toast('Primero analiza el contenido.', 'error'); return; }
+  if (!content.course.title) { toast('El título del curso es obligatorio.', 'error'); return; }
+  if (!content.chunks.length) { toast('Se necesita al menos una lección.', 'error'); return; }
+
+  const { api_key, model, base_url } = getApiConfig();
+  const srv = window.__edgcServerCfg || {};
+  if (!api_key && !srv.has_api_key) {
+    toast(t('err-no-api-key'), 'error');
+    document.getElementById('apiPanel').classList.add('open');
+    return;
+  }
+
+  const locale = 'es';
+  const courseId = 'course-' + Date.now();
+
+  document.getElementById('genPanel').classList.add('visible', 'panel');
+  document.getElementById('genResult').classList.remove('visible');
+  document.getElementById('genSpinner').style.display = '';
+  document.getElementById('genStatusText').textContent = 'Iniciando...';
+  document.getElementById('genProgressFill').style.width = '0%';
+  document.getElementById('genStepLabel').textContent = '';
+  document.getElementById('genBtn').disabled = true;
+
+  // Initialize game cards
+  const gamesEl = document.getElementById('genGames');
+  gamesEl.innerHTML = content.chunks.map((c, i) =>
+    `<div class="gen-game-card pending" id="gc${i}">
+      <span class="dot"></span>
+      <span>${escHtml(c.title)}</span>
+    </div>`
+  ).join('');
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, locale, api_key, model, base_url, course_id: courseId }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || 'No se pudo iniciar la generación');
+    pollJob(data.job_id, data.course_id, content.chunks.length);
+  } catch (e) {
+    document.getElementById('genBtn').disabled = false;
+    toast('Error: ' + e.message, 'error');
+    document.getElementById('genStatusText').textContent = '❌ Error: ' + e.message;
+    document.getElementById('genSpinner').style.display = 'none';
+  }
+}
+
+function pollJob(jid, courseId, totalGames) {
+  if (_pollTimer) clearInterval(_pollTimer);
+  let completedGames = 0;
+
+  _pollTimer = setInterval(async () => {
+    try {
+      const resp = await fetch(`/api/jobs/${jid}`);
+      if (!resp.ok) return;
+      const job = await resp.json();
+      const logs = job.logs || [];
+
+      // Process logs
+      for (const log of logs) {
+        try {
+          const msg = JSON.parse(log.msg);
+          if (msg.type === 'game') {
+            const idx = msg.current - 1;
+            const card = document.getElementById('gc' + idx);
+            if (card) {
+              // mark previous as done
+              for (let i = 0; i < idx; i++) {
+                const c = document.getElementById('gc' + i);
+                if (c) c.className = 'gen-game-card done';
+              }
+              card.className = 'gen-game-card active';
+            }
+            const pct = Math.round((msg.current - 1) / totalGames * 85);
+            document.getElementById('genProgressFill').style.width = pct + '%';
+            document.getElementById('genStatusText').textContent = `Juego ${msg.current}/${msg.total}: ${msg.title}`;
+          } else if (msg.type === 'substep') {
+            document.getElementById('genStepLabel').textContent = msg.label + ' (' + msg.pct + '%)';
+          } else if (msg.type === 'game_done') {
+            const card = document.getElementById('gc' + (msg.game - 1));
+            if (card) {
+              card.className = 'gen-game-card done';
+              card.innerHTML = `<span class="dot"></span><span>${card.querySelector('span:last-child')?.textContent || 'Juego ' + msg.game}</span>
+                <a href="/play?course=${courseId}&game=chunk-${msg.game}" target="_blank" style="margin-left:auto;color:var(--greenL);font-size:11px">▶ Jugar</a>`;
+            }
+          }
+        } catch {}
+      }
+
+      if (job.status === 'completed') {
+        clearInterval(_pollTimer);
+        document.getElementById('genProgressFill').style.width = '100%';
+        document.getElementById('genSpinner').style.display = 'none';
+        document.getElementById('genStatusText').textContent = '✅ ¡Completado!';
+        document.getElementById('genStepLabel').textContent = '';
+        // Mark all done
+        for (let i = 0; i < totalGames; i++) {
+          const c = document.getElementById('gc' + i);
+          if (c) c.className = 'gen-game-card done';
+        }
+        document.getElementById('genResult').classList.add('visible');
+        document.getElementById('genResultLink').href = '/play?course=' + courseId + '&game=chunk-1';
+        document.getElementById('genBtn').disabled = false;
+        toast('¡Curso generado correctamente!', 'success');
+      } else if (job.status === 'failed') {
+        clearInterval(_pollTimer);
+        document.getElementById('genSpinner').style.display = 'none';
+        document.getElementById('genStatusText').textContent = '❌ Error: ' + (job.error || 'Error desconocido');
+        document.getElementById('genBtn').disabled = false;
+        toast('La generación falló: ' + (job.error || ''), 'error');
+      }
+    } catch (e) {
+      // ignore network errors during poll
+    }
+  }, 2000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Courses tab
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadCourses() {
+  try {
+    const resp = await fetch('/api/courses');
+    const courses = await resp.json();
+    const el = document.getElementById('coursesList');
+    if (!courses.length) {
+      el.innerHTML = `<div class="empty-state">
+        <h3>${t('no-courses')}</h3>
+        <p>${t('no-courses-hint')}</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML = courses.map(c => `
+      <div class="course-item">
+        <div class="course-info">
+          <div class="course-title">${escHtml(c.title)}</div>
+          <div class="course-meta-line">${c.total_lessons || 0} juegos · ${c.subject || ''} · ${c.level || ''}</div>
+        </div>
+        <div class="course-actions">
+          <a href="/play?course=${encodeURIComponent(c.id)}&game=chunk-1" target="_blank" class="btn btn-primary btn-sm">▶ Jugar</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteCourse('${c.id}')">✕</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    toast('No se pudieron cargar los cursos: ' + e.message, 'error');
+  }
+}
+
+async function deleteCourse(id) {
+  if (!confirm(t('confirm-delete'))) return;
+  try {
+    const resp = await fetch('/api/courses/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!resp.ok) {
+      const d = await resp.json();
+      throw new Error(d.detail || 'No se pudo eliminar el curso');
+    }
+    toast('Curso eliminado.', 'success');
+    loadCourses();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UI helpers
+// ══════════════════════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.getElementById('pane-create').style.display = name === 'create' ? '' : 'none';
+  document.getElementById('pane-courses').style.display = name === 'courses' ? '' : 'none';
+  document.getElementById('tab-create').classList.toggle('active', name === 'create');
+  document.getElementById('tab-courses').classList.toggle('active', name === 'courses');
+  if (name === 'courses') loadCourses();
+}
+
+function togglePanel(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function toast(msg, type = 'success') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Server config: optional API_KEY in .env, default model/base URL for empty fields
+// ══════════════════════════════════════════════════════════════════════════════
+window.__edgcServerCfg = { has_api_key: false, model: '', base_url: '' };
+
+function applyServerApiDefaults() {
+  const srv = window.__edgcServerCfg || {};
+  const mEl = document.getElementById('apiModel');
+  const bEl = document.getElementById('apiBaseUrl');
+  if (srv.model && mEl && !mEl.value.trim()) mEl.value = srv.model;
+  if (srv.base_url && bEl && !bEl.value.trim()) bEl.value = srv.base_url;
+}
+
+async function initServerConfig() {
+  try {
+    const resp = await fetch('/api/config');
+    const cfg = await resp.json();
+    window.__edgcServerCfg = {
+      has_api_key: !!cfg.has_api_key,
+      model: cfg.model || '',
+      base_url: cfg.base_url || '',
+    };
+    applyServerApiDefaults();
+    if (cfg.has_api_key) {
+      const statusEl = document.getElementById('apiStatus');
+      statusEl.style.display = 'flex';
+      statusEl.className = 'api-status ok';
+      statusEl.textContent = '✅ La clave de API está configurada en el servidor; puedes dejar este campo vacío.';
+    }
+  } catch {
+    window.__edgcServerCfg = { has_api_key: false, model: '', base_url: '' };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════════════════════════
+(async function initStudio() {
+  loadApiConfig();
+  applyI18n();
+  renderPreview();
+  await initServerConfig();
+})();
+</script>
+</body>
+</html>

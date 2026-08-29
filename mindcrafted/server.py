@@ -1,0 +1,941 @@
+# =============================================================================
+# MindCrafted — AI Game-Based Learning Studio
+# =============================================================================
+"""MindCrafted — Self-hosted AI Game-Based Learning Studio
+
+Convert any learning material into playable game-based micro-courses using AI.
+No database, no login, no cloud infrastructure required.
+
+Usage:
+    # Crea un archivo .env con tu clave de API si quieres guardarla localmente.
+    python -m uvicorn mindcrafted.server:app --reload --port 8000
+    # OR: bash start.sh (sets PYTHONPATH for you)
+
+Environment variables (set in .env):
+    API_KEY         Your OpenAI-compatible API key (required unless you paste a key in the Studio)
+                    Aliases also work: OPENROUTER_API_KEY, OPENROUTER_API_KEY_studio
+    API_BASE_URL    API base URL (default: https://openrouter.ai/api/v1); alias STUDIO_AI_BASE_URL
+    MODEL           Model name (default: google/gemini-3-flash-preview); alias STUDIO_MODEL
+    PORT            Server port (default: 8000)
+    BIND_HOST       Listen address (default: 127.0.0.1; use 0.0.0.0 for LAN)
+    MINDCRAFTED_HOME Optional. Data directory for courses/, assets/, jobs/, courses.json
+                    (default: repo root in dev; current working directory when installed)
+"""
+
+from pathlib import Path as _PathForEnv
+
+_pkg = _PathForEnv(__file__).resolve().parent
+_repo = _pkg.parent
+for _env_candidate in (
+    _PathForEnv.cwd() / ".env",
+    _repo / ".env",
+    _pkg / ".env",
+):
+    if _env_candidate.exists():
+        from dotenv import load_dotenv
+
+        load_dotenv(_env_candidate)
+        break
+
+
+def _unify_ai_env_aliases() -> None:
+    """One key in .env is enough: sync API_KEY ↔ OPENROUTER_*, MODEL ↔ STUDIO_MODEL, URLs."""
+    import os as _os
+
+    k = (_os.environ.get("API_KEY") or "").strip()
+    if not k:
+        k = (
+            (_os.environ.get("OPENROUTER_API_KEY_studio") or "").strip()
+            or (_os.environ.get("OPENROUTER_API_KEY") or "").strip()
+        )
+        if k:
+            _os.environ["API_KEY"] = k
+    else:
+        _os.environ.setdefault("OPENROUTER_API_KEY", k)
+
+    b = (_os.environ.get("API_BASE_URL") or "").strip()
+    if not b:
+        b = (_os.environ.get("STUDIO_AI_BASE_URL") or "").strip()
+        if b:
+            _os.environ["API_BASE_URL"] = b
+    else:
+        _os.environ.setdefault("STUDIO_AI_BASE_URL", b)
+
+    m = (_os.environ.get("MODEL") or "").strip()
+    if not m:
+        m = (_os.environ.get("STUDIO_MODEL") or "").strip()
+        if m:
+            _os.environ["MODEL"] = m
+    else:
+        _os.environ.setdefault("STUDIO_MODEL", m)
+
+
+_unify_ai_env_aliases()
+
+import asyncio
+import contextvars
+import io
+import json
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import uuid
+from pathlib import Path
+from urllib.parse import urlparse
+
+import httpx
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+# ── Paths ──────────────────────────────────────────────────────────────────
+PACKAGE_DIR = Path(__file__).resolve().parent
+
+
+def _install_root() -> Path:
+    env = (os.environ.get("MINDCRAFTED_HOME") or "").strip()
+    if env:
+        return Path(env).expanduser().resolve()
+    # Código fuente del proyecto: el paquete vive dentro de la raíz del repositorio.
+    if (_repo / ".git").exists() or (_repo / "start.sh").exists():
+        return _repo.resolve()
+    # Installed wheel: mutable data lives next to cwd unless MINDCRAFTED_HOME is set
+    return Path.cwd().resolve()
+
+
+INSTALL_ROOT = _install_root()
+COURSES_DIR = INSTALL_ROOT / "courses"
+ASSETS_DIR = INSTALL_ROOT / "assets"
+AUDIO_DIR = ASSETS_DIR / "audio"
+JOBS_DIR = INSTALL_ROOT / "jobs"
+STATIC_DIR = PACKAGE_DIR / "static"
+ENGINE_DIR = PACKAGE_DIR / "engine"
+REGISTRY = INSTALL_ROOT / "courses.json"
+
+COURSES_DIR.mkdir(parents=True, exist_ok=True)
+ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+JOBS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ── AI Config ───────────────────────────────────────────────────────────────
+API_KEY      = (os.environ.get("API_KEY") or "").strip()
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://openrouter.ai/api/v1").strip()
+MODEL        = os.environ.get("MODEL", "google/gemini-3-flash-preview").strip()
+
+# Servidor de estado del motor Node (puede iniciarse junto con este servidor)
+ENGINE_STATE_URL = os.environ.get("ENGINE_STATE_URL", "http://127.0.0.1:3100").rstrip("/")
+
+# Auto-spawn bundled node/ when nothing is listening (e.g. pip install without cloning).
+# Set MINDCRAFTED_ENGINE_STATE_AUTO=0 to disable and run `node server.js` yourself.
+_embedded_node_proc: subprocess.Popen | None = None
+
+
+def _engine_state_port() -> int:
+    u = urlparse(ENGINE_STATE_URL)
+    if u.port:
+        return int(u.port)
+    return 3100
+
+
+def _tcp_port_in_use(host: str, port: int) -> bool:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.settimeout(0.25)
+        return s.connect_ex((host, port)) == 0
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
+def _maybe_start_embedded_node() -> None:
+    """If bundled ``mindcrafted/node`` exists and the engine-state HTTP service is down, start it."""
+    global _embedded_node_proc
+
+    flag = (os.environ.get("MINDCRAFTED_ENGINE_STATE_AUTO") or "1").strip().lower()
+    if flag in ("0", "false", "no", "off"):
+        return
+    nd = PACKAGE_DIR / "node"
+    if not (nd / "server.js").exists():
+        return
+    host = urlparse(ENGINE_STATE_URL).hostname or "127.0.0.1"
+    port = _engine_state_port()
+    if _tcp_port_in_use(host, port):
+        return
+    node_exe = shutil.which("node")
+    if not node_exe:
+        print("[AVISO] No se encontró Node.js en PATH; instala Node 18+ o usa MINDCRAFTED_ENGINE_STATE_AUTO=0 si ejecutas el servicio de estado por separado.", flush=True)
+        return
+    env = {**os.environ, "PORT": str(port)}
+    try:
+        _embedded_node_proc = subprocess.Popen(
+            [node_exe, "server.js"],
+            cwd=str(nd),
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        print(f"[MindCrafted] Servicio de estado integrado iniciado en el puerto {port}", flush=True)
+    except Exception as exc:
+        print(f"[AVISO] No se pudo iniciar el servicio de estado integrado de Node: {exc}", flush=True)
+
+
+def _stop_embedded_node() -> None:
+    global _embedded_node_proc
+    if _embedded_node_proc is None:
+        return
+    try:
+        _embedded_node_proc.terminate()
+        _embedded_node_proc.wait(timeout=5)
+    except Exception:
+        try:
+            _embedded_node_proc.kill()
+        except Exception:
+            pass
+    _embedded_node_proc = None
+
+# ── Themes (must match generator/assembler.py) ──────────────────────────────
+THEMES = [
+    "pink-cute", "ocean-dream", "forest-sage", "sunset-warm", "galaxy-purple",
+    "candy-pop", "retro-amber", "china-porcelain", "china-cinnabar", "china-ink",
+    "dunhuang", "forbidden-red", "china-landscape", "china-rouge",
+    "renaissance", "baroque", "nordic", "victorian", "mediterranean",
+    "fairy-tale", "detective", "sci-fi", "academy", "myth",
+]
+
+ALLOWED_LOCALES = frozenset({"es"})
+
+# ── Logging filter ───────────────────────────────────────────────────────────
+import logging as _logging
+
+class _PollFilter(_logging.Filter):
+    def filter(self, record):
+        msg = record.getMessage()
+        if "/api/jobs/" in msg and "GET" in msg:
+            return False
+        return True
+
+_logging.getLogger("uvicorn.access").addFilter(_PollFilter())
+
+# ── FastAPI app ──────────────────────────────────────────────────────────────
+app = FastAPI(title="MindCrafted")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+async def _startup():
+    _maybe_start_embedded_node()
+    _prune_registry()
+    if not API_KEY:
+        print("[AVISO] API_KEY no está configurada. Agrégala a .env para habilitar la generación.", flush=True)
+    print(f"[MindCrafted] Estudio listo en http://localhost:{os.environ.get('PORT', 8000)}/", flush=True)
+
+@app.on_event("shutdown")
+async def _shutdown():
+    global _ai_client
+    _stop_embedded_node()
+    if _ai_client:
+        try: await _ai_client.aclose()
+        except Exception: pass
+        _ai_client = None
+
+
+# ── Job Manager ──────────────────────────────────────────────────────────────
+_STEP_PATTERNS = [
+    (re.compile(r'\[Game (\d+)/(\d+)\].*Generating:\s*(.+?)(?:\s*\(theme:.*\))?$'), 'game'),
+    (re.compile(r'\[(\d+)/(\d+)\]\s*(.+?)(?:\s*\(theme:.*\))?\.\.\.'), 'substep'),
+    (re.compile(r'Course generation complete in ([\d.]+)s'), 'course_complete'),
+    (re.compile(r'Games:\s*(\d+)/(\d+)\s*successful'), 'games_summary'),
+    (re.compile(r'✅'), 'done'),
+    (re.compile(r'❌'), 'error'),
+]
+
+_PROGRESS_LABELS_ES = {
+    "Analyzing topic and building knowledge structure": "Analizando el tema y creando la estructura de conocimiento",
+    "Writing story dialog and character interactions": "Creando los diálogos y las interacciones de los personajes",
+    "Story dialog complete": "Diálogos de la historia listos",
+    "Game icons ready": "Iconos del juego listos",
+    "Character sprites ready": "Personajes listos",
+    "Scene backgrounds ready": "Escenarios listos",
+    "Cover art ready": "Portada lista",
+    "Polishing pixel art": "Mejorando el arte pixelado",
+    "Assembling final game": "Armando el juego final",
+}
+
+
+def _progress_label_es(label: str) -> str:
+    cached = " (cached)" in label
+    clean = label.replace(" (cached)", "")
+    translated = _PROGRESS_LABELS_ES.get(clean)
+    if translated:
+        return translated + (" (en caché)" if cached else "")
+    match = re.match(r"Custom simulation (\d+)(?::\s*(.*)| ready| \(fallback\))?$", clean)
+    if match:
+        number, title = match.group(1), match.group(2)
+        suffix = f": {title}" if title else " lista"
+        if "fallback" in clean:
+            suffix = " lista con versión alternativa"
+        return f"Simulación personalizada {number}{suffix}" + (" (en caché)" if cached else "")
+    return label
+
+def _to_safe_log(line: str) -> str | None:
+    for pat, kind in _STEP_PATTERNS:
+        m = pat.search(line)
+        if not m:
+            continue
+        if kind == 'game':
+            return json.dumps({"type": "game", "current": int(m.group(1)), "total": int(m.group(2)), "title": m.group(3).strip()})
+        if kind == 'substep':
+            cur, tot = int(m.group(1)), int(m.group(2))
+            pct = int((cur / tot) * 100) if tot > 0 else 0
+            return json.dumps({"type": "substep", "current": cur, "total": tot, "label": _progress_label_es(m.group(3).strip()), "pct": pct})
+        if kind == 'course_complete':
+            return json.dumps({"type": "info", "label": "course_complete", "value": f"{m.group(1)}s"})
+        if kind == 'games_summary':
+            return json.dumps({"type": "info", "label": "games_summary", "value": f"{m.group(1)}/{m.group(2)} successful"})
+        if kind == 'done':
+            return json.dumps({"type": "done"})
+        if kind == 'error':
+            return json.dumps({"type": "error", "msg": line})
+        return None
+    if '[ERROR]' in line or '[SIM FALLBACK]' in line:
+        return json.dumps({"type": "error", "msg": line.strip()})
+    if 'Game ' in line and ' done in ' in line:
+        m2 = re.search(r'Game (\d+) done in ([\d.]+)s', line)
+        if m2:
+            return json.dumps({"type": "game_done", "game": int(m2.group(1)), "time": float(m2.group(2))})
+    return None
+
+
+class JobManager:
+    def __init__(self):
+        self.jobs: dict[str, dict] = {}
+
+    def _path(self, jid: str) -> Path:
+        return JOBS_DIR / f"{jid}.json"
+
+    def _save(self, jid: str) -> None:
+        try:
+            job = self.jobs[jid]
+            snapshot = {k: v for k, v in job.items() if k != "logs"}
+            self._path(jid).write_text(json.dumps(snapshot), encoding="utf-8")
+        except Exception:
+            pass
+
+    def _load(self, jid: str) -> dict | None:
+        try:
+            p = self._path(jid)
+            if not p.exists():
+                return None
+            data = json.loads(p.read_text(encoding="utf-8"))
+            data.setdefault("logs", [])
+            self.jobs[jid] = data
+            return data
+        except Exception:
+            return None
+
+    def create(self, course_id: str) -> str:
+        jid = uuid.uuid4().hex[:10]
+        self.jobs[jid] = {
+            "id": jid, "course_id": course_id, "status": "running",
+            "logs": [], "result": None, "error": None, "created_at": time.time(),
+        }
+        self._save(jid)
+        return jid
+
+    def log(self, jid: str, msg: str):
+        if jid in self.jobs and msg.strip():
+            self.jobs[jid]["logs"].append({"t": time.time(), "msg": msg.strip()})
+
+    def done(self, jid: str, result=None, error=None):
+        if jid in self.jobs:
+            self.jobs[jid].update({
+                "status": "failed" if error else "completed",
+                "result": result, "error": str(error) if error else None,
+            })
+            self._save(jid)
+
+    def get(self, jid: str) -> dict | None:
+        if jid in self.jobs:
+            return self.jobs[jid]
+        return self._load(jid)
+
+
+job_mgr = JobManager()
+_current_job_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("current_job_id", default=None)
+_REAL_STDERR = sys.__stderr__
+
+
+class StderrDispatcher(io.TextIOBase):
+    def __init__(self, mgr: JobManager, real_stderr):
+        self._mgr = mgr
+        self._real = real_stderr
+        self._buffers: dict[str, str] = {}
+
+    def write(self, s: str):
+        jid = _current_job_id_ctx.get()
+        if jid and jid in self._mgr.jobs:
+            self._buffers.setdefault(jid, "")
+            self._buffers[jid] += s
+            while "\n" in self._buffers[jid]:
+                line, self._buffers[jid] = self._buffers[jid].split("\n", 1)
+                cleaned = line.strip()
+                if not cleaned or cleaned.startswith('='):
+                    continue
+                safe = _to_safe_log(cleaned)
+                if safe:
+                    self._mgr.log(jid, safe)
+        prefix = f"[{jid}] " if jid else ""
+        lines = s.split("\n")
+        for i, line in enumerate(lines):
+            if i < len(lines) - 1:
+                self._real.write(prefix + line + "\n")
+            elif line:
+                self._real.write(prefix + line)
+        self._real.flush()
+        return len(s)
+
+    def flush(self):
+        jid = _current_job_id_ctx.get()
+        if jid and self._buffers.get(jid, "").strip():
+            buf = self._buffers[jid].strip()
+            self._buffers[jid] = ""
+            safe = _to_safe_log(buf)
+            if safe:
+                self._mgr.log(jid, safe)
+        self._real.flush()
+
+
+sys.stderr = StderrDispatcher(job_mgr, _REAL_STDERR)
+
+
+# ── Safety helpers ───────────────────────────────────────────────────────────
+def _safe_course_id(s: str) -> str:
+    if not s or ".." in s or "/" in s or "\\" in s:
+        raise HTTPException(400, "El identificador del curso no es válido")
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", s):
+        raise HTTPException(400, "El identificador del curso no es válido")
+    return s
+
+def _safe_chunk_id(s: str) -> str:
+    if not s or ".." in s or "/" in s or "\\" in s:
+        raise HTTPException(400, "El identificador de la lección no es válido")
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", s):
+        raise HTTPException(400, "El identificador de la lección no es válido")
+    return s
+
+
+# ── Registry (courses.json) ─────────────────────────────────────────────────
+def _read_registry() -> list[dict]:
+    if REGISTRY.exists():
+        try: return json.loads(REGISTRY.read_text(encoding="utf-8"))
+        except: pass
+    return []
+
+def _write_registry(courses: list[dict]):
+    payload = json.dumps(courses, ensure_ascii=False, indent=2)
+    tmp = REGISTRY.with_suffix(".tmp")
+    try:
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(REGISTRY)
+    except Exception:
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except Exception:
+            pass
+        REGISTRY.write_text(payload, encoding="utf-8")
+
+def _upsert_course(entry: dict):
+    courses = _read_registry()
+    idx = next((i for i, c in enumerate(courses) if c["id"] == entry["id"]), None)
+    if idx is not None:
+        courses[idx] = entry
+    else:
+        courses.insert(0, entry)
+    _write_registry(courses)
+
+def _remove_course(course_id: str):
+    courses = [c for c in _read_registry() if c["id"] != course_id]
+    _write_registry(courses)
+
+def _prune_registry():
+    courses = _read_registry()
+    kept = [c for c in courses if (COURSES_DIR / c.get("id", "")).is_dir()]
+    if len(kept) < len(courses):
+        _write_registry(kept)
+
+def _course_entry_from_manifest(course_id: str, manifest: dict) -> dict:
+    meta = manifest.get("course", {})
+    games = manifest.get("games", [])
+    return {
+        "id": course_id,
+        "title": meta.get("title", course_id),
+        "subtitle": meta.get("subtitle", ""),
+        "description": meta.get("description", ""),
+        "subject": meta.get("subject", ""),
+        "level": meta.get("level", ""),
+        "estimated_time": meta.get("estimated_time", ""),
+        "learning_objectives": meta.get("learning_objectives", []),
+        "total_lessons": len([g for g in games if g.get("status") == "success"]),
+        "created_at": manifest.get("generated_at", ""),
+        "tags": meta.get("tags", []),
+    }
+
+def _discover_courses_from_disk() -> list[dict]:
+    result: list[dict] = []
+    if not COURSES_DIR.exists():
+        return result
+    for d in sorted(COURSES_DIR.iterdir(), reverse=True):
+        if not d.is_dir():
+            continue
+        mp = d / "course-manifest.json"
+        if not mp.exists():
+            continue
+        try:
+            m = json.loads(mp.read_text(encoding="utf-8"))
+            result.append(_course_entry_from_manifest(d.name, m))
+        except Exception:
+            pass
+    return result
+
+
+def _registry_needs_sync(disk: list[dict], reg: list[dict]) -> bool:
+    reg_ids = [c.get("id") for c in reg if c.get("id")]
+    disk_ids = [c["id"] for c in disk]
+    if len(reg_ids) != len(disk_ids) or set(reg_ids) != set(disk_ids):
+        return True
+    reg_by = {c["id"]: c for c in reg if c.get("id")}
+    for d in disk:
+        rid = d["id"]
+        r = reg_by.get(rid)
+        if not r:
+            return True
+        if r.get("title") != d.get("title") or r.get("total_lessons") != d.get("total_lessons"):
+            return True
+    return False
+
+
+def scan_courses() -> list[dict]:
+    """List courses from disk manifests; keep courses.json in sync for external tools."""
+    _prune_registry()
+    disk = _discover_courses_from_disk()
+    reg = _read_registry()
+    if disk and _registry_needs_sync(disk, reg):
+        _write_registry(disk)
+    if disk:
+        return disk
+    return reg
+
+
+# ── Markdown parser ─────────────────────────────────────────────────────────
+def parse_markdown(md: str) -> dict:
+    lines = md.splitlines()
+    course = {
+        "title": "", "subtitle": "", "description": "", "subject": "",
+        "level": "", "estimated_time": "", "learning_objectives": [], "tags": [],
+    }
+    chunks, current = [], None
+    in_desc = False
+
+    def flush():
+        nonlocal current
+        if current:
+            current["content"] = current["content"].strip()
+            chunks.append(current)
+            current = None
+
+    for line in lines:
+        raw = line.rstrip()
+        if re.match(r'^# [^#]', raw):
+            flush(); course["title"] = raw[2:].strip(); in_desc = True
+        elif re.match(r'^## [^#]', raw):
+            flush(); in_desc = False
+            current = {
+                "id": f"chunk-{len(chunks)+1}", "title": raw[3:].strip(),
+                "subtitle": "", "theme": THEMES[len(chunks) % len(THEMES)],
+                "learning_objectives": [], "content": "",
+            }
+        elif re.match(r'^### ', raw):
+            title = raw[4:].strip()
+            if current:
+                if not current["subtitle"]: current["subtitle"] = title
+                if current["content"]: current["content"] += "\n\n"
+                current["content"] += f"**{title}**"
+        elif re.match(r'^[-*] ', raw):
+            item = raw[2:].strip()
+            if current: current["content"] += f"\n• {item}"
+            elif in_desc: course["learning_objectives"].append(item)
+        elif not raw.strip():
+            if current and current["content"] and not current["content"].endswith("\n\n"):
+                current["content"] += "\n"
+        else:
+            if current:
+                if current["content"] and not current["content"].endswith("\n"): current["content"] += "\n"
+                current["content"] += raw
+            elif in_desc and course["title"]:
+                course["description"] = (course["description"] + " " + raw.strip()).strip()
+
+    flush()
+    if not course["subtitle"] and chunks:
+        course["subtitle"] = " · ".join(c["title"] for c in chunks[:3])
+        if len(chunks) > 3: course["subtitle"] += " ..."
+    return {"course": course, "chunks": chunks}
+
+
+# ── AI client (shared, persistent) ──────────────────────────────────────────
+import socket
+_orig_getaddrinfo = socket.getaddrinfo
+_dns_cache: dict[tuple, list] = {}
+
+def _cached_getaddrinfo(*args, **kwargs):
+    key = args[:2]
+    if key in _dns_cache:
+        return _dns_cache[key]
+    result = _orig_getaddrinfo(*args, **kwargs)
+    if result:
+        _dns_cache[key] = result
+    return result
+
+socket.getaddrinfo = _cached_getaddrinfo
+
+_ai_client: httpx.AsyncClient | None = None
+
+def _get_ai_client() -> httpx.AsyncClient:
+    global _ai_client
+    if _ai_client is None:
+        _ai_client = httpx.AsyncClient(
+            timeout=180, trust_env=False, http2=False,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _ai_client
+
+
+# ── Generation background task ───────────────────────────────────────────────
+async def _run_generation(
+    jid: str, content: dict, locale: str = "es",
+    api_key: str | None = None, base_url: str | None = None, model: str | None = None,
+):
+    locale = "es"
+    old_err = _REAL_STDERR
+    course_id = job_mgr.get(jid)["course_id"]
+    out_dir = COURSES_DIR / course_id
+    _current_job_id_ctx.set(jid)
+
+    def _register_course():
+        mp = out_dir / "course-manifest.json"
+        if not mp.exists():
+            return
+        try:
+            manifest = json.loads(mp.read_text(encoding="utf-8"))
+            entry = _course_entry_from_manifest(course_id, manifest)
+            _upsert_course(entry)
+        except Exception as exc:
+            print(f"  [AVISO] No se pudo registrar el curso: {exc}", file=old_err)
+
+    def _rlog(msg: str):
+        print(f"[{course_id}] {msg}", file=old_err, flush=True)
+        job_mgr.log(jid, json.dumps({"type": "info", "label": "status", "value": msg}))
+
+    try:
+        from .generator import api as gen_api
+        from .generator.course_pipeline import generate_course_with_platform
+
+        gen_api._studio_usage_collector_ctx.set([])
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        content_path = out_dir / "_content.json"
+        content_path.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+        num_chunks = len(content.get("chunks", []))
+        _rlog(f"Generando {num_chunks} juego(s)…")
+
+        await generate_course_with_platform(
+            str(content_path), str(out_dir),
+            audio_base=str(AUDIO_DIR),
+            locale=locale,
+            api_key=api_key, base_url=base_url, model=model,
+        )
+
+        _rlog("Proceso completado; registrando el curso…")
+        _register_course()
+        job_mgr.done(jid, result={"course_id": course_id})
+        _rlog("✅ ¡Listo! Abre el estudio para jugar tu curso.")
+
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[{course_id}] ❌ ERROR: {e}\n{tb}", file=old_err, flush=True)
+        _register_course()
+        job_mgr.done(jid, error=str(e))
+        job_mgr.log(jid, f"❌ Error: {e}")
+    finally:
+        _current_job_id_ctx.set(None)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# API Routes
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    p = STATIC_DIR / "index.html"
+    if p.exists():
+        return HTMLResponse(p.read_text(encoding="utf-8"))
+    return HTMLResponse("<meta http-equiv='refresh' content='0;url=/studio'>")
+
+@app.get("/studio", response_class=HTMLResponse)
+@app.get("/studio/", response_class=HTMLResponse)
+async def studio():
+    p = STATIC_DIR / "studio.html"
+    if p.exists():
+        return HTMLResponse(p.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>No se encontró el estudio</h1>", 404)
+
+@app.get("/play", response_class=HTMLResponse)
+@app.get("/play/", response_class=HTMLResponse)
+async def play_page():
+    player_path = ENGINE_DIR / "player.html"
+    if not player_path.exists():
+        raise HTTPException(404, "No se encontró el reproductor")
+    return HTMLResponse(player_path.read_text(encoding="utf-8"))
+
+
+# ── Courses API ──────────────────────────────────────────────────────────────
+
+@app.get("/api/courses")
+async def list_courses():
+    return scan_courses()
+
+@app.get("/courses.json")
+async def courses_json():
+    return JSONResponse(content=scan_courses())
+
+@app.get("/api/courses/{course_id}/manifest")
+async def get_manifest(course_id: str):
+    course_id = _safe_course_id(course_id)
+    mp = COURSES_DIR / course_id / "course-manifest.json"
+    if mp.exists():
+        try:
+            return json.loads(mp.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise HTTPException(500, f"El manifiesto no es válido: {e}")
+    raise HTTPException(404, "No se encontró el manifiesto del curso")
+
+@app.delete("/api/courses/{course_id}")
+async def delete_course(course_id: str):
+    course_id = _safe_course_id(course_id)
+    course_dir = COURSES_DIR / course_id
+    if not course_dir.exists():
+        raise HTTPException(404, "No se encontró el curso")
+    shutil.rmtree(course_dir)
+    _remove_course(course_id)
+    return {"ok": True}
+
+
+# ── Parse markdown ───────────────────────────────────────────────────────────
+
+@app.post("/api/parse-md-text")
+async def parse_md_text(body: dict):
+    md = body.get("markdown", "")
+    if not md.strip():
+        raise HTTPException(400, "El contenido Markdown está vacío")
+    return parse_markdown(md)
+
+
+# ── Generate course ──────────────────────────────────────────────────────────
+
+@app.post("/api/generate")
+async def generate(body: dict):
+    content = body.get("content", {})
+    locale = "es"
+
+    # API key: from body (BYOK) or server env
+    api_key = body.get("api_key") or API_KEY
+    base_url = body.get("base_url") or API_BASE_URL
+    model = body.get("model") or MODEL
+
+    if not api_key:
+        raise HTTPException(400, "La clave de API es obligatoria. Configura API_KEY en .env o envíala en la solicitud.")
+    if not content.get("chunks"):
+        raise HTTPException(400, "No se proporcionaron lecciones. Primero analiza el contenido.")
+    if not content.get("course", {}).get("title"):
+        raise HTTPException(400, "El título del curso es obligatorio")
+
+    course_id = _safe_course_id(body.get("course_id") or f"course-{int(time.time())}")
+    resumed = (COURSES_DIR / course_id / "games").exists()
+    jid = job_mgr.create(course_id)
+    status_msg = "Reanudando con pasos guardados…" if resumed else "Iniciando generación…"
+    job_mgr.log(jid, json.dumps({"type": "info", "label": "status", "value": status_msg}))
+
+    asyncio.create_task(_run_generation(
+        jid, content, locale=locale,
+        api_key=api_key, base_url=base_url, model=model,
+    ))
+    return {"job_id": jid, "course_id": course_id}
+
+
+# ── Jobs ─────────────────────────────────────────────────────────────────────
+
+@app.get("/api/jobs/{jid}")
+async def get_job(jid: str):
+    j = job_mgr.get(jid)
+    if not j:
+        raise HTTPException(404, "No se encontró la tarea")
+    return j
+
+
+# ── AI chat proxy (BYOK) ─────────────────────────────────────────────────────
+
+@app.post("/api/ai-chat")
+async def ai_chat(body: dict):
+    api_key = body.get("api_key") or API_KEY
+    base_url = body.get("base_url") or API_BASE_URL
+    model = body.get("model") or MODEL
+    messages = body.get("messages", [])
+    max_tokens = body.get("max_tokens", 1024)
+
+    if not api_key:
+        raise HTTPException(400, "La clave de API es obligatoria")
+    if not messages:
+        raise HTTPException(400, "Los mensajes son obligatorios")
+
+    client = _get_ai_client()
+    url = base_url.rstrip("/") + "/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {"model": model, "messages": messages, "temperature": 0.7, "max_tokens": max_tokens}
+
+    try:
+        resp = await client.post(url, json=payload, headers=headers)
+        if resp.status_code != 200:
+            raise HTTPException(resp.status_code, f"Error de la API de IA: {resp.text[:500]}")
+        data = resp.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return {"content": content}
+    except httpx.ConnectError as e:
+        _dns_cache.clear()
+        raise HTTPException(502, f"No se pudo conectar con el proveedor de IA: {e}")
+    except httpx.TimeoutException:
+        raise HTTPException(504, "La solicitud a la IA agotó el tiempo de espera. Inténtalo de nuevo.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Error en la solicitud a la IA: {type(e).__name__}: {e}")
+
+
+# ── Game player ──────────────────────────────────────────────────────────────
+
+@app.get("/api/play/{course_id}/{chunk_id}/package")
+async def get_game_package(course_id: str, chunk_id: str):
+    course_id = _safe_course_id(course_id)
+    chunk_id = _safe_chunk_id(chunk_id)
+
+    game_dir = COURSES_DIR / course_id / "games" / chunk_id
+    if not game_dir.exists():
+        raise HTTPException(404, "No se encontró el juego")
+
+    json_path = game_dir / "game.pkg.json"
+    if not json_path.exists():
+        raise HTTPException(404, "No se encontró el paquete del juego. Intenta generar el curso nuevamente.")
+
+    try:
+        pkg = json.loads(json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise HTTPException(500, f"El paquete no es válido: {e}")
+
+    if "config" not in pkg:
+        pkg["config"] = {}
+    pkg["config"]["courseId"] = course_id
+    pkg["config"]["chunkId"] = chunk_id
+
+    # Inject next game URL
+    games_dir = game_dir.parent
+    if games_dir.is_dir():
+        siblings = sorted(p.name for p in games_dir.iterdir() if p.is_dir())
+        try:
+            idx = siblings.index(chunk_id)
+            if idx + 1 < len(siblings):
+                next_chunk = siblings[idx + 1]
+                pkg["config"]["nextGameUrl"] = f"/play?course={course_id}&game={next_chunk}"
+        except ValueError:
+            pass
+
+    return pkg
+
+@app.post("/api/play/{course_id}/{chunk_id}/state")
+async def play_state_proxy(request: Request, course_id: str, chunk_id: str):
+    course_id = _safe_course_id(course_id)
+    chunk_id = _safe_chunk_id(chunk_id)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "El contenido JSON no es válido")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(f"{ENGINE_STATE_URL}/state", json=body)
+        return JSONResponse(
+            status_code=r.status_code,
+            content=r.json() if r.headers.get("content-type", "").startswith("application/json") else {"error": r.text},
+        )
+    except httpx.ConnectError:
+        raise HTTPException(503, "El servicio de estado del motor no está disponible; inícialo con: cd node && node server.js")
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+@app.post("/api/play/{course_id}/{chunk_id}/next")
+async def play_next_proxy(request: Request, course_id: str, chunk_id: str):
+    course_id = _safe_course_id(course_id)
+    chunk_id = _safe_chunk_id(chunk_id)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "El contenido JSON no es válido")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(f"{ENGINE_STATE_URL}/next", json=body)
+        return JSONResponse(
+            status_code=r.status_code,
+            content=r.json() if r.headers.get("content-type", "").startswith("application/json") else {"error": r.text},
+        )
+    except httpx.ConnectError:
+        raise HTTPException(503, "El servicio de estado del motor no está disponible")
+    except Exception as e:
+        raise HTTPException(502, str(e))
+
+
+# ── Config info endpoint ──────────────────────────────────────────────────────
+@app.get("/api/config")
+async def get_config():
+    """Return public config info (no secrets)."""
+    return {
+        "has_api_key": bool(API_KEY),
+        "model": MODEL,
+        "base_url": API_BASE_URL,
+    }
+
+
+# ── Static file mounts ────────────────────────────────────────────────────────
+if ENGINE_DIR.exists():
+    app.mount("/engine", StaticFiles(directory=str(ENGINE_DIR)), name="engine")
+
+if COURSES_DIR.exists():
+    app.mount("/courses", StaticFiles(directory=str(COURSES_DIR), html=True), name="courses")
+
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+readme_dir = PACKAGE_DIR / "readme"
+if readme_dir.exists():
+    app.mount("/readme", StaticFiles(directory=str(readme_dir)), name="readme")
