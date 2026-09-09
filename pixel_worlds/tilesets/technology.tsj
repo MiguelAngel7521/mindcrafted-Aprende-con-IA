@@ -1,0 +1,12 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "name": "Nexo",
+  "columns": 8,
+  "tilecount": 16,
+  "tilewidth": 32,
+  "tileheight": 32,
+  "image": "../art/exports/terrain-technology.png",
+  "imagewidth": 256,
+  "imageheight": 64
+}

@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
 <title>MindCrafted — Estudio de aprendizaje basado en juegos con IA</title>
 <style>
-@font-face{font-family:'PixelZH';src:url('/assets/ZhengQingKeNanBeiCiGongPuSongTi-2.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Pixelify Sans';src:url('/assets/fonts/PixelifySans.ttf') format('truetype');font-weight:400 700;font-style:normal;font-display:swap}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
   --bg:#08080b;--bg2:#0d0d12;--card:#0f0f14;--card2:#141420;
@@ -14,10 +15,10 @@
   --greenG:rgba(136,206,2,0.30);--greenD:rgba(136,206,2,0.10);
   --cyan:#00e5c8;--yellow:#c8fb50;--amber:#ff9f0a;--gold:#ffd54f;
   --text:#ffffff;--text2:#b0b0c8;--muted:#7878a0;--dim:#4a4a6e;
-  --font:'PixelZH',system-ui,sans-serif;--radius:16px;
+  --font:'Pixelify Sans','Courier New',monospace;--radius:4px;
 }
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.6}
+body{background-color:var(--bg);background-image:linear-gradient(rgba(136,206,2,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(136,206,2,.035) 1px,transparent 1px);background-size:16px 16px;color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5;-webkit-font-smoothing:none;font-smooth:never}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(136,206,2,.25);border-radius:4px}
 *{scrollbar-width:thin;scrollbar-color:rgba(136,206,2,.25) transparent}
 
@@ -25,23 +26,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .topbar{position:sticky;top:0;z-index:100;background:rgba(8,8,11,0.35);backdrop-filter:blur(32px) saturate(1.4);border-bottom:1px solid var(--border);box-shadow:0 4px 30px rgba(0,0,0,0.25)}
 .topbar-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
 .topbar-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:700;font-size:17px}
-.brand-logo{width:30px;height:30px;background:linear-gradient(135deg,#88ce02,#00e5c8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
 .topbar-nav{display:flex;align-items:center;gap:8px}
 .topbar-link{font-size:12px;color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:10px;border:1px solid transparent;transition:all .2s;cursor:pointer;background:none;font-family:inherit}
 .topbar-link:hover{color:var(--text);border-color:var(--border)}
 .topbar-link.active{color:var(--greenL);border-color:rgba(136,206,2,0.25);background:var(--greenD)}
 .gh-link{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;border:1px solid var(--border2);color:var(--text2);text-decoration:none;font-size:11px;transition:all .2s}
 .gh-link:hover{border-color:var(--green);color:var(--greenL)}
-
-/* Lang switcher */
-.lang-sw{position:relative}
-.lang-sw-btn{display:flex;align-items:center;gap:5px;padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .2s;font-family:inherit}
-.lang-sw-btn:hover{border-color:var(--green);color:var(--text)}
-.lang-sw-dd{position:absolute;top:calc(100% + 6px);right:0;min-width:140px;background:rgba(8,8,11,0.96);backdrop-filter:blur(24px);border:1px solid var(--border);border-radius:10px;padding:4px;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,0.6);opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .18s,transform .18s}
-.lang-sw.open .lang-sw-dd{opacity:1;pointer-events:auto;transform:translateY(0)}
-.lang-sw-opt{display:block;width:100%;padding:7px 10px;background:none;border:none;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s;text-align:left;font-family:inherit}
-.lang-sw-opt:hover{background:var(--greenD);color:var(--text)}
-.lang-sw-opt.active{color:var(--greenL);background:rgba(136,206,2,0.08)}
 
 /* Container */
 .container{max-width:1100px;margin:0 auto;padding:24px;position:relative}
@@ -88,6 +78,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 
 /* Editor */
 .editor-card{background:rgba(17,13,32,0.18);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;backdrop-filter:blur(24px) saturate(1.3);box-shadow:0 2px 24px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.04)}
+.source-drop{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;padding:14px 16px;border:1px dashed rgba(136,206,2,.38);border-radius:12px;background:rgba(136,206,2,.05);transition:border-color .2s,background .2s}
+.source-drop.dragging{border-color:var(--greenL);background:rgba(136,206,2,.12)}
+.source-drop-copy{min-width:0}
+.source-drop-title{font-size:12px;font-weight:700;color:var(--text)}
+.source-drop-hint,.source-status{font-size:10px;color:var(--muted);margin-top:2px}
+.source-status.success{color:var(--greenL)}
+.source-status.error{color:#ff6b6b}
 .editor-split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .editor-pane textarea{width:100%;min-height:500px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font);font-size:12px;padding:14px;resize:vertical;outline:none;line-height:1.6}
 .editor-pane textarea:focus{border-color:var(--green)}
@@ -111,7 +108,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .chunk-toggle{background:none;border:none;color:var(--dim);font-size:10px;cursor:pointer;padding:2px 6px;border-radius:4px;font-family:inherit}
 .chunk-body{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:none}
 .chunk-body.open{display:block}
-.chunk-body textarea{width:100%;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-family:'Courier New',monospace;font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.6}
+.chunk-body textarea{width:100%;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-family:var(--font);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.6}
 
 /* Generation progress */
 .gen-panel{display:none}
@@ -164,9 +161,33 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .footer a{color:var(--cyan);text-decoration:none}
 .footer a:hover{color:var(--greenL)}
 
+/* Pixel-art interface */
+.topbar{background:#0a0a0f;border-bottom:2px solid var(--green);backdrop-filter:none;box-shadow:0 4px 0 #020204}
+.topbar-brand{font-size:20px;letter-spacing:1px;text-shadow:2px 2px 0 #284000}
+.panel,.editor-card{background:#101018;border:2px solid var(--border2);border-radius:4px;backdrop-filter:none;box-shadow:4px 4px 0 #020204,inset 2px 2px 0 rgba(255,255,255,.035)}
+.section-title{color:var(--greenL);letter-spacing:1px;text-shadow:2px 2px 0 #253700}
+.tabs{background:#07070b;border:2px solid var(--border2);border-radius:4px;padding:3px;box-shadow:3px 3px 0 #020204}
+.tab{border-radius:2px;text-transform:uppercase}
+.tab.active{border:2px solid var(--green);background:#182407;box-shadow:inset 2px 2px 0 rgba(255,255,255,.08)}
+.btn{border-radius:2px;border-width:2px;text-transform:uppercase;box-shadow:3px 3px 0 #020204;image-rendering:pixelated}
+.btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:4px 4px 0 #020204}
+.btn:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 #020204}
+.fg input,.fg select,.fg textarea,.editor-pane textarea,.preview-pane,.chunk-body textarea{border:2px solid var(--border2);border-radius:2px;background:#09090e;box-shadow:inset 2px 2px 0 #020204}
+.fg input:focus,.fg select:focus,.fg textarea:focus,.editor-pane textarea:focus,.chunk-body textarea:focus{border-color:var(--green);box-shadow:inset 2px 2px 0 #020204,0 0 0 2px rgba(136,206,2,.12)}
+.source-drop{background:#0b1307;border:2px dashed var(--green);border-radius:2px;box-shadow:inset 3px 3px 0 rgba(0,0,0,.4)}
+.source-drop.dragging{background:#16250a;box-shadow:inset 0 0 0 3px rgba(200,251,80,.12)}
+.chunk-item,.course-item,.empty-state,.gen-result{border-radius:2px;border-width:2px;background:#0c0c12;box-shadow:3px 3px 0 #020204}
+.gen-progress-bar{height:10px;border:2px solid var(--border2);border-radius:0;background:#050508}
+.gen-progress-fill{border-radius:0;background:repeating-linear-gradient(90deg,var(--green) 0 8px,var(--greenL) 8px 16px)}
+.spinner{border-radius:0;border-width:3px;animation:pixel-spin .8s steps(4,end) infinite}
+@keyframes pixel-spin{to{transform:rotate(360deg)}}
+.toast{border-radius:2px;border-width:2px;box-shadow:4px 4px 0 #020204}
+::selection{background:var(--green);color:#050508}
+
 @media(max-width:700px){
   .grid-2,.course-meta,.editor-split{grid-template-columns:1fr}
-  .topbar-nav .gh-link,.topbar-nav .lang-sw{display:none}
+  .source-drop{align-items:flex-start;flex-direction:column}
+  .topbar-nav .gh-link{display:none}
 }
 </style>
 </head>
@@ -175,12 +196,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 <div class="topbar">
   <div class="topbar-inner">
     <a class="topbar-brand" href="/">
-      <img src="/readme/mindcrafted_logo.png" alt="MindCrafted" width="30" height="30" style="border-radius:8px;object-fit:contain">
       MindCrafted
     </a>
-    <div class="topbar-nav">
-      <a href="/" class="topbar-link active">Inicio</a>
-    </div>
   </div>
 </div>
 
@@ -189,17 +206,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   <!-- Page heading -->
   <div style="margin-bottom:28px;padding-top:8px">
     <h1 style="font-size:24px;font-weight:700;margin-bottom:6px">
-      🎮 <span id="t-heading">Estudio de aprendizaje basado en juegos con IA</span>
+      <span id="t-heading">Estudio de aprendizaje basado en juegos con IA</span>
     </h1>
     <p style="font-size:13px;color:var(--muted)" id="t-subheading">
-      Pega cualquier material educativo → La IA genera minijuegos interactivos → Juega al instante
+      Sube un PDF o PowerPoint, o pega material educativo para generar minijuegos interactivos
     </p>
   </div>
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab active" id="tab-create" onclick="switchTab('create')">✨ <span id="t-tab-create">Crear</span></button>
-    <button class="tab" id="tab-courses" onclick="switchTab('courses')">📚 <span id="t-tab-courses">Mis cursos</span></button>
+    <button class="tab active" id="tab-create" onclick="switchTab('create')"><span id="t-tab-create">Crear</span></button>
+    <button class="tab" id="tab-courses" onclick="switchTab('courses')"><span id="t-tab-courses">Mis cursos</span></button>
   </div>
 
   <!-- ═══════════════════ CREATE TAB ═══════════════════ -->
@@ -208,7 +225,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <!-- API Config -->
     <div class="panel" id="apiPanel">
       <div class="panel-header" onclick="togglePanel('apiPanel')">
-        <h3>⚙️ <span id="t-api-title">Configuración de IA</span></h3>
+        <h3><span id="t-api-title">Configuración de IA</span></h3>
         <span class="panel-toggle">▼</span>
       </div>
       <div class="panel-body">
@@ -241,7 +258,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <!-- Content editor -->
     <div class="editor-card">
       <div class="section-title">
-        <span>📝</span> <span id="t-editor-title">Editor de contenido</span>
+        <span id="t-editor-title">Editor de contenido</span>
+      </div>
+      <div class="source-drop" id="sourceDrop">
+        <div class="source-drop-copy">
+          <div class="source-drop-title">Importar material</div>
+          <div class="source-drop-hint">PDF con texto o PowerPoint .pptx · máximo 25 MB</div>
+          <div class="source-status" id="sourceStatus" aria-live="polite"></div>
+        </div>
+        <input type="file" id="sourceInput" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx" hidden>
+        <button type="button" class="btn btn-primary btn-sm" id="sourceButton" onclick="document.getElementById('sourceInput').click()">Seleccionar archivo</button>
       </div>
       <div class="editor-split">
         <div class="editor-pane">
@@ -252,7 +278,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
         </div>
       </div>
       <div class="editor-actions">
-        <button class="btn btn-ghost btn-sm" onclick="loadSample()" id="t-load-sample">📄 Cargar ejemplo</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadSample()" id="t-load-sample">Cargar ejemplo</button>
         <button class="btn btn-primary" onclick="parseMd()" id="t-parse-btn">Analizar contenido →</button>
       </div>
     </div>
@@ -260,7 +286,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <!-- Structure editor -->
     <div class="panel structure-card" id="structureCard">
       <div class="section-title">
-        <span>🏗️</span> <span id="t-structure-title">Estructura del curso</span>
+        <span id="t-structure-title">Estructura del curso</span>
       </div>
       <div class="course-meta" id="courseMeta">
         <!-- filled by JS -->
@@ -269,9 +295,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
         <!-- filled by JS -->
       </div>
       <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <div style="font-size:11px;color:var(--muted)">⚡ Modo rápido · Español · Plantilla espacial fija</div>
+        <div style="font-size:11px;color:var(--muted)">Aventura pixel art · Explora y restaura estaciones · Jefe final por curso</div>
         <button class="btn btn-primary" onclick="startGeneration()" id="genBtn">
-          🎮 <span id="t-gen-btn">Generar juegos</span>
+          <span id="t-gen-btn">Generar juegos</span>
         </button>
       </div>
     </div>
@@ -279,7 +305,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <!-- Generation progress -->
     <div class="panel gen-panel" id="genPanel">
       <div class="section-title">
-        <span>⚡</span> <span id="t-gen-title">Generando juegos...</span>
+        <span id="t-gen-title">Generando juegos...</span>
       </div>
       <div class="gen-status">
         <div class="spinner" id="genSpinner"></div>
@@ -291,7 +317,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       <div class="gen-step-label" id="genStepLabel"></div>
       <div class="gen-games" id="genGames"></div>
       <div class="gen-result" id="genResult">
-        <p>✅ <span id="t-gen-done">¡Todos los juegos están listos!</span> <a href="#" id="genResultLink"><span id="t-play-link">Jugar ahora →</span></a></p>
+        <p><span id="t-gen-done">Todos los juegos están listos.</span> <a href="#" id="genResultLink"><span id="t-play-link">Jugar ahora →</span></a></p>
       </div>
     </div>
 
@@ -301,9 +327,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   <div id="pane-courses" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div class="section-title" style="margin-bottom:0">
-        <span>📚</span> <span id="t-courses-title">Mis cursos generados</span>
+        <span id="t-courses-title">Mis cursos generados</span>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="loadCourses()" id="t-refresh">↻ Actualizar</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadCourses()" id="t-refresh">Actualizar</button>
     </div>
     <div id="coursesList">
       <div class="empty-state">
@@ -330,7 +356,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 const I18N = {
   es: {
     heading: 'Estudio de aprendizaje basado en juegos con IA',
-    subheading: 'Pega cualquier material educativo → La IA genera minijuegos interactivos → Juega al instante',
+    subheading: 'Sube un PDF o PowerPoint, o pega material educativo para generar minijuegos interactivos',
     'tab-create': 'Crear', 'tab-courses': 'Mis cursos',
     'api-title': 'Configuración de IA',
     'api-key-lbl': 'Clave de API',
@@ -340,14 +366,14 @@ const I18N = {
     'api-test': 'Probar conexión', 'api-save': 'Guardar',
     'editor-title': 'Editor de contenido',
     'preview-placeholder': 'Comienza a escribir para ver la vista previa...',
-    'load-sample': '📄 Cargar ejemplo', 'parse-btn': 'Analizar contenido →',
+    'load-sample': 'Cargar ejemplo', 'parse-btn': 'Analizar contenido →',
     'structure-title': 'Estructura del curso',
     'gen-btn': 'Generar juegos',
     'gen-title': 'Generando juegos...',
     'gen-done': '¡Todos los juegos están listos!',
     'play-link': 'Jugar ahora →',
     'courses-title': 'Mis cursos generados',
-    refresh: '↻ Actualizar',
+    refresh: 'Actualizar',
     'no-courses': 'Todavía no hay cursos',
     'no-courses-hint': '¡Genera tu primer curso en la pestaña Crear!',
     'confirm-delete': '¿Quieres eliminar este curso? Esta acción no se puede deshacer.',
@@ -414,10 +440,10 @@ async function testApiKey() {
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.detail || JSON.stringify(data));
     statusEl.className = 'api-status ok';
-    statusEl.textContent = '✅ Conexión correcta — ' + (data.content || 'funciona').slice(0, 50);
+    statusEl.textContent = 'Conexión correcta — ' + (data.content || 'funciona').slice(0, 50);
   } catch (e) {
     statusEl.className = 'api-status err';
-    statusEl.textContent = '❌ ' + e.message;
+    statusEl.textContent = 'Error: ' + e.message;
   }
 }
 
@@ -458,8 +484,80 @@ El aprendizaje automático impulsa muchas aplicaciones y servicios cotidianos.
 
 function loadSample() {
   document.getElementById('mdInput').value = SAMPLE_MD;
+  _parsedContent = null;
+  document.getElementById('structureCard').classList.remove('visible');
   renderPreview();
 }
+
+async function readApiResponse(resp) {
+  const type = resp.headers.get('content-type') || '';
+  if (type.includes('application/json')) return resp.json();
+  return { detail: (await resp.text()) || `Error HTTP ${resp.status}` };
+}
+
+async function importDocument(file) {
+  if (!file) return;
+  const status = document.getElementById('sourceStatus');
+  const button = document.getElementById('sourceButton');
+  const name = file.name.toLowerCase();
+  const isPdf = name.endsWith('.pdf');
+  const isPptx = name.endsWith('.pptx');
+  if (!isPdf && !isPptx) {
+    status.className = 'source-status error';
+    status.textContent = name.endsWith('.ppt')
+      ? 'El formato .ppt antiguo no es compatible; guárdalo como .pptx.'
+      : 'Selecciona un archivo PDF o PowerPoint .pptx válido.';
+    return;
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    status.className = 'source-status error';
+    status.textContent = 'El archivo supera el límite de 25 MB.';
+    return;
+  }
+
+  button.disabled = true;
+  status.className = 'source-status';
+  status.textContent = `Extrayendo texto de ${file.name}…`;
+  try {
+    const endpoint = isPdf ? '/api/import-pdf' : '/api/import-pptx';
+    const contentType = isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    const resp = await fetch(endpoint + '?filename=' + encodeURIComponent(file.name), {
+      method: 'POST',
+      headers: { 'Content-Type': contentType },
+      body: file,
+    });
+    const data = await readApiResponse(resp);
+    if (!resp.ok) throw new Error(data.detail || 'No se pudo convertir el PDF');
+    document.getElementById('mdInput').value = data.markdown;
+    _parsedContent = null;
+    renderPreview();
+    status.className = 'source-status success';
+    const total = isPdf ? data.pages : data.slides;
+    const unit = isPdf ? 'páginas' : 'diapositivas';
+    status.textContent = `${total} ${unit} · ${data.sections} juegos detectados${data.truncated ? ' · contenido truncado' : ''}`;
+    toast('Archivo convertido a Markdown. Revisa las lecciones antes de generar.', 'success');
+    await parseMd();
+  } catch (error) {
+    status.className = 'source-status error';
+    status.textContent = 'No se pudo importar: ' + error.message;
+    toast(error.message, 'error');
+  } finally {
+    button.disabled = false;
+    document.getElementById('sourceInput').value = '';
+  }
+}
+
+const sourceDrop = document.getElementById('sourceDrop');
+document.getElementById('sourceInput').addEventListener('change', event => importDocument(event.target.files[0]));
+['dragenter', 'dragover'].forEach(name => sourceDrop.addEventListener(name, event => {
+  event.preventDefault();
+  sourceDrop.classList.add('dragging');
+}));
+['dragleave', 'drop'].forEach(name => sourceDrop.addEventListener(name, event => {
+  event.preventDefault();
+  sourceDrop.classList.remove('dragging');
+}));
+sourceDrop.addEventListener('drop', event => importDocument(event.dataTransfer.files[0]));
 
 function renderPreview() {
   const md = document.getElementById('mdInput').value;
@@ -467,7 +565,7 @@ function renderPreview() {
     document.getElementById('mdPreview').innerHTML = '<p style="color:var(--dim);font-size:11px">' + t('preview-placeholder') + '</p>';
     return;
   }
-  let html = md
+  let html = escHtml(md)
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -478,7 +576,11 @@ function renderPreview() {
   document.getElementById('mdPreview').innerHTML = html;
 }
 
-document.getElementById('mdInput').addEventListener('input', renderPreview);
+document.getElementById('mdInput').addEventListener('input', () => {
+  _parsedContent = null;
+  document.getElementById('structureCard').classList.remove('visible');
+  renderPreview();
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Parse content
@@ -496,14 +598,16 @@ async function parseMd() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ markdown: md }),
     });
-    const data = await resp.json();
+    const data = await readApiResponse(resp);
     if (!resp.ok) throw new Error(data.detail || 'No se pudo analizar el contenido');
     _parsedContent = data;
     renderStructure(data);
     document.getElementById('structureCard').classList.add('visible');
     document.getElementById('structureCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return true;
   } catch (e) {
     toast('Error al analizar: ' + e.message, 'error');
+    return false;
   } finally {
     btn.disabled = false;
   }
@@ -518,6 +622,7 @@ function renderStructure(data) {
     <div class="fg"><label>Subtítulo</label><input type="text" id="cSubtitle" value="${escHtml(meta.subtitle || '')}"></div>
     <div class="fg"><label>Materia</label><input type="text" id="cSubject" value="${escHtml(meta.subject || '')}"></div>
     <div class="fg"><label>Nivel</label><input type="text" id="cLevel" value="${escHtml(meta.level || '')}"></div>
+    <div class="fg"><label>Ritmo de la aventura</label><select id="cDifficulty"><option value="normal">Normal</option><option value="calm">Tranquilo</option><option value="study">Estudio sin presión</option></select></div>
   `;
 
   document.getElementById('chunkList').innerHTML = chunks.map((c, i) => `
@@ -525,7 +630,7 @@ function renderStructure(data) {
       <div class="chunk-header">
         <span class="chunk-num">Juego ${i+1}</span>
         <input type="text" class="chunk-title-input" value="${escHtml(c.title)}" id="cChunkTitle${i}">
-        <div class="chunk-theme"><span style="font-size:10px;color:var(--accent)">🚀 Nave oceánica</span></div>
+        <div class="chunk-theme"><label style="font-size:10px">Mundo <select id="cWorld${i}" aria-label="Mundo de la lección ${i+1}"><option value="">Automático según apuntes</option><option value="technology">Nexo Digital</option><option value="laboratory">Laboratorio</option><option value="mathematics">Taller del equilibrio</option><option value="biology">Bosque</option></select></label></div>
         <button class="chunk-toggle btn-sm" onclick="toggleChunk(${i})">▶ contenido</button>
       </div>
       <div class="chunk-body" id="chunkBody${i}">
@@ -546,8 +651,8 @@ function collectContent() {
   const chunks = _parsedContent.chunks.map((c, i) => ({
     ...c,
     title: document.getElementById(`cChunkTitle${i}`)?.value || c.title,
-    theme: 'ocean-dream',
-    content: document.getElementById(`cChunkContent${i}`)?.value || c.content,
+    content: document.getElementById(`cChunkContent${i}`)?.value ?? c.content,
+    world: document.getElementById(`cWorld${i}`)?.value || '',
   }));
   return {
     course: {
@@ -556,6 +661,8 @@ function collectContent() {
       subtitle: document.getElementById('cSubtitle')?.value || '',
       subject: document.getElementById('cSubject')?.value || '',
       level: document.getElementById('cLevel')?.value || '',
+      gameplay: 'aventura',
+      difficulty: document.getElementById('cDifficulty')?.value || 'normal',
     },
     chunks,
   };
@@ -612,14 +719,14 @@ async function startGeneration() {
   } catch (e) {
     document.getElementById('genBtn').disabled = false;
     toast('Error: ' + e.message, 'error');
-    document.getElementById('genStatusText').textContent = '❌ Error: ' + e.message;
+    document.getElementById('genStatusText').textContent = 'Error: ' + e.message;
     document.getElementById('genSpinner').style.display = 'none';
   }
 }
 
 function pollJob(jid, courseId, totalGames) {
   if (_pollTimer) clearInterval(_pollTimer);
-  let completedGames = 0;
+  let seenLogs = 0;
 
   _pollTimer = setInterval(async () => {
     try {
@@ -629,18 +736,13 @@ function pollJob(jid, courseId, totalGames) {
       const logs = job.logs || [];
 
       // Process logs
-      for (const log of logs) {
+      for (const log of logs.slice(seenLogs)) {
         try {
           const msg = JSON.parse(log.msg);
           if (msg.type === 'game') {
             const idx = msg.current - 1;
             const card = document.getElementById('gc' + idx);
             if (card) {
-              // mark previous as done
-              for (let i = 0; i < idx; i++) {
-                const c = document.getElementById('gc' + i);
-                if (c) c.className = 'gen-game-card done';
-              }
               card.className = 'gen-game-card active';
             }
             const pct = Math.round((msg.current - 1) / totalGames * 85);
@@ -652,32 +754,50 @@ function pollJob(jid, courseId, totalGames) {
             const card = document.getElementById('gc' + (msg.game - 1));
             if (card) {
               card.className = 'gen-game-card done';
-              card.innerHTML = `<span class="dot"></span><span>${card.querySelector('span:last-child')?.textContent || 'Juego ' + msg.game}</span>
-                <a href="/play?course=${courseId}&game=chunk-${msg.game}" target="_blank" style="margin-left:auto;color:var(--greenL);font-size:11px">▶ Jugar</a>`;
+
             }
           }
         } catch {}
       }
 
+      seenLogs = logs.length;
       if (job.status === 'completed') {
         clearInterval(_pollTimer);
         document.getElementById('genProgressFill').style.width = '100%';
         document.getElementById('genSpinner').style.display = 'none';
-        document.getElementById('genStatusText').textContent = '✅ ¡Completado!';
+        document.getElementById('genStatusText').textContent = job.result?.partial ? 'Curso creado con algunas lecciones pendientes' : 'Completado';
         document.getElementById('genStepLabel').textContent = '';
-        // Mark all done
-        for (let i = 0; i < totalGames; i++) {
-          const c = document.getElementById('gc' + i);
-          if (c) c.className = 'gen-game-card done';
-        }
+        const results = job.result?.games || [];
+        results.forEach((game, i) => {
+          const card = document.getElementById('gc' + i);
+          if (!card) return;
+          const label = document.createElement('span');
+          label.textContent = game.title + (game.status === 'success' ? ` · ${game.puzzle_count || ''} puzzles` : ' · No se pudo generar');
+          card.replaceChildren(label);
+          card.className = 'gen-game-card' + (game.status === 'success' ? ' done' : '');
+          if (game.status === 'success') {
+            const link = document.createElement('a');
+            link.href = '/play?course=' + encodeURIComponent(courseId) + '&game=' + encodeURIComponent(game.chunk_id);
+            link.target = '_blank'; link.rel = 'noopener'; link.textContent = '▶ Jugar';
+            link.style.marginLeft = 'auto'; card.append(link);
+          } else {
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            const reason = document.createElement('p');
+            summary.textContent = 'Ver motivo';
+            reason.textContent = game.error || 'Amplía los apuntes de esta lección y vuelve a generar.';
+            details.style.cssText = 'font-size:11px;overflow-wrap:anywhere';
+            details.append(summary, reason); card.append(details);
+          }
+        });
         document.getElementById('genResult').classList.add('visible');
-        document.getElementById('genResultLink').href = '/play?course=' + courseId + '&game=chunk-1';
+        document.getElementById('genResultLink').href = '/play?course=' + encodeURIComponent(courseId) + '&game=' + encodeURIComponent(job.result?.first_game || 'chunk-1');
         document.getElementById('genBtn').disabled = false;
-        toast('¡Curso generado correctamente!', 'success');
+        toast(job.result?.partial ? 'Puedes practicar las lecciones listas. Revisa los apuntes de las pendientes y vuelve a generar.' : '¡Curso generado correctamente!', 'success');
       } else if (job.status === 'failed') {
         clearInterval(_pollTimer);
         document.getElementById('genSpinner').style.display = 'none';
-        document.getElementById('genStatusText').textContent = '❌ Error: ' + (job.error || 'Error desconocido');
+        document.getElementById('genStatusText').textContent = 'Error: ' + (job.error || 'Error desconocido');
         document.getElementById('genBtn').disabled = false;
         toast('La generación falló: ' + (job.error || ''), 'error');
       }
@@ -706,11 +826,11 @@ async function loadCourses() {
       <div class="course-item">
         <div class="course-info">
           <div class="course-title">${escHtml(c.title)}</div>
-          <div class="course-meta-line">${c.total_lessons || 0} juegos · ${c.subject || ''} · ${c.level || ''}</div>
+          <div class="course-meta-line">${Number(c.total_lessons) || 0} juegos · ${escHtml(c.subject || '')} · ${escHtml(c.level || '')}</div>
         </div>
         <div class="course-actions">
-          <a href="/play?course=${encodeURIComponent(c.id)}&game=chunk-1" target="_blank" class="btn btn-primary btn-sm">▶ Jugar</a>
-          <button class="btn btn-danger btn-sm" onclick="deleteCourse('${c.id}')">✕</button>
+          <a href="/courses/${encodeURIComponent(c.id)}/" target="_blank" class="btn btn-primary btn-sm">Jugar</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteCourse('${escJs(c.id)}')">Eliminar</button>
         </div>
       </div>
     `).join('');
@@ -759,7 +879,11 @@ function toast(msg, type = 'success') {
 }
 
 function escHtml(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function escJs(s) {
+  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]/g, '');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -789,7 +913,7 @@ async function initServerConfig() {
       const statusEl = document.getElementById('apiStatus');
       statusEl.style.display = 'flex';
       statusEl.className = 'api-status ok';
-      statusEl.textContent = '✅ La clave de API está configurada en el servidor; puedes dejar este campo vacío.';
+      statusEl.textContent = 'La clave de API está configurada en el servidor; puedes dejar este campo vacío.';
     }
   } catch {
     window.__edgcServerCfg = { has_api_key: false, model: '', base_url: '' };

@@ -1,7 +1,7 @@
 # =============================================================================
-# MindCrafted — AI Game-Based Learning Studio
+
 # =============================================================================
-"""Prompt templates for MindCrafted pipeline. All chapters use custom_simulation only (no template mechanics).
+"""Prompt templates for EdGameClaw pipeline. All chapters use custom_simulation only (no template mechanics).
 
 - Knowledge chunk types (conceptual, procedural, etc.) for decomposition.
 - Narrative: character design, Kishotenketsu plot, worldbuilding, pacing.
@@ -124,6 +124,7 @@ Every minigame must include these interaction/feedback layers (built into the ga
 4. Discovery layer: Extra knowledge revealed when achieving full score
 """
 
+# -- Created by Yuqi Hang (github.com/yh2072) --
 # ---------------------------------------------------------------------------
 # Narrative & Storytelling (from story-skills)
 # ---------------------------------------------------------------------------
@@ -242,38 +243,53 @@ def _format_personal_profile(personal_profile: dict | None) -> str:
 
 
 def fast_content_prompt(topic: str, forced_title: str | None = None) -> tuple[str, str]:
-    """Prompt unico y pequeno para el modo rapido, siempre en espanol."""
+    """Construye la única petición de IA del modo rápido, siempre en español."""
     system = (
-        "Eres un guionista educativo. Responde exclusivamente con JSON válido y "
-        "escribe todo el contenido en español natural. No uses inglés, chino ni otro idioma. "
-        "No inventes datos: utiliza solamente el material proporcionado."
+        "Eres un diseñador de experiencias educativas. Responde exclusivamente con "
+        "JSON válido. Escribe todo en español natural, sin inglés, chino ni otros "
+        "idiomas. Usa únicamente el material entregado y evita inventar datos."
     )
     title_rule = (
-        f'Usa exactamente este titulo: "{forced_title[:120]}".'
+        f'Usa exactamente este título: "{forced_title[:120]}".'
         if forced_title
         else "Crea un título breve de hasta 70 caracteres."
     )
-    source = topic[:6000]
-    user = f"""Crea el contenido mínimo de una historia educativa ambientada dentro de una nave que sobrevuela un planeta cubierto de agua.
+    source = topic[:7000]
+    user = f"""Diseña una misión educativa dentro de una nave que primero orbita un planeta azul y luego vuela sobre su océano.
 
 {title_rule}
 
 Material educativo:
 {source}
 
-Devuelve exactamente este objeto JSON:
+Devuelve exactamente un objeto JSON con esta estructura:
 {{
   "title": "título",
-  "introduction": "introducción educativa de 1 o 2 frases, máximo 260 caracteres",
+  "introduction": "introducción educativa breve",
   "dialogue": [
-    {{"speaker": "AURA", "text": "línea breve de la guía de la nave"}},
+    {{"speaker": "AURA", "text": "línea de la guía"}},
     {{"speaker": "{{player}}", "text": "respuesta breve"}},
-    {{"speaker": "Bit", "text": "comentario breve del compañero"}},
-    {{"speaker": "AURA", "text": "cierre educativo breve"}}
-  ]
+    {{"speaker": "Bit", "text": "comentario breve"}},
+    {{"speaker": "AURA", "text": "cierre o transición"}}
+  ],
+  "minigames": {{
+    "orbital_quiz": {{
+      "title": "Reto orbital", "instruction": "instrucción",
+      "questions": [{{"question": "pregunta", "options": ["opción 1", "opción 2", "opción 3"], "answer": 0, "explanation": "explicación"}}]
+    }},
+    "sequence_puzzle": {{
+      "title": "Puzle de secuencia", "instruction": "instrucción", "steps": ["paso 1", "paso 2", "paso 3", "paso 4"]
+    }},
+    "memory_match": {{
+      "title": "Memoria de señales", "instruction": "instrucción", "pairs": [{{"term": "concepto", "definition": "definición"}}]
+    }},
+    "signal_sort": {{
+      "title": "Clasificador de señales", "instruction": "instrucción", "categories": [{{"name": "categoría", "items": ["elemento 1", "elemento 2"]}}]
+    }}
+  }}
 }}
 
-Reglas: entre 4 y 6 líneas de diálogo, cada texto con máximo 220 caracteres, sin preguntas de examen, sin minijuegos y sin campos adicionales."""
+Reglas: 4 a 6 líneas de diálogo; 3 preguntas con 3 opciones cada una; 4 a 6 pasos; 4 pares; 2 o 3 categorías con al menos 2 elementos cada una. Todo debe evaluar el material proporcionado y estar únicamente en español."""
     return system, user
 
 
@@ -576,6 +592,7 @@ Output JavaScript only; no ```javascript or other prose."""
     return system, user
 
 
+# -- Created by Yuqi Hang (github.com/yh2072) --
 # ---------------------------------------------------------------------------
 # Split pixel art prompts — focused context for higher quality output
 # ---------------------------------------------------------------------------
@@ -1214,7 +1231,7 @@ Output JSON only; no ```json or other text."""
     return system, user
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 # ---------------------------------------------------------------------------
 # Step 5 (optional): Custom Simulation Code Generation
 # ---------------------------------------------------------------------------
@@ -1306,15 +1323,15 @@ accent: {css['accent']}, highlight: {css['highlight']}, success: {css['success']
   <!-- header: portrait + title, ~60px tall -->
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
     <div id="mg-portrait"></div>
-    <div style="font:bold 15px PixelZH,monospace;color:{css['text']}">TITLE</div>
+    <div style="font:bold 15px 'Pixelify Sans',monospace;color:{css['text']}">TITLE</div>
   </div>
   <!-- 1-line instruction, ~24px -->
-  <div style="font:12px PixelZH,monospace;color:{css['muted']};margin-bottom:4px">Drag elements to the correct position</div>
+  <div style="font:12px 'Pixelify Sans',monospace;color:{css['muted']};margin-bottom:4px">Drag elements to the correct position</div>
   <!-- MAIN CANVAS — MUST be 680×420, fills remaining height -->
   <canvas id="sim-canvas" width="680" height="420"
     style="width:680px;height:420px;display:block;cursor:crosshair;border:1px solid {css['border']};border-radius:4px;pointer-events:auto"></canvas>
   <!-- status bar, ~28px -->
-  <div id="sim-status" style="font:12px PixelZH,monospace;color:{css['text']};margin-top:4px;text-align:center"></div>
+  <div id="sim-status" style="font:12px 'Pixelify Sans',monospace;color:{css['text']};margin-top:4px;text-align:center"></div>
 </div>
 ```
 **Canvas 680×420 is mandatory** — it fills the screen. Never use max-width:320px or smaller.
@@ -1343,7 +1360,7 @@ function draw() {{
   zones.forEach(z => {{
     ctx.strokeStyle = '{css['border']}'; ctx.lineWidth = 2;
     ctx.strokeRect(z.x, z.y, z.w, z.h);
-    ctx.fillStyle = '{css['muted']}'; ctx.font = '12px PixelZH,monospace';
+    ctx.fillStyle = '{css['muted']}'; ctx.font = '12px "Pixelify Sans",monospace';
     ctx.fillText(z.label, z.x+8, z.y+20);
   }});
   // draw items
@@ -1351,7 +1368,7 @@ function draw() {{
     if (it.placed) return;
     ctx.fillStyle = it === dragging ? '{css['accent']}' : '{css['buttonBg']}';
     ctx.fillRect(it.x, it.y, it.w, it.h);
-    ctx.fillStyle = '{css['text']}'; ctx.font = '13px PixelZH,monospace';
+    ctx.fillStyle = '{css['text']}'; ctx.font = '13px "Pixelify Sans",monospace';
     ctx.fillText(it.label, it.x+8, it.y+22);
   }});
 }}
@@ -1390,7 +1407,7 @@ canvas.addEventListener('touchmove',  e=>{{e.preventDefault();canvas.dispatchEve
 canvas.addEventListener('touchend',   e=>{{e.preventDefault();canvas.dispatchEvent(new MouseEvent('mouseup',  {{clientX:(e.changedTouches[0]||{{}}).clientX||0,clientY:(e.changedTouches[0]||{{}}).clientY||0}}));}}, {{passive:false}});
 // showResults: always call this when game is complete — replaces ct with a continue screen
 function showResults() {{
-  ct.innerHTML = `<div style="text-align:center;padding:40px 20px;font-family:'PixelZH',monospace">
+  ct.innerHTML = `<div style="text-align:center;padding:40px 20px;font-family:'Pixelify Sans',monospace">
     <div style="color:{css['success']};font-size:28px;margin-bottom:8px">✓ Complete!</div>
     <div style="color:{css['muted']};font-size:13px;margin-bottom:24px">${{items.filter(it=>it.placed).length}}/${{items.length}} correct</div>
     <button id="done" class="mg-btn" style="pointer-events:auto;padding:12px 32px;font-size:14px;border-color:{css['success']};color:{css['success']}">Continue →</button>
@@ -1408,7 +1425,7 @@ function showResults() {{
 - Set `ct.innerHTML = html`, then `var btn = ct.querySelector('#id'); if (btn) btn.addEventListener('click', fn);` — NEVER use `ct.querySelector('#id').addEventListener` directly (throws if null)
 - All interactive elements need `pointer-events:auto`
 - NEVER use `100vw/100vh`, `document.getElementById()`, absolute positioning for UI panels
-- Font: `'PixelZH','Courier New',monospace`. Min font: 12px. NEVER dark grays (#333-#888)
+- Font: `'Pixelify Sans','Courier New',monospace`. Min font: 12px. NEVER dark grays (#333-#888)
 - CANVAS TEXT CONTRAST: labels on colored shapes MUST be legible — draw a dark semi-transparent strip first: `g.fillStyle='rgba(0,0,0,0.55)'; g.fillRect(x, y+h-14, w, 14);` then draw white text on top. NEVER draw text in a color similar to the shape beneath it.
 - No semicolons inside template literal `${{}}` expressions
 - {get_prompt_lang_instruction(locale)}
@@ -1495,7 +1512,7 @@ accent: {css['accent']}, highlight: {css['highlight']}, success: {css['success']
     return system, user
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 # ---------------------------------------------------------------------------
 # Two-phase simulation generation prompts
 # ---------------------------------------------------------------------------
@@ -1657,7 +1674,7 @@ registerMinigame('sim_N', function(ct, data) {{
       g.fillStyle = z.active ? 'rgba(100,255,100,0.2)' : 'rgba(255,255,255,0.05)';
       g.fillRect(z.x, z.y, z.w, z.h);
       g.strokeStyle = border; g.strokeRect(z.x, z.y, z.w, z.h);
-      g.fillStyle = muted; g.font = '11px "PixelZH",monospace';
+      g.fillStyle = muted; g.font = '11px "Pixelify Sans",monospace';
       g.fillText(z.label, z.x + 4, z.y + z.h/2 + 4);
     }});
     // Draw draggable items (colored shapes with short labels)
@@ -1670,7 +1687,7 @@ registerMinigame('sim_N', function(ct, data) {{
     particles.forEach(p => {{ /* animated sparkles */ }});
   }}
 
-  ct.innerHTML = `<div style="width:720px;max-width:100%;margin:0 auto;padding:6px 12px;box-sizing:border-box;font-family:'PixelZH',monospace">
+  ct.innerHTML = `<div style="width:720px;max-width:100%;margin:0 auto;padding:6px 12px;box-sizing:border-box;font-family:'Pixelify Sans',monospace">
     <p style="color:${{T.muted}};font-size:12px;margin:0 0 4px">Drag elements to the correct position</p>
     <canvas id="sim-canvas" width="680" height="420"
       style="width:680px;height:420px;display:block;border-radius:4px;pointer-events:auto;cursor:grab"></canvas>
@@ -1743,7 +1760,7 @@ The name MUST be exactly '{sim_name}'.
 - NEVER use `100vw/100vh`, `document.getElementById()`, inline onclick
 - Listeners: `var btn = ct.querySelector('#id'); if (btn) btn.addEventListener('click', fn);` — NEVER `ct.querySelector('#id').addEventListener(...)` directly (throws if element is null)
 - window.addEventListener and document.addEventListener are allowed, but queried elements must still be null-checked before binding
-- Font: `'PixelZH','Courier New',monospace`. Min size: 12px
+- Font: `'Pixelify Sans','Courier New',monospace`. Min size: 12px
 - Text colors: theme.text for body, theme.highlight for titles. NEVER dark grays (#333-#888)
 - CANVAS TEXT CONTRAST: labels on colored shapes MUST be legible — draw a dark semi-transparent strip first: `g.fillStyle='rgba(0,0,0,0.55)'; g.fillRect(x, y+h-14, w, 14);` then draw white text. NEVER draw text in a color similar to the shape background.
 - No semicolons inside template literal `${{}}` expressions

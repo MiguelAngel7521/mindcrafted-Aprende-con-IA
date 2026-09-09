@@ -1,0 +1,96 @@
+{
+    "activeFile": "tilesets/biology.tsj",
+    "expandedProjectPaths": [
+        "tilesets",
+        "art",
+        "maps"
+    ],
+    "file.lastUsedOpenFilter": "Todos los archivos (*)",
+    "fileStates": {
+        "maps/biology.tmj": {
+            "scale": 1.4151041666666666,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 384.0706661759293,
+                "y": 255.4582259845418
+            }
+        },
+        "maps/biology.tmx": {
+            "scale": 1.4151041666666666,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 384.0706661759294,
+                "y": 255.81155686418847
+            }
+        },
+        "maps/laboratory.tmj": {
+            "scale": 1.3458333333333334,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 383.77708978328167,
+                "y": 256.3467492260062
+            }
+        },
+        "maps/laboratory.tmx": {
+            "scale": 1.3458333333333334,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 383.77708978328167,
+                "y": 256.3467492260062
+            }
+        },
+        "maps/mathematics.tmj": {
+            "scale": 1.1887369791666664,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 384.0210307245743,
+                "y": 255.7336108220604
+            }
+        },
+        "maps/mathematics.tmx": {
+            "scale": 1.1454427083333334,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 383.6944412868023,
+                "y": 255.7962941912015
+            }
+        },
+        "tilesets/biology.tsj": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/laboratory.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/mathematics.tsj": {
+            "scaleInDock": 1
+        },
+        "tilesets/objects.tsj": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1
+        }
+    },
+    "openFiles": [
+        "maps/biology.tmj",
+        "maps/biology.tmx",
+        "maps/laboratory.tmx",
+        "maps/laboratory.tmj",
+        "maps/mathematics.tmj",
+        "tilesets/biology.tsj",
+        "tilesets/laboratory.tsj",
+        "maps/mathematics.tmx"
+    ],
+    "project": "MindCrafted.tiled-project",
+    "recentFiles": [
+        "maps/biology.tmj",
+        "maps/biology.tmx",
+        "maps/laboratory.tmx",
+        "maps/laboratory.tmj",
+        "maps/mathematics.tmj",
+        "maps/mathematics.tmx",
+        "tilesets/laboratory.tsj",
+        "tilesets/biology.tsj"
+    ]
+}

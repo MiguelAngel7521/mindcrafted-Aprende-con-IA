@@ -1,9 +1,10 @@
 # =============================================================================
-# MindCrafted — AI Game-Based Learning Studio
 # =============================================================================
-"""Main orchestration pipeline for MindCrafted game generation.
+"""Main orchestration pipeline for EdGameClaw game generation.
 
-El producto genera títulos, introducciones y diálogos únicamente en español.
+Game text language (titles, dialogue, minigame labels, etc.) is controlled by the
+`locale` parameter. The studio sends the selected "Generation Language" as `locale`;
+all prompts use it so that generated content is in that language consistently.
 """
 
 import asyncio
@@ -421,7 +422,7 @@ async def _step_knowledge(
     return data
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 def _fix_script_sim_refs(script: list, chunks: list) -> list:
     """Correct sim_N references in the LLM-generated dialog script.
 
@@ -752,7 +753,7 @@ async def _step_review_pixel_art_batch(
         return {k: v[0] for k, v in pieces.items()}
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 def _derive_scene_descriptions(knowledge: dict) -> list[str]:
     """Derive 4 narrative-act scene descriptions from knowledge JSON.
 
@@ -1289,7 +1290,7 @@ async def _step_sim_visual_objects(chunk_info: dict, theme: str) -> str:
         return ""
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 async def _step_simulation_code(topic: str, chunk_info: dict, chunk_index: int, theme: str, locale: str = DEFAULT_LOCALE, all_chunks: list[dict] | None = None) -> str:
     """Generate custom simulation JavaScript code for a specific chunk.
 
@@ -1592,7 +1593,7 @@ _FALLBACK_TITLE_LOGO = """function drawTitleLogo(g, w, h) {
 }"""
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 def _validate_and_repair_minigame_data(minigame_data: dict, label: str = "") -> dict:
     """Validate and repair common issues in generated minigame data.
 
@@ -2196,6 +2197,64 @@ def _ckpt_size_label(data) -> str:
     return str(type(data).__name__)
 
 
+def _fast_fallback_minigames(title: str) -> dict:
+    """Datos seguros para que el juego siga siendo jugable si la IA falla."""
+    return {
+        "orbital_quiz": {
+            "title": "Reto orbital",
+            "instruction": "Comprueba las ideas esenciales de la misión.",
+            "questions": [
+                {
+                    "question": "¿Cuál es el tema central de esta misión?",
+                    "options": [title, "Un tema no relacionado", "Solo el funcionamiento de la nave"],
+                    "answer": 0,
+                    "explanation": f"La misión está dedicada a comprender {title}.",
+                },
+                {
+                    "question": "¿Qué estrategia ayuda a comprender mejor el contenido?",
+                    "options": ["Relacionar las ideas principales", "Ignorar las evidencias", "Memorizar sin comprender"],
+                    "answer": 0,
+                    "explanation": "Relacionar conceptos permite construir una comprensión más sólida.",
+                },
+                {
+                    "question": "¿Qué conviene hacer antes de formular una conclusión?",
+                    "options": ["Revisar la información", "Elegir al azar", "Omitir los conceptos clave"],
+                    "answer": 0,
+                    "explanation": "Una conclusión debe apoyarse en la información estudiada.",
+                },
+            ],
+        },
+        "sequence_puzzle": {
+            "title": "Puzle de secuencia",
+            "instruction": "Ordena el proceso de aprendizaje.",
+            "steps": [
+                "Observar la información disponible",
+                "Identificar las ideas principales",
+                "Relacionar los conceptos",
+                "Explicar una conclusión",
+            ],
+        },
+        "memory_match": {
+            "title": "Memoria de señales",
+            "instruction": "Une cada concepto con su función.",
+            "pairs": [
+                {"term": "Tema central", "definition": title},
+                {"term": "Evidencia", "definition": "Información que respalda una idea"},
+                {"term": "Relación", "definition": "Conexión entre dos conceptos"},
+                {"term": "Conclusión", "definition": "Síntesis razonada de lo aprendido"},
+            ],
+        },
+        "signal_sort": {
+            "title": "Clasificador de señales",
+            "instruction": "Clasifica cada acción según su aporte al aprendizaje.",
+            "categories": [
+                {"name": "Ayuda a comprender", "items": ["Comparar ideas", "Revisar evidencias", "Explicar relaciones"]},
+                {"name": "Dificulta comprender", "items": ["Ignorar información", "Responder al azar", "Omitir conclusiones"]},
+            ],
+        },
+    }
+
+
 def _normalize_fast_content(data: object, topic: str, forced_title: str | None = None) -> dict:
     """Valida y acota la única respuesta de IA usada por el modo rápido."""
     if not isinstance(data, dict):
@@ -2205,22 +2264,13 @@ def _normalize_fast_content(data: object, topic: str, forced_title: str | None =
     title = str(forced_title or data.get("title") or fallback_title).strip()[:120]
     introduction = str(data.get("introduction") or "").strip()[:320]
     if not introduction:
-        introduction = (
-            f"Desde la nave Horizonte observaremos el planeta de agua mientras exploramos {title}."
-        )[:320]
+        introduction = f"Desde la nave Horizonte exploraremos {title} mientras descendemos hacia el planeta azul."[:320]
 
     speaker_map = {
-        "aura": MENTOR_NAME,
-        "mentor": MENTOR_NAME,
-        "guia": MENTOR_NAME,
-        "guía": MENTOR_NAME,
-        "bit": COMPANION_NAME,
-        "pet": COMPANION_NAME,
-        "companero": COMPANION_NAME,
-        "compañero": COMPANION_NAME,
-        "player": "{player}",
-        "jugador": "{player}",
-        "{player}": "{player}",
+        "aura": MENTOR_NAME, "mentor": MENTOR_NAME, "guia": MENTOR_NAME,
+        "guía": MENTOR_NAME, "bit": COMPANION_NAME, "pet": COMPANION_NAME,
+        "companero": COMPANION_NAME, "compañero": COMPANION_NAME,
+        "player": "{player}", "jugador": "{player}", "{player}": "{player}",
     }
     dialogue = []
     raw_dialogue = data.get("dialogue", [])
@@ -2229,24 +2279,64 @@ def _normalize_fast_content(data: object, topic: str, forced_title: str | None =
             if not isinstance(item, dict):
                 continue
             text = str(item.get("text") or "").strip()[:240]
-            if not text:
-                continue
-            raw_speaker = str(item.get("speaker") or MENTOR_NAME).strip()
-            speaker = speaker_map.get(raw_speaker.lower(), MENTOR_NAME)
-            dialogue.append({"speaker": speaker, "text": text})
+            if text:
+                speaker = speaker_map.get(str(item.get("speaker") or MENTOR_NAME).strip().lower(), MENTOR_NAME)
+                dialogue.append({"speaker": speaker, "text": text})
 
     fallbacks = [
-        {"speaker": MENTOR_NAME, "text": f"Nuestra ruta de hoy nos ayudará a comprender {title}."},
+        {"speaker": MENTOR_NAME, "text": f"Nuestra ruta orbital nos ayudará a comprender {title}."},
         {"speaker": "{player}", "text": "Estoy listo para observar, relacionar ideas y aprender."},
-        {"speaker": COMPANION_NAME, "text": "Sensores activos. El océano bajo nosotros parece infinito."},
-        {"speaker": MENTOR_NAME, "text": "Buen trabajo. Conserva esta idea para la siguiente etapa del viaje."},
+        {"speaker": COMPANION_NAME, "text": "Sensores activos. Iniciamos el descenso hacia el océano."},
+        {"speaker": MENTOR_NAME, "text": "Buen trabajo. Apliquemos lo aprendido durante el vuelo."},
     ]
     for fallback in fallbacks:
         if len(dialogue) >= 4:
             break
         dialogue.append(fallback)
 
-    return {"title": title, "introduction": introduction, "dialogue": dialogue[:6]}
+    minigames = _fast_fallback_minigames(title)
+    raw_games = data.get("minigames")
+    if isinstance(raw_games, dict):
+        quiz = raw_games.get("orbital_quiz")
+        if isinstance(quiz, dict) and isinstance(quiz.get("questions"), list):
+            questions = []
+            for q in quiz["questions"][:4]:
+                if not isinstance(q, dict) or not isinstance(q.get("options"), list):
+                    continue
+                options = [str(v).strip()[:140] for v in q["options"][:4] if str(v).strip()]
+                if len(options) < 2 or not str(q.get("question") or "").strip():
+                    continue
+                answer = q.get("answer", 0)
+                answer = answer if isinstance(answer, int) and 0 <= answer < len(options) else 0
+                questions.append({"question": str(q["question"]).strip()[:240], "options": options, "answer": answer, "explanation": str(q.get("explanation") or "").strip()[:240]})
+            if len(questions) >= 2:
+                minigames["orbital_quiz"] = {"title": str(quiz.get("title") or "Reto orbital")[:100], "instruction": str(quiz.get("instruction") or "Elige la respuesta correcta.")[:180], "questions": questions}
+
+        sequence = raw_games.get("sequence_puzzle")
+        if isinstance(sequence, dict) and isinstance(sequence.get("steps"), list):
+            steps = [str(v).strip()[:160] for v in sequence["steps"][:6] if str(v).strip()]
+            if len(steps) >= 3:
+                minigames["sequence_puzzle"] = {"title": str(sequence.get("title") or "Puzle de secuencia")[:100], "instruction": str(sequence.get("instruction") or "Ordena las piezas.")[:180], "steps": steps}
+
+        memory = raw_games.get("memory_match")
+        if isinstance(memory, dict) and isinstance(memory.get("pairs"), list):
+            pairs = [{"term": str(p.get("term") or "").strip()[:100], "definition": str(p.get("definition") or "").strip()[:180]} for p in memory["pairs"][:5] if isinstance(p, dict) and str(p.get("term") or "").strip() and str(p.get("definition") or "").strip()]
+            if len(pairs) >= 3:
+                minigames["memory_match"] = {"title": str(memory.get("title") or "Memoria de señales")[:100], "instruction": str(memory.get("instruction") or "Encuentra las parejas.")[:180], "pairs": pairs}
+
+        sorting = raw_games.get("signal_sort")
+        if isinstance(sorting, dict) and isinstance(sorting.get("categories"), list):
+            categories = []
+            for c in sorting["categories"][:3]:
+                if not isinstance(c, dict) or not isinstance(c.get("items"), list):
+                    continue
+                items = [str(v).strip()[:120] for v in c["items"][:4] if str(v).strip()]
+                if items and str(c.get("name") or "").strip():
+                    categories.append({"name": str(c["name"]).strip()[:80], "items": items})
+            if len(categories) >= 2:
+                minigames["signal_sort"] = {"title": str(sorting.get("title") or "Clasificador de señales")[:100], "instruction": str(sorting.get("instruction") or "Clasifica cada señal.")[:180], "categories": categories}
+
+    return {"title": title, "introduction": introduction, "dialogue": dialogue[:6], "minigames": minigames}
 
 
 async def _generate_fast_game(
@@ -2256,109 +2346,21 @@ async def _generate_fast_game(
     chunk_id: str = "",
     game_index: int = 0,
     forced_title: str | None = None,
+    subject: str = "",
+    source_text: str | None = None,
+    previous: list[str] | None = None,
+    adventure: bool = True,
+    world_override: str = '',
+    difficulty: str = 'normal',
 ) -> str:
-    """Genera texto mínimo con una llamada y ensambla la plantilla visual fija."""
-    started = time.monotonic()
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-    engine_dir = Path(__file__).resolve().parent.parent / "engine"
-
-    print("\n[modo rápido] Generando título, introducción y diálogo en español...", file=sys.stderr)
-    system_prompt, user_prompt = prompts.fast_content_prompt(topic, forced_title=forced_title)
-    try:
-        raw = await _get_generate()(
-            user_prompt,
-            system_prompt,
-            max_tokens=900,
-            step="fast_content",
-            max_retries=2,
-        )
-        generated = _normalize_fast_content(
-            _parse_json_robust(raw, "fast_content"), topic, forced_title
-        )
-    except Exception as exc:
-        print(f"  [modo rápido] La IA falló; se usará contenido seguro: {exc}", file=sys.stderr)
-        generated = _normalize_fast_content({}, topic, forced_title)
-
-    ui_strings = dict(get_ui_strings("es"))
-    config = {
-        "title": generated["title"],
-        "subtitle": generated["introduction"],
-        "description": generated["introduction"],
-        "totalChapters": 1,
-        "defaultPlayerName": ui_strings.get("defaultPlayer", "Explorador"),
-        "characters": {
-            "mentor": {"name": MENTOR_NAME},
-            "player": {"name": "{player}"},
-            "pet": {"name": COMPANION_NAME},
-        },
-        "minigames": {},
-        "endScreen": {"mechanics": [], "icons": ["planet", "star"]},
-        "chapterTitles": [generated["title"]],
-        "theme": get_theme_css(FAST_THEME),
-        "audio": {"bgm": get_audio_profile(FAST_THEME)},
-        "ui": ui_strings,
-        "locale": "es",
-        "generationMode": "rapido",
-        "visualTemplate": "nave-planeta-agua-v1",
-    }
-    if chunk_id:
-        config["chunkId"] = chunk_id
-
-    characters = [
-        {"id": "mentor", "x": 27},
-        {"id": "player", "x": 64},
-        {"id": "pet", "x": 102},
-    ]
-    script = [
-        {"type": "bg", "bg": 0, "chars": characters},
-        {"type": "chapter", "ch": 0},
-        {"type": "dialog", "name": MENTOR_NAME, "text": generated["introduction"]},
-    ]
-    script.extend(
-        {"type": "dialog", "name": line["speaker"], "text": line["text"]}
-        for line in generated["dialogue"]
+    """Ruta vigente: puzzles fundamentados en los apuntes y mundos pixel art."""
+    from .practice import generate_practice
+    return await generate_practice(
+        topic, output_dir, generate=_get_generate(), parse_json=_parse_json_robust,
+        chunk_id=chunk_id, forced_title=forced_title, subject=subject,
+        source_text=source_text, previous=previous, adventure=adventure,
+        world_override=world_override, difficulty=difficulty,
     )
-    script.append({"type": "end"})
-
-    content = {
-        "config": config,
-        "pixel_art_js": FAST_PIXEL_ART_JS,
-        "script": script,
-        "minigame_data": {},
-        "theme": FAST_THEME,
-        "simulation_codes": {},
-        "cover_js": FAST_COVER_JS,
-    }
-    html_path = str(output_path / "index.html")
-    out_content = {}
-    assemble(str(engine_dir), content, html_path, out_content=out_content)
-
-    from .package_builder import write_package
-    write_package(out_content, str(engine_dir), str(output_path), write_json=True, write_encrypted=None)
-
-    cover_id = chunk_id or f"game_{game_index}"
-    # El registro necesita una expresion de funcion completa para la portada del curso.
-    cover_registry = (
-        "(function(){\n"
-        "  window._EDGAME_COVERS = window._EDGAME_COVERS || {};\n"
-        f"  window._EDGAME_COVERS[{json.dumps(cover_id)}] = function(g,w,h){{\n"
-        + FAST_COVER_JS.strip().split("{", 1)[1].rsplit("}", 1)[0]
-        + "\n  };\n})();\n"
-    )
-    (output_path / "cover.js").write_text(cover_registry, encoding="utf-8")
-
-    locales_dir = output_path / "locales"
-    locales_dir.mkdir(parents=True, exist_ok=True)
-    (locales_dir / "es.json").write_text(
-        json.dumps(extract_locale_content(config, script), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    print(
-        f"  [modo rápido] Juego listo en {time.monotonic() - started:.1f}s: {html_path}",
-        file=sys.stderr,
-    )
-    return html_path
 
 
 async def generate_game(
@@ -2376,6 +2378,11 @@ async def generate_game(
     model: str | None = None,
     personal_profile: dict | None = None,
     fast_mode: bool = True,
+    subject: str = "",
+    source_text: str | None = None,
+    adventure: bool = True,
+    world_override: str = '',
+    difficulty: str = 'normal',
 ) -> str:
     """Generate a complete educational game from a topic.
 
@@ -2383,17 +2390,10 @@ async def generate_game(
     """
     _current_generate_ctx.set(_bind_api_config(api_key, base_url, model))
 
-    # El producto usa español y la plantilla fija como ruta predeterminada. La ruta
-    # completa se conserva para compatibilidad interna usando fast_mode=False.
+    # El producto es monolingüe; el plan admite una reparación acotada.
     locale = "es"
     if fast_mode:
-        return await _generate_fast_game(
-            topic,
-            output_dir,
-            chunk_id=chunk_id,
-            game_index=game_index,
-            forced_title=forced_title,
-        )
+        return await _generate_fast_game(topic, output_dir, chunk_id=chunk_id, game_index=game_index, forced_title=forced_title, subject=subject, source_text=source_text, previous=exclude_mechanics, adventure=adventure, world_override=world_override, difficulty=difficulty)
 
     t_total = time.monotonic()
     output_path = Path(output_dir)
@@ -2433,7 +2433,7 @@ async def generate_game(
     # Step 1: Knowledge decomposition
     topic_display = topic[:80] + "..." if len(topic) > 80 else topic
     print(f"\n{'='*60}", file=sys.stderr)
-    print(f"  MindCrafted Generator — Topic: {topic_display}", file=sys.stderr)
+    print(f"  EdGameClaw Generator — Topic: {topic_display}", file=sys.stderr)
     print(f"{'='*60}", file=sys.stderr)
 
     print(f"\n[1/6] Analyzing topic and building knowledge structure...", file=sys.stderr)
@@ -2889,6 +2889,6 @@ if __name__ == "__main__":
     topic = sys.argv[1] if len(sys.argv) > 1 else "人类记忆的工作原理"
     output = sys.argv[2] if len(sys.argv) > 2 else "./output"
     theme = sys.argv[3] if len(sys.argv) > 3 else "pink-cute"
-    locale = sys.argv[4] if len(sys.argv) > 4 else "es"
+    locale = "es"
     result = asyncio.run(generate_game(topic, output, theme=theme, locale=locale))
     print(result)

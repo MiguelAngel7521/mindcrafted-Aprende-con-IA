@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="24" height="16" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#142630" nextlayerid="6" nextobjectid="112">
+ <properties>
+  <property name="mechanic" value="ecosystem"/>
+  <property name="objective" value="Explorar cómo agua y polinización limitan la reproducción de plantas en un modelo didáctico."/>
+  <property name="subject" value="Biología"/>
+  <property name="world" value="biology"/>
+ </properties>
+ <tileset firstgid="1" source="../tilesets/biology.tsj"/>
+ <tileset firstgid="17" source="../tilesets/objects.tsj"/>
+ <layer id="1" name="Suelo" width="24" height="16">
+  <data encoding="csv">
+6,8,5,4,8,7,5,4,3,14,15,14,4,2,1,2,14,10,12,10,13,5,8,3,
+6,3,2,7,1,3,3,2,7,13,14,14,6,2,5,7,16,12,9,10,16,8,8,7,
+8,1,4,2,7,2,8,8,8,13,15,13,1,8,4,6,14,12,9,10,16,7,6,4,
+6,1,8,2,4,4,7,1,5,15,14,15,5,5,7,6,5,15,10,11,10,15,6,7,
+1,4,8,2,7,5,3,6,1,15,14,13,6,5,1,3,1,15,12,10,10,13,4,2,
+8,3,1,3,2,1,6,2,3,15,13,15,2,3,6,2,4,15,12,9,12,14,8,4,
+2,3,5,6,1,5,1,5,2,13,13,14,6,8,4,6,6,13,12,10,9,14,5,5,
+5,6,1,8,7,2,4,7,3,16,13,15,8,8,5,2,16,9,9,10,15,4,5,3,
+16,15,15,16,15,14,15,13,16,15,16,15,13,13,16,13,15,11,11,11,13,14,13,13,
+14,16,13,15,16,15,15,15,14,15,16,14,14,14,13,15,14,12,11,12,16,15,16,13,
+8,4,8,3,4,4,7,1,6,13,16,15,8,7,4,5,13,12,10,11,16,2,5,8,
+5,4,1,7,4,1,6,5,8,16,14,13,4,3,7,5,16,10,11,9,15,2,7,3,
+5,5,8,7,1,4,1,6,6,13,13,15,4,7,3,13,9,9,12,13,5,2,7,6,
+8,1,6,5,4,7,1,7,8,14,14,15,6,7,3,13,11,11,12,13,8,5,1,8,
+3,5,2,4,7,3,3,7,2,14,14,15,6,4,1,14,10,9,11,16,3,6,2,7,
+6,1,8,1,1,7,3,4,8,16,13,15,7,7,2,7,13,9,9,10,13,5,2,6
+</data>
+ </layer>
+ <objectgroup id="2" name="Escenario">
+  <object id="1" name="forest-oak" gid="29" x="2" y="131" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="3" name="forest-oak" gid="29" x="96" y="156" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="5" name="forest-oak" gid="29" x="208" y="125" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="7" name="forest-oak" gid="29" x="363" y="135" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="9" name="forest-oak" gid="29" x="452" y="118" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="11" name="forest-oak" gid="29" x="649" y="128" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="13" name="forest-oak" gid="29" x="10" y="314" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="15" name="forest-oak" gid="29" x="655" y="315" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="17" name="forest-oak" gid="29" x="12" y="488" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="19" name="forest-oak" gid="29" x="121" y="487" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="21" name="forest-oak" gid="29" x="424" y="495" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="23" name="forest-oak" gid="29" x="663" y="493" width="112" height="128">
+   <properties>
+    <property name="asset_id" value="forest-oak"/>
+   </properties>
+  </object>
+  <object id="25" name="forest-pine" gid="30" x="-7" y="207" width="80" height="128">
+   <properties>
+    <property name="asset_id" value="forest-pine"/>
+   </properties>
+  </object>
+  <object id="27" name="forest-pine" gid="30" x="177" y="138" width="80" height="128">
+   <properties>
+    <property name="asset_id" value="forest-pine"/>
+   </properties>
+  </object>
+  <object id="29" name="forest-pine" gid="30" x="419" y="194" width="80" height="128">
+   <properties>
+    <property name="asset_id" value="forest-pine"/>
+   </properties>
+  </object>
+  <object id="31" name="forest-pine" gid="30" x="699" y="225" width="80" height="128">
+   <properties>
+    <property name="asset_id" value="forest-pine"/>
+   </properties>
+  </object>
+  <object id="33" name="forest-pine" gid="30" x="56" y="404" width="80" height="128">
+   <properties>
+    <property name="asset_id" value="forest-pine"/>
+   </properties>
+  </object>
+  <object id="35" name="forest-pine" gid="30" x="652" y="422" width="80" height="128">
+   <properties>
+    <property name="asset_id" value="forest-pine"/>
+   </properties>
+  </object>
+  <object id="37" name="forest-beehive" gid="35" x="384" y="260" width="64" height="80">
+   <properties>
+    <property name="asset_id" value="forest-beehive"/>
+   </properties>
+  </object>
+  <object id="40" name="forest-sign" gid="34" x="257" y="382" width="64" height="64">
+   <properties>
+    <property name="asset_id" value="forest-sign"/>
+   </properties>
+  </object>
+  <object id="43" name="forest-rock" gid="32" x="457" y="378" width="80" height="64">
+   <properties>
+    <property name="asset_id" value="forest-rock"/>
+   </properties>
+  </object>
+  <object id="46" name="forest-fern" gid="31" x="134" y="292" width="64" height="48">
+   <properties>
+    <property name="asset_id" value="forest-fern"/>
+   </properties>
+  </object>
+  <object id="47" name="forest-fern" gid="31" x="203" y="215" width="64" height="48">
+   <properties>
+    <property name="asset_id" value="forest-fern"/>
+   </properties>
+  </object>
+  <object id="48" name="forest-fern" gid="31" x="370" y="386" width="64" height="48">
+   <properties>
+    <property name="asset_id" value="forest-fern"/>
+   </properties>
+  </object>
+  <object id="49" name="forest-fern" gid="31" x="596" y="436" width="64" height="48">
+   <properties>
+    <property name="asset_id" value="forest-fern"/>
+   </properties>
+  </object>
+  <object id="50" name="forest-fern" gid="31" x="116" y="422" width="64" height="48">
+   <properties>
+    <property name="asset_id" value="forest-fern"/>
+   </properties>
+  </object>
+  <object id="51" name="forest-fern" gid="31" x="636" y="227" width="64" height="48">
+   <properties>
+    <property name="asset_id" value="forest-fern"/>
+   </properties>
+  </object>
+  <object id="52" name="forest-mushrooms" gid="33" x="93" y="193" width="48" height="48">
+   <properties>
+    <property name="asset_id" value="forest-mushrooms"/>
+   </properties>
+  </object>
+  <object id="53" name="forest-mushrooms" gid="33" x="173" y="361" width="48" height="48">
+   <properties>
+    <property name="asset_id" value="forest-mushrooms"/>
+   </properties>
+  </object>
+  <object id="54" name="forest-mushrooms" gid="33" x="424" y="414" width="48" height="48">
+   <properties>
+    <property name="asset_id" value="forest-mushrooms"/>
+   </properties>
+  </object>
+  <object id="55" name="forest-mushrooms" gid="33" x="648" y="160" width="48" height="48">
+   <properties>
+    <property name="asset_id" value="forest-mushrooms"/>
+   </properties>
+  </object>
+  <object id="56" name="forest-flower" gid="36" x="353" y="251" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+  <object id="57" name="forest-flower" gid="36" x="429" y="287" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+  <object id="58" name="forest-flower" gid="36" x="354" y="323" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+  <object id="59" name="forest-flower" gid="36" x="405" y="352" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+  <object id="60" name="forest-flower" gid="36" x="239" y="449" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+  <object id="61" name="forest-flower" gid="36" x="195" y="302" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+  <object id="62" name="forest-flower" gid="36" x="608" y="352" width="32" height="40">
+   <properties>
+    <property name="asset_id" value="forest-flower"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="3" name="Interacciones" visible="0">
+  <object id="39" name="El jardín de los vínculos" x="394" y="198" width="44" height="44">
+   <properties>
+    <property name="action" value="ecosystem"/>
+    <property name="asset_id" value="forest-beehive"/>
+    <property name="text" value="Explora cómo se relacionan agua, plantas y polinizadores."/>
+   </properties>
+  </object>
+  <object id="42" name="Diario de campo" x="267" y="328" width="44" height="44">
+   <properties>
+    <property name="action" value="info"/>
+    <property name="asset_id" value="forest-sign"/>
+    <property name="text" value="Observa las relaciones entre organismos y recursos. Este escenario utiliza un modelo didáctico simplificado."/>
+   </properties>
+  </object>
+  <object id="45" name="Agua y hábitat" x="475" y="324" width="44" height="44">
+   <properties>
+    <property name="action" value="info"/>
+    <property name="asset_id" value="forest-rock"/>
+    <property name="text" value="El agua disponible influye en el crecimiento de las plantas. Cada especie tiene necesidades propias."/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="4" name="Colisiones" visible="0">
+  <object id="2" name="forest-oak" x="10" y="99" width="96" height="28"/>
+  <object id="4" name="forest-oak" x="104" y="124" width="96" height="28"/>
+  <object id="6" name="forest-oak" x="216" y="93" width="96" height="28"/>
+  <object id="8" name="forest-oak" x="371" y="103" width="96" height="28"/>
+  <object id="10" name="forest-oak" x="460" y="86" width="96" height="28"/>
+  <object id="12" name="forest-oak" x="657" y="96" width="96" height="28"/>
+  <object id="14" name="forest-oak" x="18" y="282" width="96" height="28"/>
+  <object id="16" name="forest-oak" x="663" y="283" width="96" height="28"/>
+  <object id="18" name="forest-oak" x="20" y="456" width="96" height="28"/>
+  <object id="20" name="forest-oak" x="129" y="455" width="96" height="28"/>
+  <object id="22" name="forest-oak" x="432" y="463" width="96" height="28"/>
+  <object id="24" name="forest-oak" x="671" y="461" width="96" height="28"/>
+  <object id="26" name="forest-pine" x="1" y="175" width="64" height="28"/>
+  <object id="28" name="forest-pine" x="185" y="106" width="64" height="28"/>
+  <object id="30" name="forest-pine" x="427" y="162" width="64" height="28"/>
+  <object id="32" name="forest-pine" x="707" y="193" width="64" height="28"/>
+  <object id="34" name="forest-pine" x="64" y="372" width="64" height="28"/>
+  <object id="36" name="forest-pine" x="660" y="390" width="64" height="28"/>
+  <object id="38" name="forest-beehive" x="392" y="236" width="48" height="20"/>
+  <object id="41" name="forest-sign" x="265" y="362" width="48" height="16"/>
+  <object id="44" name="forest-rock" x="465" y="358" width="64" height="16"/>
+  <object id="63" name="water" x="544" y="0" width="32" height="32"/>
+  <object id="64" name="water" x="576" y="0" width="32" height="32"/>
+  <object id="65" name="water" x="608" y="0" width="32" height="32"/>
+  <object id="66" name="water" x="544" y="32" width="32" height="32"/>
+  <object id="67" name="water" x="576" y="32" width="32" height="32"/>
+  <object id="68" name="water" x="608" y="32" width="32" height="32"/>
+  <object id="69" name="water" x="544" y="64" width="32" height="32"/>
+  <object id="70" name="water" x="576" y="64" width="32" height="32"/>
+  <object id="71" name="water" x="608" y="64" width="32" height="32"/>
+  <object id="72" name="water" x="576" y="96" width="32" height="32"/>
+  <object id="73" name="water" x="608" y="96" width="32" height="32"/>
+  <object id="74" name="water" x="640" y="96" width="32" height="32"/>
+  <object id="75" name="water" x="576" y="128" width="32" height="32"/>
+  <object id="76" name="water" x="608" y="128" width="32" height="32"/>
+  <object id="77" name="water" x="640" y="128" width="32" height="32"/>
+  <object id="78" name="water" x="576" y="160" width="32" height="32"/>
+  <object id="79" name="water" x="608" y="160" width="32" height="32"/>
+  <object id="80" name="water" x="640" y="160" width="32" height="32"/>
+  <object id="81" name="water" x="576" y="192" width="32" height="32"/>
+  <object id="82" name="water" x="608" y="192" width="32" height="32"/>
+  <object id="83" name="water" x="640" y="192" width="32" height="32"/>
+  <object id="84" name="water" x="544" y="224" width="32" height="32"/>
+  <object id="85" name="water" x="576" y="224" width="32" height="32"/>
+  <object id="86" name="water" x="608" y="224" width="32" height="32"/>
+  <object id="87" name="water" x="544" y="256" width="32" height="32"/>
+  <object id="88" name="water" x="576" y="256" width="32" height="32"/>
+  <object id="89" name="water" x="608" y="256" width="32" height="32"/>
+  <object id="90" name="water" x="544" y="288" width="32" height="32"/>
+  <object id="91" name="water" x="576" y="288" width="32" height="32"/>
+  <object id="92" name="water" x="608" y="288" width="32" height="32"/>
+  <object id="93" name="water" x="544" y="320" width="32" height="32"/>
+  <object id="94" name="water" x="576" y="320" width="32" height="32"/>
+  <object id="95" name="water" x="608" y="320" width="32" height="32"/>
+  <object id="96" name="water" x="544" y="352" width="32" height="32"/>
+  <object id="97" name="water" x="576" y="352" width="32" height="32"/>
+  <object id="98" name="water" x="608" y="352" width="32" height="32"/>
+  <object id="99" name="water" x="512" y="384" width="32" height="32"/>
+  <object id="100" name="water" x="544" y="384" width="32" height="32"/>
+  <object id="101" name="water" x="576" y="384" width="32" height="32"/>
+  <object id="102" name="water" x="512" y="416" width="32" height="32"/>
+  <object id="103" name="water" x="544" y="416" width="32" height="32"/>
+  <object id="104" name="water" x="576" y="416" width="32" height="32"/>
+  <object id="105" name="water" x="512" y="448" width="32" height="32"/>
+  <object id="106" name="water" x="544" y="448" width="32" height="32"/>
+  <object id="107" name="water" x="576" y="448" width="32" height="32"/>
+  <object id="108" name="water" x="544" y="480" width="32" height="32"/>
+  <object id="109" name="water" x="576" y="480" width="32" height="32"/>
+  <object id="110" name="water" x="608" y="480" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup id="5" name="Inicio" visible="0">
+  <object id="111" name="Inicio" x="350" y="390">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

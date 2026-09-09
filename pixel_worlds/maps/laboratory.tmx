@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="24" height="16" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#142630" nextlayerid="6" nextobjectid="34">
+ <properties>
+  <property name="mechanic" value="circuit"/>
+  <property name="objective" value="Relacionar voltaje, resistencia y corriente en un circuito de corriente continua ideal."/>
+  <property name="subject" value="Física"/>
+  <property name="world" value="laboratory"/>
+ </properties>
+ <tileset firstgid="1" source="../tilesets/laboratory.tsj"/>
+ <tileset firstgid="17" source="../tilesets/objects.tsj"/>
+ <layer id="1" name="Suelo" width="24" height="16">
+  <data encoding="csv">
+9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,
+10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,
+11,4,7,1,5,2,1,7,5,5,1,8,7,7,7,8,2,3,3,3,5,3,5,10,
+12,2,1,1,3,2,3,5,8,7,16,8,8,16,2,8,6,7,6,6,7,6,5,11,
+9,2,7,3,5,2,5,1,6,7,16,7,8,16,8,5,6,4,8,4,5,8,1,12,
+10,8,7,8,7,1,2,1,8,4,16,6,6,16,7,7,3,5,3,5,4,7,4,9,
+11,8,6,6,5,3,6,5,2,3,16,7,7,16,4,8,1,6,1,6,7,4,2,10,
+12,4,4,5,4,4,3,8,7,14,14,14,14,14,14,7,2,3,4,4,1,7,8,11,
+9,2,4,3,4,3,1,5,5,4,16,8,2,16,6,7,1,1,3,2,1,6,7,12,
+10,6,4,5,8,2,8,7,3,2,16,2,2,16,7,3,2,6,5,2,5,2,4,9,
+11,5,6,5,1,3,7,7,6,6,16,1,6,16,4,1,4,8,7,7,7,7,6,10,
+12,6,6,6,5,6,2,2,8,3,16,4,1,16,6,7,4,8,3,5,6,8,6,11,
+9,5,6,2,4,4,3,2,2,8,16,6,7,16,7,4,6,4,7,1,2,5,7,12,
+10,2,5,6,5,4,5,8,3,3,16,1,6,16,4,5,6,2,1,8,8,6,6,9,
+11,8,8,6,5,4,8,2,5,1,6,5,4,3,6,6,6,4,2,2,7,4,7,10,
+12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11,12,9,10,11
+</data>
+ </layer>
+ <objectgroup id="2" name="Escenario">
+  <object id="1" name="shared-door" gid="38" x="344" y="109" width="80" height="112">
+   <properties>
+    <property name="asset_id" value="shared-door"/>
+   </properties>
+  </object>
+  <object id="2" name="shared-planter" gid="37" x="48" y="126" width="48" height="64">
+   <properties>
+    <property name="asset_id" value="shared-planter"/>
+   </properties>
+  </object>
+  <object id="4" name="shared-planter" gid="37" x="672" y="126" width="48" height="64">
+   <properties>
+    <property name="asset_id" value="shared-planter"/>
+   </properties>
+  </object>
+  <object id="6" name="lab-reactor" gid="17" x="344" y="252" width="80" height="112">
+   <properties>
+    <property name="asset_id" value="lab-reactor"/>
+   </properties>
+  </object>
+  <object id="9" name="lab-console" gid="18" x="336" y="435" width="96" height="72">
+   <properties>
+    <property name="asset_id" value="lab-console"/>
+   </properties>
+  </object>
+  <object id="12" name="lab-workbench" gid="19" x="89" y="235" width="112" height="72">
+   <properties>
+    <property name="asset_id" value="lab-workbench"/>
+   </properties>
+  </object>
+  <object id="15" name="lab-workbench" gid="19" x="567" y="235" width="112" height="72">
+   <properties>
+    <property name="asset_id" value="lab-workbench"/>
+   </properties>
+  </object>
+  <object id="17" name="lab-coil" gid="22" x="98" y="414" width="64" height="64">
+   <properties>
+    <property name="asset_id" value="lab-coil"/>
+   </properties>
+  </object>
+  <object id="19" name="lab-coil" gid="22" x="610" y="414" width="64" height="64">
+   <properties>
+    <property name="asset_id" value="lab-coil"/>
+   </properties>
+  </object>
+  <object id="21" name="lab-battery" gid="20" x="218" y="349" width="40" height="48">
+   <properties>
+    <property name="asset_id" value="lab-battery"/>
+   </properties>
+  </object>
+  <object id="23" name="lab-battery" gid="20" x="503" y="349" width="40" height="48">
+   <properties>
+    <property name="asset_id" value="lab-battery"/>
+   </properties>
+  </object>
+  <object id="25" name="lab-lamp" gid="21" x="58" y="334" width="48" height="80">
+   <properties>
+    <property name="asset_id" value="lab-lamp"/>
+   </properties>
+  </object>
+  <object id="27" name="lab-lamp" gid="21" x="662" y="334" width="48" height="80">
+   <properties>
+    <property name="asset_id" value="lab-lamp"/>
+   </properties>
+  </object>
+  <object id="29" name="shared-planter" gid="37" x="46" y="461" width="48" height="64">
+   <properties>
+    <property name="asset_id" value="shared-planter"/>
+   </properties>
+  </object>
+  <object id="31" name="shared-planter" gid="37" x="674" y="461" width="48" height="64">
+   <properties>
+    <property name="asset_id" value="shared-planter"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="3" name="Interacciones" visible="0">
+  <object id="8" name="Núcleo de energía" x="362" y="174" width="44" height="44">
+   <properties>
+    <property name="action" value="circuit"/>
+    <property name="asset_id" value="lab-reactor"/>
+    <property name="text" value="Ajusta un circuito ideal y observa cómo cambia la corriente."/>
+   </properties>
+  </object>
+  <object id="11" name="Osciloscopio" x="362" y="377" width="44" height="44">
+   <properties>
+    <property name="action" value="info"/>
+    <property name="asset_id" value="lab-console"/>
+    <property name="text" value="Los instrumentos permiten observar y medir. En esta demostración, la corriente se calcula con I = V / R."/>
+   </properties>
+  </object>
+  <object id="14" name="Mesa de componentes" x="123" y="177" width="44" height="44">
+   <properties>
+    <property name="action" value="info"/>
+    <property name="asset_id" value="lab-workbench"/>
+    <property name="text" value="Una batería mantiene una diferencia de potencial. Una resistencia limita la corriente del circuito."/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="4" name="Colisiones" visible="0">
+  <object id="3" name="shared-planter" x="56" y="106" width="32" height="16"/>
+  <object id="5" name="shared-planter" x="680" y="106" width="32" height="16"/>
+  <object id="7" name="lab-reactor" x="352" y="220" width="64" height="28"/>
+  <object id="10" name="lab-console" x="344" y="413" width="80" height="18"/>
+  <object id="13" name="lab-workbench" x="97" y="213" width="96" height="18"/>
+  <object id="16" name="lab-workbench" x="575" y="213" width="96" height="18"/>
+  <object id="18" name="lab-coil" x="106" y="394" width="48" height="16"/>
+  <object id="20" name="lab-coil" x="618" y="394" width="48" height="16"/>
+  <object id="22" name="lab-battery" x="226" y="333" width="24" height="12"/>
+  <object id="24" name="lab-battery" x="511" y="333" width="24" height="12"/>
+  <object id="26" name="lab-lamp" x="66" y="310" width="32" height="20"/>
+  <object id="28" name="lab-lamp" x="670" y="310" width="32" height="20"/>
+  <object id="30" name="shared-planter" x="54" y="441" width="32" height="16"/>
+  <object id="32" name="shared-planter" x="682" y="441" width="32" height="16"/>
+ </objectgroup>
+ <objectgroup id="5" name="Inicio" visible="0">
+  <object id="33" name="Inicio" x="350" y="390">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

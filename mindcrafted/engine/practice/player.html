@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>MindCrafted · Practica tus apuntes</title>
+<link rel="stylesheet" href="/engine/practice/style.css">
+</head>
+<body>
+<header><a href="/" class="brand">✳ MindCrafted</a><span>DE TUS APUNTES A TU MUNDO</span><a id="back" href="/">Mis cursos ↗</a></header>
+<main>
+  <div id="load-status" role="status">Preparando tus puzzles…</div>
+  <div id="practice-app" hidden>
+    <section class="intro"><div><p class="eyebrow" id="subject"></p><h1 id="title"></h1><p id="introduction"></p></div><div class="progress-summary"><strong id="progress-count"></strong><span>retos completados</span><progress id="progress" max="1" value="0" aria-label="Puzzles completados"></progress><small id="mastery"></small></div></section>
+    <div class="layout">
+      <section class="world-column" aria-label="Mundo de práctica">
+        <div class="world-caption"><span id="world-name"></span><button type="button" id="motion" aria-pressed="false">Pausar animaciones</button></div>
+        <canvas id="world" width="768" height="512" aria-label="Escenario pixel art. Selecciona un reto usando los botones debajo del mapa."></canvas>
+        <nav id="puzzles" aria-label="Elegir un puzzle"></nav>
+        <p class="world-note">Los retos se construyen con el contenido de tus apuntes. Puedes volver a cualquier concepto.</p>
+      </section>
+      <section class="challenge" aria-labelledby="puzzle-title">
+        <p class="eyebrow" id="puzzle-kind"></p><h2 id="puzzle-title"></h2><p id="instruction"></p>
+        <div id="exercise"></div>
+        <div class="actions"><button id="check" type="button" class="primary">Comprobar</button><button id="hint" type="button">Una pista</button><button id="restart" type="button">Reiniciar reto</button></div>
+        <p id="feedback" role="status" aria-live="polite"></p>
+        <details id="source"><summary>Consultar el fragmento de mis apuntes</summary><blockquote id="evidence"></blockquote></details>
+        <button id="next" type="button" class="next">Siguiente reto →</button>
+      </section>
+    </div>
+    <section id="finished" hidden><p class="eyebrow">PRÁCTICA COMPLETADA</p><h2>Ya conectaste las ideas.</h2><p id="finished-copy"></p><a id="next-lesson" class="primary" href="/">Volver al curso →</a></section>
+  </div>
+</main>
+<script src="/engine/bkt.js"></script>
+<script src="/engine/practice/runtime.js" defer></script>
+</body></html>

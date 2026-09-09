@@ -123,12 +123,17 @@ let _lastMiniGameType=null;
 
 let totalXP=0,playerLevel=0,_mgScore=0,_minigameClosing=false;
 const _chapterStars={};
+const _bktTracker=(window.MindCraftedBKT&&window.MindCraftedBKT.createTracker)?window.MindCraftedBKT.createTracker({scope:GAME.courseId||'curso-local',params:GAME.bkt||{}}):null;
+const _bktSkillId=GAME.bktSkill||GAME.chunkId||GAME.title||'habilidad-general';
+const _bktCorrectThreshold=(GAME.bkt&&Number(GAME.bkt.correctThreshold))||60;
 const _LV_THRESHOLDS=[0,120,320,600,1000,1500];
 const _LV_NAMES=_ui.levelNames||['✦ Novato','✦✦ Aprendiz','✦✦✦ Erudito','✧ Experto','✧✧ Maestro','✧✧✧ Leyenda'];
 function _getLevel(xp){for(let i=_LV_THRESHOLDS.length-1;i>=0;i--)if(xp>=_LV_THRESHOLDS[i])return i;return 0}
 function _getLevelName(lv){return _LV_NAMES[Math.min(lv,_LV_NAMES.length-1)]}
 function _getStars(s){return s>=85?3:s>=55?2:s>=25?1:0}
 function _starsText(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function _bktMastery(){return _bktTracker?_bktTracker.get(_bktSkillId).mastery:null}
+function _bktPercent(value){return Math.round((value==null?0:value)*100)}
 
 function _addXP(amount){
   const oldLv=playerLevel;totalXP+=amount;playerLevel=_getLevel(totalXP);
@@ -143,7 +148,7 @@ function _updateXPBar(){
   const pct=Math.min(((totalXP-cur)/(nxt-cur))*100,100);
   const fill=document.getElementById('xp-fill');if(fill)fill.style.width=pct+'%';
   const label=document.getElementById('xp-label');
-  if(label)label.textContent=(_ui.levelPrefix||'Nivel')+' '+(playerLevel+1)+' '+_getLevelName(playerLevel)+' · '+totalXP+' '+(_ui.xpUnit||'EXP');
+  if(label){var mastery=_bktMastery();label.textContent=(_ui.levelPrefix||'Nivel')+' '+(playerLevel+1)+' '+_getLevelName(playerLevel)+' · '+totalXP+' '+(_ui.xpUnit||'EXP')+(mastery==null?'':' · Dominio '+_bktPercent(mastery)+'%');}
 }
 
 function _showLevelUp(lv){
@@ -176,13 +181,14 @@ function _showChapterTransition(ch){
   setTimeout(function(){ov.style.display='none';ov.onclick=null},2200);
 }
 
-function _showScoreFeedback(score,xpGained,stars){
+function _showScoreFeedback(score,xpGained,stars,mastery){
   const fb=document.getElementById('score-feedback');if(!fb)return;
   const th=GAME.theme||{};
   const starColor=stars===3?(th.success||'#90e0a0'):stars===2?(th.accent||'#ff6a9a'):(th.muted||'#c080a0');
   fb.innerHTML='<div style="animation:scorePop 0.4s">'+
     '<div style="font-size:24px;color:'+starColor+';letter-spacing:4px">'+_starsText(stars)+'</div>'+
-    '<div style="color:'+(th.highlight||'#ffc0d0')+';font-size:13px;margin-top:4px">+'+xpGained+' '+(_ui.xpUnit||'EXP')+'</div></div>';
+    '<div style="color:'+(th.highlight||'#ffc0d0')+';font-size:13px;margin-top:4px">+'+xpGained+' '+(_ui.xpUnit||'EXP')+'</div>'+
+    (mastery==null?'':'<div style="color:'+(th.success||'#90e0a0')+';font-size:11px;margin-top:3px">Dominio estimado: '+_bktPercent(mastery)+'%</div>')+'</div>';
   fb.style.display='block';
   setTimeout(function(){fb.style.animation='scoreFloat 0.5s forwards';
     setTimeout(function(){fb.style.display='none';fb.style.animation='';fb.innerHTML=''},500)},1200);
@@ -360,6 +366,7 @@ function showEndScreen(){
   if(!maxStars)maxStars=TOTAL_CHAPTERS*3;
   var avgPct=maxStars>0?Math.round((totalStars/maxStars)*100):0;
   var grade=avgPct>=90?'S':avgPct>=75?'A':avgPct>=60?'B':avgPct>=40?'C':'D';
+  var bktMastery=_bktMastery();
   var gradeColor=avgPct>=90?(th.success||'#88ce02'):avgPct>=60?(th.accent||'#00e5c8'):(th.muted||'#7878a0');
   var starSummary='';
   for(var ci=0;ci<TOTAL_CHAPTERS;ci++){
@@ -382,6 +389,9 @@ function showEndScreen(){
       '<div style="text-align:center;padding:12px 20px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid '+(th.border||'#26263c')+'">'+
         '<div style="color:'+(th.accent||'#00e5c8')+';font-size:24px;font-weight:bold">'+(_ui.levelPrefix||'Nivel')+' '+(playerLevel+1)+'</div>'+
         '<div style="color:'+(th.muted||'#7878a0')+';font-size:10px">'+_getLevelName(playerLevel)+'</div></div>'+
+      (bktMastery==null?'':'<div style="text-align:center;padding:12px 20px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid '+(th.border||'#26263c')+'">'+
+        '<div style="color:'+(bktMastery>=.8?(th.success||'#88ce02'):(th.highlight||'#c8fb50'))+';font-size:24px;font-weight:bold">'+_bktPercent(bktMastery)+'%</div>'+
+        '<div style="color:'+(th.muted||'#7878a0')+';font-size:10px">Dominio BKT</div></div>')+
     '</div>'+
     '<div style="max-width:400px;margin:0 auto 16px;text-align:left">'+starSummary+'</div>'+
     '<div id="end-icons" style="display:flex;gap:8px;justify-content:center;margin:12px 0;flex-wrap:wrap"></div>'+
@@ -445,7 +455,7 @@ function _openReportModal(){
   document.getElementById('mg-report-submit').onclick=function(){
     var msg=(document.getElementById('mg-report-msg').value||'').trim().slice(0,1000);
     var payload={course_id:GAME.courseId,chunk_id:GAME.chunkId,minigame_type:_lastMiniGameType||'',error:'',message:msg};
-    fetch('/api/report-minigame-error',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(){closeReportModal();if(typeof _ui!=='undefined'&&_ui.reportSubmitted)alert(_ui.reportSubmitted);else alert('Reporte enviado. ¡Gracias por tus comentarios!');}).catch(function(){closeReportModal();alert('No se pudo enviar. Inténtalo de nuevo más tarde.');});
+    fetch('/api/report-minigame-error',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(response){if(!response.ok)throw new Error('HTTP '+response.status);closeReportModal();if(typeof _ui!=='undefined'&&_ui.reportSubmitted)alert(_ui.reportSubmitted);else alert('Reporte enviado. ¡Gracias por tus comentarios!');}).catch(function(){closeReportModal();alert('No se pudo enviar. Inténtalo de nuevo más tarde.');});
   };
 }
 function _attachSkipButton(){
@@ -528,11 +538,16 @@ function _advanceMiniGame(finalScore,xpGained,stars){
     if(_mgIsFullscreen){ov.style.position='';ov.style.width='';ov.style.height='';ov.style.zIndex='';_mgIsFullscreen=false;}
     ov.style.display='none';ov.innerHTML='';
   }
+  var mastery=null;
+  if(_bktTracker&&_lastMiniGameType){
+    var record=_bktTracker.observe(_bktSkillId,finalScore>=_bktCorrectThreshold,{score:finalScore,label:GAME.title||_bktSkillId,minigame:_lastMiniGameType});
+    mastery=record.mastery;
+  }
   _addXP(xpGained);
   _updateChapterStars(currentChapter,stars);
   chapterComplete[currentChapter]=true;updateChapterBar();
   Audio.fadeOutBGM(300);setTimeout(function(){Audio.playBGM('dialog')},400);
-  _showScoreFeedback(finalScore,xpGained,stars);
+  _showScoreFeedback(finalScore,xpGained,stars,mastery);
   gameState='playing';scriptIndex++;
   for(let i=scriptIndex-1;i>=0;i--)if(SCRIPT[i].type==='bg'){renderCharacters(SCRIPT[i].chars);break}
   _scheduleProcess(1800);

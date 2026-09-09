@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111b20">
+  <title>MindCrafted · Atlas de mundos</title>
+  <link rel="icon" href="../art/exports/forest-flower.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">✳</span> MindCrafted <span class="edition">ATLAS / VOL. 01</span></a>
+    <span class="local-label"><i></i> Hecho para explorar</span>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">EL CONOCIMIENTO TIENE UN LUGAR</p>
+      <h1>Aprende dentro<br>de otro <em>mundo.</em></h1>
+      <p class="intro-copy">Un laboratorio, un taller y un bosque.<br>Tres maneras de descubrir cómo funcionan las cosas.</p>
+    </section>
+    <div class="workspace">
+      <aside class="world-navigation" aria-label="Seleccionar mundo">
+        <div class="section-label"><span>TU PRÓXIMO DESTINO</span><span>03</span></div>
+        <div id="worlds" class="worlds"></div>
+        <div class="field-note"><span class="note-symbol" aria-hidden="true">↗</span><p>Aprender también es<br><strong>probar, observar<br>y volver a intentar.</strong></p></div>
+        <button id="motion" class="text-button" type="button" aria-pressed="false">Pausar animaciones</button>
+      </aside>
+      <section class="world-panel" aria-labelledby="world-title">
+        <div class="world-heading"><div><p id="world-location" class="eyebrow"></p><h2 id="world-title">Preparando el viaje…</h2></div><span id="subject" class="pill"></span></div>
+        <div class="stage" id="stage">
+          <canvas id="scene" width="768" height="512" aria-label="Escenario pixel art. Los puntos de interés también están disponibles en los botones bajo el mapa."></canvas>
+          <div class="stage-badge"><span class="live-dot"></span> EXPLORA EL ESCENARIO</div>
+          <span class="stage-coordinates" aria-hidden="true">MC / <span id="coordinate">01</span></span>
+          <div id="loading" class="loading" role="status">Abriendo el atlas…</div>
+        </div>
+        <div class="map-caption"><p id="subtitle"></p><span>Selecciona un punto de interés ↓</span></div>
+        <nav id="hotspots" class="hotspots" aria-label="Puntos de interés del escenario"></nav>
+      </section>
+    </div>
+    <section class="learning" aria-labelledby="activity-title">
+      <div class="learning-intro"><p class="eyebrow">PRUEBA UNA IDEA</p><h2 id="activity-title">Una pequeña<br>gran pregunta.</h2><p id="objective"></p><div id="completion" class="completion" role="status" aria-live="polite"></div></div>
+      <div id="activity" class="activity"></div>
+    </section>
+    <section id="inspection" class="inspection" hidden aria-live="polite"><div><p class="eyebrow">NOTAS DE EXPLORACIÓN</p><h3 id="inspection-title"></h3><p id="inspection-text"></p></div><button type="button" id="close-inspection" aria-label="Cerrar nota">×</button></section>
+    <footer><span>MindCrafted <span class="footer-dot">·</span> El mundo es tu cuaderno.</span><a id="map-link" href="../maps/laboratory.tmj" download>Descargar mapa para Tiled ↗</a><a href="../README.md">Guía de los recursos ↗</a></footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

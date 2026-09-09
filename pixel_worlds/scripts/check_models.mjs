@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {circuit,transformEquation,ecosystem} from '../web/models.mjs';
+assert.equal(circuit(12,6,true).current,2);
+assert.equal(circuit(12,6,false).current,0);
+assert.equal(circuit(0,6,true).power,0);
+assert.throws(()=>circuit(12,0,true));
+let state={a:2,b:4,c:14};
+state=transformEquation(state,'subtract',4);
+assert.equal((state.c-state.b)/state.a,5);
+state=transformEquation(state,'divide',2);
+assert.equal(state.complete,true);
+assert.throws(()=>transformEquation(state,'divide',0));
+assert.equal(ecosystem(100,0).reproduction,0);
+assert.equal(ecosystem(35,100).reproduction,35);
+assert.equal(ecosystem(80,80).complete,true);
+console.log('OK: circuito abierto/cerrado, conservación de igualdad y factores limitantes.');

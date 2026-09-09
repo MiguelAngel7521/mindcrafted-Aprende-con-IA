@@ -7,7 +7,7 @@
 | Nombre del paquete | `mindcrafted` |
 | Versión | `0.1.1` |
 | Tipo de producto | Estudio autoalojado de aprendizaje basado en juegos e IA |
-| Entrada principal | Material educativo en Markdown |
+| Entrada principal | PDF con texto, PowerPoint `.pptx`, Markdown o JSON estructurado |
 | Salida principal | Microcurso con juegos web reproducibles |
 | Backend | Python, FastAPI y Uvicorn |
 | Frontend | HTML, CSS y JavaScript sin framework |
@@ -17,9 +17,8 @@
 | Persistencia | Archivos locales JSON, HTML y JavaScript |
 | Base de datos | Ninguna |
 | Puerto principal | `8000` |
-| Puerto Node auxiliar | `3100` |
 | Licencia | AGPL-3.0-or-later |
-| Fecha de esta revisión | 29 de agosto de 2026 |
+| Fecha de esta revisión | 30 de agosto de 2026 |
 
 El código vigente de este checkout usa el paquete `mindcrafted`. Los archivos fuente listados aquí son la referencia para integrar el proyecto.
 
@@ -27,7 +26,7 @@ El código vigente de este checkout usa el paquete `mindcrafted`. Los archivos f
 
 ## 1. Resumen para otra IA
 
-MindCrafted convierte contenido educativo escrito en Markdown en experiencias jugables para navegador. Cada encabezado `##` del documento se transforma en una lección independiente. Para cada lección, un pipeline de IA genera:
+MindCrafted convierte PDF con texto, presentaciones PowerPoint `.pptx` o Markdown en experiencias jugables para navegador. Los documentos se procesan localmente con `pypdf` o `python-pptx` y se convierten en Markdown editable. Cada encabezado `##` se transforma en una lección independiente.
 
 - una estructura pedagógica;
 - una narrativa con personajes y diálogos;
@@ -50,7 +49,7 @@ package: mindcrafted
 version: 0.1.1
 goal: material educativo -> curso de juegos web
 input:
-  format: Markdown o JSON estructurado
+  format: PDF con texto, PowerPoint .pptx, Markdown o JSON estructurado
   lesson_boundary: encabezado Markdown ##
 output:
   course_manifest: courses/{course_id}/course-manifest.json
@@ -70,7 +69,6 @@ integration:
   play: GET /play?course={course_id}&game={chunk_id}
 important_gaps:
   - no hay autenticación de servidor
-  - engine.js llama un endpoint de reportes no implementado
   - el código generado por IA se ejecuta en el navegador
 license: AGPL-3.0-or-later
 ```
@@ -94,7 +92,7 @@ Casos de uso posibles:
 - prototipos de educación gamificada;
 - microlearning y repaso;
 - demostraciones interactivas de conceptos;
-- material personalizado por edad, nivel o idioma;
+- material personalizado por edad y nivel;
 - función “texto a juego” dentro de otra plataforma;
 - generación rápida de experiencias para una hackathon educativa.
 
@@ -104,14 +102,20 @@ Casos de uso posibles:
 
 ### Implementadas
 
-- Landing page y Studio web.
+- Studio como única página principal (`/` y `/studio`).
 - Editor y previsualización básica de Markdown.
+- Importación PDF por selección o arrastrar y soltar, con conversión local a Markdown.
+- Límites de PDF de 25 MB y 150 páginas, y aviso accionable para documentos que requieren OCR.
+- Importación PowerPoint `.pptx`, incluyendo títulos, listas y tablas; hasta 25 MB y 200 diapositivas.
 - Parser Markdown a JSON estructurado.
 - Edición de título, subtítulo, materia, nivel, contenido y tema por lección.
 - Configuración de clave, modelo y base URL de IA.
 - Compatibilidad con OpenRouter y otros proveedores que implementen Chat Completions de OpenAI.
 - Prueba de conexión desde el Studio.
 - Generación asíncrona de cursos.
+- Modo rápido con una sola llamada de IA por lección.
+- Cuatro minijuegos reutilizables en español por lección.
+- Progresión visual desde la órbita del planeta azul hasta el vuelo sobre su océano.
 - Polling de progreso y logs filtrados.
 - Checkpoints para reutilizar pasos tras una interrupción.
 - Generación de un juego por lección.
@@ -122,7 +126,11 @@ Casos de uso posibles:
 - Listado, reproducción y eliminación de cursos locales.
 - Reproductor con Canvas, diálogos, audio, capítulos, XP, niveles y estrellas.
 - Progreso y nombre de jugador en `localStorage`.
-- Ocho idiomas de interfaz/salida.
+- Bayesian Knowledge Tracing (BKT) por lección, persistido localmente y actualizado tras cada minijuego.
+- Reportes locales de fallos de minijuegos en `reports/`.
+- Validación de tamaños, IDs, URLs de proveedor y cabeceras HTTP de seguridad.
+- Pruebas unitarias del pipeline rápido, importación PDF y validaciones del servidor.
+- Interfaz, narrativa y minijuegos únicamente en español.
 - Veinticuatro temas visuales.
 
 ### No implementadas en este repositorio
@@ -134,8 +142,7 @@ Casos de uso posibles:
 - Cola distribuida, Redis o workers externos.
 - Panel administrativo multiusuario.
 - Backend de analítica.
-- Backend para reportar errores de minijuegos.
-- Suite de tests de producto.
+- Suite E2E automatizada en navegador.
 - Dockerfile o despliegue reproducible.
 
 El código contiene hooks de autenticación, pagos y analítica de una plataforma alojada, pero no sus implementaciones.
@@ -146,7 +153,9 @@ El código contiene hooks de autenticación, pagos y analítica de una plataform
 
 ```mermaid
 flowchart LR
-    U[Usuario escribe Markdown] --> P[POST /api/parse-md-text]
+    PDF[Usuario sube PDF] --> I[POST /api/import-pdf]
+    I --> U[Markdown editable]
+    U --> P[POST /api/parse-md-text]
     P --> S[Usuario revisa estructura y temas]
     S --> G[POST /api/generate]
     G --> J[Job en segundo plano]
@@ -198,7 +207,6 @@ Reglas del parser:
 ```mermaid
 flowchart TB
     subgraph Browser
-        Landing[Landing HTML]
         Studio[Studio HTML/JS]
         Player[Player HTML]
         Engine[engine.js + Canvas]
@@ -211,10 +219,6 @@ flowchart TB
         Jobs[JobManager]
         Pipeline[Pipeline IA]
         Static[StaticFiles]
-    end
-
-    subgraph Node[Node :3100]
-        State[/state y /next]
     end
 
     AI[API compatible con OpenAI]
@@ -230,7 +234,6 @@ flowchart TB
     Pipeline --> AI
     Pipeline --> Disk
     Static --> Disk
-    Routes --> State
 ```
 
 ### Componentes y responsabilidades
@@ -239,8 +242,9 @@ flowchart TB
 |---|---|
 | `server.py` | Entrada ASGI que reexporta `mindcrafted.server:app`. |
 | `mindcrafted/server.py` | FastAPI, configuración, CORS, jobs, cursos, reproducción y archivos estáticos. |
-| `mindcrafted/static/index.html` | Landing page. |
 | `mindcrafted/static/studio.html` | Editor, configuración de IA, progreso y lista de cursos. |
+| `mindcrafted/pdf_import.py` | PDF con texto a Markdown educativo. |
+| `mindcrafted/pptx_import.py` | PowerPoint `.pptx` a Markdown educativo. |
 | `mindcrafted/generator/api.py` | Cliente `AsyncOpenAI`, reintentos, concurrencia y selección de modelo. |
 | `mindcrafted/generator/prompts.py` | Prompts de conocimiento, narrativa, arte y simulación. |
 | `mindcrafted/generator/pipeline.py` | Generación completa de un juego. |
@@ -248,15 +252,14 @@ flowchart TB
 | `mindcrafted/generator/assembler.py` | Une plantilla, motor, guion, arte y minijuegos. |
 | `mindcrafted/generator/course_assembler.py` | Genera la página de presentación/navegación del curso. |
 | `mindcrafted/generator/package_builder.py` | Crea `game.pkg.json` y soporte opcional de cifrado. |
-| `mindcrafted/generator/i18n.py` | Strings para ocho idiomas. |
+| `mindcrafted/generator/i18n.py` | Strings monolingües en español. |
 | `mindcrafted/generator/sandbox.py` | Valida JS con Node o Esprima y genera prompts de reparación. |
 | `mindcrafted/generator/sandbox_harness.js` | DOM y Canvas simulados para probar código generado. |
 | `mindcrafted/engine/engine.js` | Runtime de narrativa, juego, XP, audio y progreso. |
+| `mindcrafted/engine/bkt.js` | Modelo BKT ligero, persistencia y resumen de dominio por habilidad. |
 | `mindcrafted/engine/player.html` | Descarga el paquete e inyecta motor, arte y simulaciones. |
 | `mindcrafted/engine/template.html` | Plantilla Jinja2 del HTML ensamblado. |
 | `mindcrafted/engine/minigames/simulation.js` | Simulación genérica de respaldo. |
-| `mindcrafted/node/server.js` | Servicio HTTP auxiliar de estado. |
-| `mindcrafted/node/engine-state.js` | Máquina de estados para el guion. |
 
 ---
 
@@ -351,7 +354,7 @@ jinja2>=3.1.0
 
 ### Opcionales
 
-- `cryptography` para paquetes Fernet cifrados; no está declarada como dependencia principal.
+- `cryptography` para paquetes Fernet cifrados, declarada en `requirements.txt`.
 - Terser para minificación/obfuscación.
 
 ### Infraestructura del repositorio
@@ -374,7 +377,6 @@ MindCrafted/
 ├── mindcrafted/
 │   ├── server.py
 │   ├── static/
-│   │   ├── index.html
 │   │   └── studio.html
 │   ├── engine/
 │   │   ├── engine.js
@@ -392,18 +394,15 @@ MindCrafted/
 │   │   ├── i18n.py
 │   │   ├── sandbox.py
 │   │   └── sandbox_harness.js
-│   ├── node/
-│   │   ├── package.json
-│   │   ├── server.js
-│   │   └── engine-state.js
-│   └── readme/                  # Capturas y demos
+│   ├── pdf_import.py
+│   └── pptx_import.py
 ├── server.py
 ├── start.sh
 ├── LICENSE
 └── DOCUMENTACION_PROYECTO.md
 ```
 
-`mindcrafted.egg-info/`, `mindcrafted_V1/` y `mindcrafted_V2/` son artefactos locales de instalación/entorno virtual y no deben tratarse como código fuente. `edgameclaw/` es un adaptador de compatibilidad para el comando solicitado.
+Los entornos virtuales y artefactos de instalación locales no deben tratarse como código fuente.
 
 Salida generada:
 
@@ -419,7 +418,7 @@ courses/{course_id}/
     ├── game.pkg.enc             # Solo si el cifrado funciona
     ├── cover.js
     ├── _checkpoint.json         # Temporal
-    └── locales/{locale}.json
+    └── locales/es.json
 
 jobs/{job_id}.json
 ```
@@ -539,7 +538,7 @@ Este JSON contiene JavaScript generado y debe tratarse como código activo.
 ]
 ```
 
-El motor del navegador procesa el guion localmente. Node implementa una máquina equivalente, pero el reproductor actual no consume sus rutas.
+El motor del navegador procesa el guion y el seguimiento BKT localmente.
 
 ---
 
@@ -547,11 +546,13 @@ El motor del navegador procesa el guion localmente. Node implementa una máquina
 
 | Método | Ruta | Responsabilidad |
 |---|---|---|
-| `GET` | `/` | Landing. |
+| `GET` | `/` | Studio principal. |
 | `GET` | `/studio` | Estudio. |
 | `GET` | `/play` | Reproductor con query `course` y `game`. |
 | `GET` | `/api/config` | Modelo, base URL y presencia de clave sin exponerla. |
 | `POST` | `/api/parse-md-text` | Markdown a JSON. |
+| `POST` | `/api/import-pdf?filename=archivo.pdf` | Bytes PDF a Markdown editable. |
+| `POST` | `/api/import-pptx?filename=archivo.pptx` | Bytes PowerPoint a Markdown editable. |
 | `POST` | `/api/generate` | Inicia generación en background. |
 | `GET` | `/api/jobs/{job_id}` | Estado y logs del job. |
 | `GET` | `/api/courses` | Lista cursos. |
@@ -559,9 +560,8 @@ El motor del navegador procesa el guion localmente. Node implementa una máquina
 | `GET` | `/api/courses/{course_id}/manifest` | Manifiesto. |
 | `DELETE` | `/api/courses/{course_id}` | Borra el directorio del curso. |
 | `POST` | `/api/ai-chat` | Proxy de prueba a `/chat/completions`. |
+| `POST` | `/api/report-minigame-error` | Guarda un reporte local del juego. |
 | `GET` | `/api/play/{course_id}/{chunk_id}/package` | Entrega `game.pkg.json`. |
-| `POST` | `/api/play/{course_id}/{chunk_id}/state` | Proxy a Node `/state`. |
-| `POST` | `/api/play/{course_id}/{chunk_id}/next` | Proxy a Node `/next`. |
 
 Montajes estáticos:
 
@@ -570,7 +570,6 @@ Montajes estáticos:
 /engine   -> mindcrafted/engine/
 /courses  -> courses/
 /assets   -> assets/
-/readme   -> mindcrafted/readme/
 ```
 
 ### Analizar
@@ -581,6 +580,28 @@ Content-Type: application/json
 
 {"markdown":"# Curso\n\nDescripción\n\n## Lección 1\n\nContenido"}
 ```
+
+### Importar PDF
+
+```http
+POST /api/import-pdf?filename=apuntes.pdf
+Content-Type: application/pdf
+
+<bytes del PDF>
+```
+
+Devuelve `markdown`, `pages`, `sections`, `characters` y `truncated`. Los PDF formados solo por imágenes deben pasar antes por OCR.
+
+### Importar PowerPoint
+
+```http
+POST /api/import-pptx?filename=clase.pptx
+Content-Type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+
+<bytes de la presentación>
+```
+
+Devuelve `markdown`, `slides`, `sections`, `characters` y `truncated`. El formato heredado `.ppt` debe guardarse antes como `.pptx`.
 
 ### Generar
 
@@ -643,8 +664,7 @@ MODEL=google/gemini-3-flash-preview
 | `BIND_HOST` | `127.0.0.1` | Host de `start.sh`. |
 | `PORT` | `8000` | Puerto principal. |
 | `MINDCRAFTED_HOME` | raíz repo/CWD | Raíz de datos mutables. |
-| `ENGINE_STATE_URL` | `http://127.0.0.1:3100` | Servicio Node. |
-| `MINDCRAFTED_ENGINE_STATE_AUTO` | `1` | Autoarranque Node. |
+| `MINDCRAFTED_CORS_ORIGINS` | localhost/127.0.0.1:8000 | Orígenes web permitidos, separados por comas. |
 | `NODE_BINARY` | detectado | Node para el validador. |
 | `GAME_PACKAGE_SECRET` | vacío | Secreto de cifrado. |
 | `OBFS_JS` | apagado | Minificación con Terser. |
@@ -655,15 +675,15 @@ No versionar `.env` ni imprimir su contenido.
 
 ## 12. Ejecución
 
-El entorno recomendado es `mindcrafted_V2/`, creado para esta ejecución. `mindcrafted_V1/` es el entorno anterior y ambos están excluidos de Git.
+El entorno recomendado es `.venv/`, excluido de Git.
 
 ```bash
-source mindcrafted_V2/bin/activate
+source .venv/bin/activate
 export PYTHONPATH="$PWD"
-uvicorn edgameclaw.server:app --reload --host 127.0.0.1 --port 8000
+uvicorn mindcrafted.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Abrir `http://127.0.0.1:8000/studio`.
+Abrir `http://127.0.0.1:8000/`.
 
 Después de activar el entorno también se puede usar:
 
@@ -671,37 +691,27 @@ Después de activar el entorno también se puede usar:
 ./start.sh
 ```
 
-Advertencia: `start.sh` mata forzosamente cualquier proceso en el puerto `3100`, inicia Node y luego Uvicorn. No usarlo sin modificar en un entorno compartido.
+`start.sh` inicia únicamente FastAPI/Uvicorn.
 
 ### Entorno limpio
 
-Este snapshot no contiene un archivo reproducible de dependencias (`pyproject.toml`, `setup.py` o `requirements.txt`). Para reconstruir el entorno manualmente:
+El repositorio contiene `requirements.txt`. Para reconstruir el entorno:
 
 ```bash
-python3 -m venv mindcrafted_V2
-source mindcrafted_V2/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install \
-  'fastapi>=0.100.0' 'uvicorn[standard]>=0.22.0' \
-  'python-multipart>=0.0.6' 'aiofiles>=23.0.0' \
-  'httpx>=0.24.0' 'python-dotenv>=1.0.0' \
-  'openai>=1.0.0' 'esprima>=4.0.1' 'jinja2>=3.1.0'
+python -m pip install -r requirements.txt
 export PYTHONPATH="$PWD"
-uvicorn edgameclaw.server:app --reload --host 127.0.0.1 --port 8000
-```
-
-Node manual:
-
-```bash
-cd mindcrafted/node
-PORT=3100 node server.js
+uvicorn mindcrafted.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
 ---
 
-## 13. Idiomas y temas
+## 13. Idioma y temas
 
-Idiomas: `es`, `en`, `zh`, `ja`, `fr`, `ko`, `ar`, `de`.
+Idioma único: español (`es`). El Studio, los prompts, la interfaz y los minijuegos
+normalizan cualquier valor de idioma recibido a `es`.
 
 Temas:
 
@@ -712,7 +722,13 @@ china-landscape china-rouge renaissance baroque nordic victorian mediterranean
 fairy-tale detective sci-fi academy myth
 ```
 
-Defaults: idioma `es`, tema `pink-cute`, audio `retro`.
+Defaults: idioma `es`, tema rápido `ocean-dream`, audio `retro`.
+
+### Bayesian Knowledge Tracing
+
+Cada lección (`chunk_id`) se considera una habilidad y cada minijuego aporta una observación. El motor usa los parámetros iniciales `P(L0)=0.25`, `P(T)=0.12`, `P(G)=0.20` y `P(S)=0.10`; una puntuación de 60 o más cuenta como respuesta correcta. Tras aplicar Bayes y la transición de aprendizaje, el resultado se guarda en `localStorage` bajo `mindcrafted_bkt_v1` y se muestra como “Dominio estimado”.
+
+Se puede personalizar desde `GAME.bkt` (`initial`, `learn`, `guess`, `slip`, `masteryThreshold`, `correctThreshold`) y `GAME.bktSkill`. Es un seguimiento local, no identifica usuarios ni sincroniza dispositivos. Una futura plataforma con cuentas puede enviar estas observaciones a su backend sin cambiar la fórmula.
 
 ---
 
@@ -802,8 +818,8 @@ No tratar los hooks `auth` y `authUI` del frontend como seguridad real.
 
 - [ ] Definir IDs únicos y estables.
 - [ ] Mantener la API key en servidor.
-- [ ] Limitar tamaño y cantidad de lecciones.
-- [ ] Implementar o desactivar reportes de minijuegos.
+- [x] Limitar PDF, contenido y cantidad de lecciones.
+- [x] Implementar reportes locales de minijuegos.
 - [ ] Proteger generación, listado y eliminación.
 - [ ] Evitar dos jobs con el mismo `course_id`.
 - [ ] Probar escritorio y móvil horizontal.
@@ -816,33 +832,28 @@ No tratar los hooks `auth` y `authUI` del frontend como seguridad real.
 
 ### Incompatibilidades críticas
 
-1. **Reporte ausente:** `engine.js` hace POST a `/api/report-minigame-error`, ruta no definida.
-2. **Fuente ausente:** se referencia `/assets/ZhengQingKeNanBeiCiGongPuSongTi-2.ttf`, no presente en `assets/`.
+1. **Tipografía pixel:** Studio y juegos usan `assets/fonts/PixelifySans.ttf` autoalojada (con licencia OFL) y una pila Courier de respaldo.
 
 ### Seguridad y operación
 
-3. CORS permite cualquier origen, método y header.
-4. No hay autenticación de servidor; se puede listar, generar y borrar si la red permite acceso.
-5. El Studio guarda opcionalmente la API key en `localStorage`.
-6. `game.pkg.json` contiene JS generado que el player inyecta y ejecuta.
-7. El sandbox es un validador con DOM simulado, no una frontera de seguridad fuerte.
-8. Los jobs usan `asyncio.create_task`; un reinicio detiene la tarea.
-9. Los snapshots excluyen logs, así que el detalle se pierde tras reiniciar.
-10. `DELETE` usa `shutil.rmtree()` sin recuperación.
-11. Dos jobs con el mismo curso pueden colisionar.
-12. `start.sh` mata cualquier proceso en `3100`.
+2. No hay autenticación de servidor; se puede listar, generar y borrar si la red permite acceso.
+3. El Studio guarda opcionalmente la API key en `localStorage`.
+4. `game.pkg.json` contiene JS generado que el player inyecta y ejecuta.
+5. El sandbox es un validador con DOM simulado, no una frontera de seguridad fuerte.
+6. Los jobs usan `asyncio.create_task`; un reinicio detiene la tarea.
+7. Los snapshots excluyen logs, así que el detalle se pierde tras reiniciar.
+8. `DELETE` usa `shutil.rmtree()` sin recuperación.
+9. Dos jobs con el mismo curso pueden colisionar.
 
 ### Heredado o experimental
 
-13. Node se inicia y tiene proxies, pero el player procesa el guion en navegador y no usa `/state`/`next`.
-14. Se puede crear `game.pkg.enc`, pero el servidor de reproducción solo lee `game.pkg.json`.
-15. `cryptography` no está en dependencias principales.
-16. `npx terser` puede necesitar red y agregar latencia.
-17. Se recopila usage de tokens en contexto, pero no se devuelve en la API.
-18. No hay tests funcionales; las workflows solo construyen/publican.
-19. Los HTML grandes y rutas absolutas dificultan montar bajo un prefijo.
+10. Se puede crear `game.pkg.enc`, pero el servidor de reproducción solo lee `game.pkg.json`.
+11. `npx terser` puede necesitar red y agregar latencia.
+12. Se recopila usage de tokens en contexto, pero no se devuelve en la API.
+13. Hay tests unitarios, pero no una suite E2E de navegador.
+14. Los HTML grandes y rutas absolutas dificultan montar bajo un prefijo.
 
-Prioridad para hackathon: proteger generación/eliminación, implementar o retirar reportes y añadir límites/tests mínimos.
+Prioridad para hackathon: añadir autenticación a generación/eliminación, aislar el JS generado y crear pruebas E2E de navegador.
 
 ---
 
@@ -880,8 +891,7 @@ Revisión estática:
 ```bash
 python -m compileall mindcrafted
 node --check mindcrafted/engine/engine.js
-node --check mindcrafted/node/server.js
-node --check mindcrafted/node/engine-state.js
+node --check mindcrafted/engine/bkt.js
 ```
 
 No llamar IA real en CI; usar fixtures para evitar costo y variabilidad.
@@ -915,8 +925,8 @@ No llamar IA real en CI; usar fixtures para evitar costo y variabilidad.
 3. Leer `server.py`, `course_pipeline.py` y `generate_game()`.
 4. Identificar stack, auth, storage y despliegue del otro proyecto.
 5. Preferir integración HTTP en la primera versión.
-6. No asumir que auth, pagos, analítica o reportes heredados funcionan.
-7. Implementar o retirar el endpoint de reporte de minijuegos.
+6. No asumir que auth, pagos o analítica heredados funcionan.
+7. Conservar y auditar el endpoint local de reporte de minijuegos.
 8. Proteger generación y eliminación.
 9. Usar IDs únicos.
 10. Tratar el paquete como código activo.
@@ -941,18 +951,11 @@ mindcrafted/engine/engine.js
 
 ```bash
 # Entorno local existente
-source mindcrafted_V2/bin/activate
+source .venv/bin/activate
 export PYTHONPATH="$PWD"
 
 # Servidor
-uvicorn edgameclaw.server:app --reload --host 127.0.0.1 --port 8000
-
-# Node auxiliar
-cd mindcrafted/node
-PORT=3100 node server.js
-
-# Salud de Node
-curl http://127.0.0.1:3100/health
+uvicorn mindcrafted.server:app --reload --host 127.0.0.1 --port 8000
 
 # Cursos
 curl http://127.0.0.1:8000/api/courses

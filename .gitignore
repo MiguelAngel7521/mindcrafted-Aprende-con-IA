@@ -5,6 +5,7 @@
 # Generated content (user data — don't commit)
 courses/
 jobs/
+reports/
 __pycache__/
 generator/__pycache__/
 *.pyc
@@ -12,12 +13,8 @@ generator/__pycache__/
 .python-version
 
 # Entornos virtuales locales
-mindcrafted_V1/
-
-# Node
-node/node_modules/
-mindcrafted/node/node_modules/
-node_modules/
+.venv/
+venv/
 
 # PyPI / setuptools
 dist/
@@ -37,6 +34,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Keep readme/demo.mp4 under 100 MB if committed (GitHub file limit)
-edgameclaw/

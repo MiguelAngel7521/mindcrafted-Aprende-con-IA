@@ -6,12 +6,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Cargando…</title>
 <style id="player-share-fallback">
+@font-face{font-family:'Pixelify Sans';src:url('/assets/fonts/PixelifySans.ttf') format('truetype');font-weight:400 700;font-display:swap}
+html,body{margin:0;min-height:100%;font-family:'Pixelify Sans','Courier New',monospace;background:#10151b;color:#e8f0d0;image-rendering:pixelated}
 #share-modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);pointer-events:auto}
 #share-modal.visible{display:flex}
-#share-modal-inner{background:rgba(20,10,18,0.98);border:2px solid rgba(255,200,220,0.3);border-radius:16px;padding:20px 24px;max-width:360px;width:90%;box-shadow:0 0 30px rgba(255,100,150,0.2);pointer-events:auto}
-#share-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;background:rgba(20,60,40,0.9);border:1px solid #90e0a0;border-radius:10px;color:#90e0a0;font-size:12px;z-index:101;opacity:0;transition:opacity 0.3s;pointer-events:none}
+#share-modal-inner{background:#172329;border:3px solid #88ce02;border-radius:0;padding:20px 24px;max-width:360px;width:90%;box-shadow:6px 6px 0 rgba(0,0,0,.35);pointer-events:auto}
+#share-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;background:#203b2c;border:2px solid #90e0a0;border-radius:0;color:#90e0a0;font-size:12px;z-index:101;opacity:0;transition:opacity 0.3s;pointer-events:none}
 #share-toast.visible{opacity:1}
-#share-btn{position:fixed;top:12px;right:12px;z-index:50;cursor:pointer}
+#share-btn{position:fixed;top:12px;right:12px;z-index:50;cursor:pointer;border-radius:0;box-shadow:4px 4px 0 rgba(0,0,0,.35);font-family:inherit}
+.share-opt{border-radius:0!important;box-shadow:3px 3px 0 rgba(0,0,0,.25);font-family:inherit}
+button{font-family:inherit}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges}
 </style>
 <style id="rotate-prompt-style">
 #_rp {
@@ -24,7 +29,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  font-family: 'PixelZH','Courier New',monospace;
+  font-family: 'Pixelify Sans','Courier New',monospace;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -118,14 +123,14 @@
       if ((el = document.getElementById('dialog-next'))) el.textContent = ui.clickToContinue || 'Haz clic para continuar';
       if ((el = document.getElementById('back-to-course'))) el.href = apiBase + '/courses/' + encodeURIComponent(course) + '/';
       var shareBtn = document.getElementById('share-btn');
-      if (shareBtn) shareBtn.textContent = '\u2398 ' + (ui.shareGame || 'Compartir');
+      if (shareBtn) shareBtn.textContent = ui.shareGame || 'Compartir';
       var shareOpts = document.querySelectorAll('.share-opt, #share-modal h3');
       shareOpts.forEach(function(o) {
         var a = o.getAttribute('data-action');
         var t = o.tagName === 'H3' ? ui.shareGame : (a === 'copy' ? ui.shareCopyLink : a === 'wechat' ? ui.shareWeChat : a === 'xiaohongshu' ? ui.shareXiaohongshu : a === 'linkedin' ? ui.shareLinkedIn : a === 'twitter' ? ui.shareTwitter : a === 'facebook' ? ui.shareFacebook : a === 'instagram' ? ui.shareInstagram : ui.shareGame);
         if (t) o.setAttribute('title', t);
         if (o.tagName === 'H3') o.textContent = t || 'Compartir';
-        else if (a === 'copy') o.textContent = '\u2398 ' + (ui.shareCopyLink || 'Copiar enlace');
+        else if (a === 'copy') o.textContent = ui.shareCopyLink || 'Copiar enlace';
       });
       if (theme.border && (el = document.getElementById('title-cover'))) el.style.border = '2px solid ' + theme.border;
       if (theme.glow && (el = document.getElementById('title-cover'))) el.style.boxShadow = '0 0 30px ' + theme.glow;
@@ -141,12 +146,11 @@
       function injectScripts() {
         window.BACKGROUNDS = window.BACKGROUNDS || [];
         window.CHAR_DRAW_FNS = window.CHAR_DRAW_FNS || {};
-        // Load engine.js FIRST so gpx/grect/registerMinigame are defined before
-        // pixel art scripts run — prevents "Identifier already declared" SyntaxError
-        // when AI-generated pixel art re-declares gpx/grect with const/let.
-        var eng = document.createElement('script');
-        eng.src = apiBase + '/engine/engine.js';
-        eng.onload = function() {
+        function loadEngine() {
+          // Load engine.js before generated art and minigames so its globals exist.
+          var eng = document.createElement('script');
+          eng.src = apiBase + '/engine/engine.js';
+          eng.onload = function() {
           var parts = [pkg.pixel_art_js, pkg.cover_js].filter(Boolean);
           for (var i = 0; i < parts.length; i++) {
             var code = parts[i];
@@ -180,9 +184,15 @@
             } catch (err) { console.warn('Game: minigames_js inject failed', err); }
           }
           runInit();
-        };
-        eng.onerror = function() { console.error('Game: failed to load engine.js'); };
-        document.body.appendChild(eng);
+          };
+          eng.onerror = function() { console.error('Game: failed to load engine.js'); };
+          document.body.appendChild(eng);
+        }
+        var bkt = document.createElement('script');
+        bkt.src = apiBase + '/engine/bkt.js';
+        bkt.onload = loadEngine;
+        bkt.onerror = function(){console.warn('Game: BKT unavailable');loadEngine();};
+        document.body.appendChild(bkt);
       }
       injectScripts();
     })
@@ -206,13 +216,13 @@
   <div id="share-modal-inner">
     <h3>Compartir</h3>
     <div class="share-options">
-      <button type="button" class="share-opt" data-action="copy">📋 Copiar enlace</button>
-      <button type="button" class="share-opt" data-action="wechat">💬 WeChat</button>
-      <button type="button" class="share-opt" data-action="xiaohongshu">📕 Xiaohongshu</button>
+      <button type="button" class="share-opt" data-action="copy">Copiar enlace</button>
+      <button type="button" class="share-opt" data-action="wechat">WeChat</button>
+      <button type="button" class="share-opt" data-action="xiaohongshu">Xiaohongshu</button>
       <button type="button" class="share-opt" data-action="linkedin">in LinkedIn</button>
       <button type="button" class="share-opt" data-action="twitter">𝕏 Twitter</button>
       <button type="button" class="share-opt" data-action="facebook">f Facebook</button>
-      <button type="button" class="share-opt" data-action="instagram">📷 Instagram</button>
+      <button type="button" class="share-opt" data-action="instagram">Instagram</button>
     </div>
     <button type="button" id="share-close">×</button>
   </div>
@@ -253,8 +263,8 @@
 </div>
 <div id="mini-game-overlay"></div>
 <div id="game-watermark" style="position:absolute;bottom:6px;right:10px;z-index:12;pointer-events:none;font-size:10px;color:rgba(200,200,220,0.55);opacity:0.75;letter-spacing:0.5px">MindCrafted</div>
-<button id="mg-report-fixed" style="display:none;position:absolute;bottom:16px;right:90px;z-index:200;pointer-events:auto;opacity:0.85;font-size:11px;padding:6px 12px;border-radius:8px;background:rgba(255,80,80,0.15);color:#f0c0c0;border:1px solid rgba(255,80,80,0.35);cursor:pointer;font-family:'PixelZH','Courier New',monospace;">Reportar</button>
-<button id="mg-skip-fixed" style="display:none;position:absolute;bottom:16px;right:16px;z-index:200;pointer-events:auto;opacity:0.85;font-size:11px;padding:6px 14px;border-radius:8px;background:rgba(255,100,150,0.15);color:#e8d8f0;border:1px solid rgba(255,100,150,0.3);border-radius:8px;cursor:pointer;font-family:'PixelZH','Courier New',monospace;">Saltar →</button>
+<button id="mg-report-fixed" style="display:none;position:absolute;bottom:16px;right:90px;z-index:200;pointer-events:auto;opacity:0.85;font-size:11px;padding:6px 12px;border-radius:0;background:rgba(255,80,80,0.15);color:#f0c0c0;border:2px solid rgba(255,80,80,0.35);cursor:pointer;font-family:'Pixelify Sans','Courier New',monospace;">Reportar</button>
+<button id="mg-skip-fixed" style="display:none;position:absolute;bottom:16px;right:16px;z-index:200;pointer-events:auto;opacity:0.85;font-size:11px;padding:6px 14px;background:rgba(255,100,150,0.15);color:#e8d8f0;border:2px solid rgba(255,100,150,0.3);border-radius:0;cursor:pointer;font-family:'Pixelify Sans','Courier New',monospace;">Saltar →</button>
 </div>
 <script>
 (function(){

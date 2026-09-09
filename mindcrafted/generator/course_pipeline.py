@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -39,11 +40,20 @@ async def generate_course(
     Returns:
         Dict with course metadata and paths to generated game files.
     """
+    locale = "es"
     t_total = time.monotonic()
 
     content = json.loads(Path(content_path).read_text(encoding="utf-8"))
     course_meta = content["course"]
     chunks = content["chunks"]
+    seen_chunk_ids: set[str] = set()
+    for index, chunk in enumerate(chunks, 1):
+        chunk_id = chunk.get("id") if isinstance(chunk, dict) else None
+        if not isinstance(chunk_id, str) or not re.fullmatch(r"[a-zA-Z0-9_.-]+", chunk_id) or ".." in chunk_id:
+            raise ValueError(f"Invalid chunk id at lesson {index}")
+        if chunk_id in seen_chunk_ids:
+            raise ValueError(f"Duplicate chunk id: {chunk_id}")
+        seen_chunk_ids.add(chunk_id)
 
     output = Path(output_dir)
     games_dir = output / "games"
@@ -78,6 +88,9 @@ async def generate_course(
                 api_key=api_key, base_url=base_url, model=model,
                 personal_profile=personal_profile,
                 fast_mode=fast_mode,
+                subject=course_meta.get("subject", ""), source_text=chunk.get("content", ""),
+                adventure=course_meta.get('gameplay', 'aventura') == 'aventura',
+                world_override=chunk.get('world', ''), difficulty=course_meta.get('difficulty', 'normal'),
             )
 
             next_chunk_id = chunks[i + 1]["id"] if i + 1 < len(chunks) else None
@@ -88,7 +101,13 @@ async def generate_course(
             elapsed = time.monotonic() - t0
             print(f"  Game {i+1} done in {elapsed:.1f}s", file=sys.stderr)
 
-            new_mechanics = _extract_mechanics_from_html(html_path)
+            package_path = Path(game_dir) / "game.pkg.json"
+            package = json.loads(package_path.read_text(encoding="utf-8")) if package_path.exists() else {}
+            practice = package.get("config", {}).get("practice", {})
+            new_mechanics = {p["kind"] for p in practice["puzzles"]} if practice else _extract_mechanics_from_html(html_path)
+            if practice:
+                from .practice import THEMES
+                theme = THEMES[practice["world"]]
             assessment_mechanics = {m for m in new_mechanics if not m.startswith("sim_")}
             used_mechanics.update(assessment_mechanics)
 
@@ -108,6 +127,8 @@ async def generate_course(
                 "cover_js_src": cover_js_src,
                 "learning_objectives": chunk.get("learning_objectives", []),
                 "mechanics": sorted(new_mechanics),
+                "world": practice.get("world"),
+                "puzzle_count": len(practice.get("puzzles", [])),
                 "status": "success",
             }
             game_results.append(game_result)
@@ -135,6 +156,15 @@ async def generate_course(
             })
 
 
+    # Resolve navigation only after knowing which lessons actually succeeded.
+    successful = [g for g in game_results if g["status"] == "success"]
+    for index, game in enumerate(successful):
+        if game.get("world"):
+            next_id = successful[index + 1]["chunk_id"] if index + 1 < len(successful) else None
+            _patch_game_html(game["html_path"], str(games_dir / game["chunk_id"]), str(output),
+                             course_id=output.name,
+                             next_game_url=f"/play?course={output.name}&game={next_id}" if next_id else None)
+
     course_manifest = {
         "course": course_meta,
         "games": game_results,
@@ -146,6 +176,12 @@ async def generate_course(
         json.dumps(course_manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+    from .adventure import finalize_course
+    boss_status = finalize_course(successful, output)
+    if boss_status:
+        course_manifest['boss_status'] = boss_status
+        manifest_path.write_text(json.dumps(course_manifest, ensure_ascii=False, indent=2), encoding='utf-8')
 
     elapsed_total = time.monotonic() - t_total
     success_count = sum(1 for g in game_results if g["status"] == "success")
@@ -195,13 +231,23 @@ _SCROLLBAR_CSS = """::-webkit-scrollbar{width:4px}
 
 def _patch_game_html(html_path: str, game_dir: str, output_dir: str, audio_base: str | None = None, next_game_url: str | None = None, course_id: str | None = None):
     """Patch the generated game HTML for correct font, audio, asset paths, and layout."""
+    package_path = Path(game_dir) / "game.pkg.json"
+    if package_path.exists():
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+        config = package.get("config", {})
+        if config.get("generationMode") in ("practica", "aventura"):
+            from .practice import render_html
+            if course_id:
+                config["courseId"] = course_id
+            config.pop("nextGameUrl", None)
+            if next_game_url:
+                config["nextGameUrl"] = next_game_url
+            package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding="utf-8")
+            Path(html_path).write_text(render_html(package), encoding="utf-8")
+            return
     html = Path(html_path).read_text(encoding="utf-8")
 
-    font_filename = "ZhengQingKeNanBeiCiGongPuSongTi-2.ttf"
-    html = html.replace(
-        f"url('{font_filename}')",
-        f"url('/assets/{font_filename}')",
-    )
+    html = html.replace("PixelZH", "Pixelify Sans")
 
     extra_fields = '"audioBase": "/assets/audio/"'
     if course_id:

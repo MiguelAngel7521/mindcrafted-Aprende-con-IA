@@ -195,7 +195,7 @@ registerMinigame('simulation', function(ct, data) {
 
     // Axis label
     ctx2.fillStyle = dim;
-    ctx2.font = '10px PixelZH, Courier New, monospace';
+    ctx2.font = '10px "Pixelify Sans", Courier New, monospace';
     ctx2.textAlign = 'center';
     ctx2.fillText(val + '%', cx, h - 6);
 

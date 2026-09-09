@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>MindCrafted · Aventura</title>
+<link rel="stylesheet" href="/engine/adventure/style.css"></head><body>
+<header><a href="/" class="brand">✳ MINDCRAFTED</a><span>EXPEDICIÓN DEL CONOCIMIENTO</span><a id="back" href="/">Mis cursos ↗</a></header>
+<main><p id="loading" role="status">Abriendo la expedición…</p><div id="app" hidden>
+<section class="intro"><div><p id="subject" class="eyebrow"></p><h1 id="title"></h1><p id="intro"></p></div><div class="stats"><strong id="progress"></strong><span>estaciones restauradas</span><small id="mastery"></small></div></section>
+<div class="layout"><section class="viewport" aria-label="Aventura interactiva">
+<div class="scene-bar"><span id="world-name"></span><span id="mode-label">EXPLORACIÓN</span><button id="pause">Pausa · Esc</button></div>
+<div id="stage" tabindex="0" aria-label="Área de juego. Usa flechas o WASD para moverte y E o Enter para interactuar.">
+<canvas id="world" width="768" height="512"></canvas>
+<div id="arena-hud" hidden><span id="health"></span><span id="timer"></span><span id="shield"></span></div>
+<div id="arena-prompt" hidden></div><div id="targets"></div>
+<div id="overlay" hidden><div class="dialog"><p id="dialog-kicker" class="eyebrow"></p><h2 id="dialog-title"></h2><p id="dialog-copy"></p><details id="evidence-details"><summary>Consultar mis apuntes</summary><blockquote id="evidence"></blockquote></details><div id="dialog-actions"></div></div></div>
+</div>
+<div class="context"><span id="interaction">Acércate a una estación.</span><button id="interact" class="primary">Interactuar · E</button></div>
+<div class="touch" aria-label="Controles de movimiento"><div class="dpad"><button data-dir="up" aria-label="Mover arriba">↑</button><button data-dir="left" aria-label="Mover izquierda">←</button><button data-dir="down" aria-label="Mover abajo">↓</button><button data-dir="right" aria-label="Mover derecha">→</button></div><span>WASD / flechas · E para confirmar<br>Las zonas numeradas son estaciones de respuesta.</span></div>
+<p id="feedback" role="status" aria-live="polite"></p></section>
+<aside><p class="eyebrow">TU EXPEDICIÓN</p><h2>Reconecta las ideas.</h2><p id="objective"></p><nav id="missions" aria-label="Misiones de la lección"></nav><div class="settings"><label>Ritmo de acción<select id="difficulty"><option value="normal">Normal</option><option value="calm">Tranquilo</option><option value="study">Estudio sin presión</option></select></label><label><input id="effects" type="checkbox" checked> Efectos visuales</label><label><input id="sound" type="checkbox"> Sonidos de interacción</label><button id="hint">Consultar una pista</button></div><div id="course-route"></div><p class="note">Los golpes afectan a tu energía. El dominio de la materia se calcula con tus respuestas.</p></aside></div>
+<section id="completion" hidden><p class="eyebrow">EXPEDICIÓN COMPLETADA</p><h2 id="completion-title">El conocimiento vuelve a conectar.</h2><p id="completion-copy"></p><a id="next" class="primary" href="/">Continuar →</a></section>
+</div></main>
+<script src="/engine/bkt.js"></script><script src="/engine/adventure/core.js"></script><script src="/engine/adventure/encounters.js"></script><script src="/engine/adventure/runtime.js"></script></body></html>

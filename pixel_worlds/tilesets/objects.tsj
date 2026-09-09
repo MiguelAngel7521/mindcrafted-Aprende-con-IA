@@ -1,0 +1,547 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "Objetos MindCrafted",
+  "columns": 0,
+  "grid": {
+    "orientation": "orthogonal",
+    "width": 1,
+    "height": 1
+  },
+  "objectalignment": "bottomleft",
+  "tilewidth": 128,
+  "tileheight": 128,
+  "tilecount": 23,
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../art/exports/lab-reactor.png",
+      "imagewidth": 80,
+      "imageheight": 112,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "lab-reactor"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 6
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/lab-reactor.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "image": "../art/exports/lab-console.png",
+      "imagewidth": 96,
+      "imageheight": 72,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "lab-console"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 4
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/lab-console.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "image": "../art/exports/lab-workbench.png",
+      "imagewidth": 112,
+      "imageheight": 72,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "lab-workbench"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/lab-workbench.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "image": "../art/exports/lab-battery.png",
+      "imagewidth": 40,
+      "imageheight": 48,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "lab-battery"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/lab-battery.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "image": "../art/exports/lab-lamp.png",
+      "imagewidth": 48,
+      "imageheight": 80,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "lab-lamp"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 4
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/lab-lamp.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "image": "../art/exports/lab-coil.png",
+      "imagewidth": 64,
+      "imageheight": 64,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "lab-coil"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/lab-coil.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "image": "../art/exports/math-balance.png",
+      "imagewidth": 112,
+      "imageheight": 96,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "math-balance"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 6
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/math-balance.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "image": "../art/exports/math-board.png",
+      "imagewidth": 128,
+      "imageheight": 80,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "math-board"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/math-board.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "image": "../art/exports/math-library.png",
+      "imagewidth": 96,
+      "imageheight": 112,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "math-library"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/math-library.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "image": "../art/exports/math-table.png",
+      "imagewidth": 112,
+      "imageheight": 80,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "math-table"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/math-table.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "image": "../art/exports/math-orrery.png",
+      "imagewidth": 80,
+      "imageheight": 104,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "math-orrery"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 6
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/math-orrery.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "image": "../art/exports/math-crate.png",
+      "imagewidth": 48,
+      "imageheight": 48,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "math-crate"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/math-crate.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "image": "../art/exports/forest-oak.png",
+      "imagewidth": 112,
+      "imageheight": 128,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-oak"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-oak.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "image": "../art/exports/forest-pine.png",
+      "imagewidth": 80,
+      "imageheight": 128,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-pine"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-pine.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "image": "../art/exports/forest-fern.png",
+      "imagewidth": 64,
+      "imageheight": 48,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-fern"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-fern.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "image": "../art/exports/forest-rock.png",
+      "imagewidth": 80,
+      "imageheight": 64,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-rock"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-rock.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "image": "../art/exports/forest-mushrooms.png",
+      "imagewidth": 48,
+      "imageheight": 48,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-mushrooms"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-mushrooms.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "image": "../art/exports/forest-sign.png",
+      "imagewidth": 64,
+      "imageheight": 64,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-sign"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-sign.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "image": "../art/exports/forest-beehive.png",
+      "imagewidth": 64,
+      "imageheight": 80,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-beehive"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 4
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-beehive.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "image": "../art/exports/forest-flower.png",
+      "imagewidth": 32,
+      "imageheight": 40,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "forest-flower"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 4
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/forest-flower.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "image": "../art/exports/shared-planter.png",
+      "imagewidth": 48,
+      "imageheight": 64,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "shared-planter"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/shared-planter.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "image": "../art/exports/shared-door.png",
+      "imagewidth": 80,
+      "imageheight": 112,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "shared-door"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/shared-door.aseprite"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "image": "../art/exports/explorer.png",
+      "imagewidth": 32,
+      "imageheight": 48,
+      "properties": [
+        {
+          "name": "asset_id",
+          "type": "string",
+          "value": "explorer"
+        },
+        {
+          "name": "frames",
+          "type": "int",
+          "value": 8
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "value": "../art/source/explorer.aseprite"
+        }
+      ]
+    }
+  ]
+}

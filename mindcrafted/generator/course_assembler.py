@@ -3,12 +3,12 @@
 The visual style matches the pixel-art game aesthetic from the games themselves.
 """
 
+import html as html_lib
 import json
-import os
 from pathlib import Path
 
-from .assembler import THEMES, get_theme, get_theme_css, DEFAULT_THEME
-from .i18n import get_course_page_strings, COURSE_PAGE_STRINGS, LOCALE_NAMES, DEFAULT_LOCALE
+from .assembler import get_theme_css, DEFAULT_THEME
+from .i18n import get_course_page_strings, DEFAULT_LOCALE
 
 
 def assemble_course_platform(manifest: dict, output_dir: str, locale: str = DEFAULT_LOCALE) -> str:
@@ -29,10 +29,8 @@ def assemble_course_platform(manifest: dict, output_dir: str, locale: str = DEFA
     css = get_theme_css(first_theme)
     cp = get_course_page_strings(locale)
 
-    import os as _os
-    course_id = _os.path.basename(output_dir)
+    course_id = Path(output_dir).name
     games_html = _build_games_cards(games, output_dir, course_id=course_id, locale=locale)
-    objectives_html = _build_objectives_list(course.get("learning_objectives", []))
     cover_script_tags, cover_render_calls = _build_cover_scripts(games)
 
     # Truncate long descriptions for the course page UI
@@ -58,16 +56,16 @@ def assemble_course_platform(manifest: dict, output_dir: str, locale: str = DEFA
     manifest_with_id["course"] = dict(manifest["course"], id=course_id)
 
     html = COURSE_TEMPLATE
-    html = html.replace("{{COURSE_TITLE}}", course.get("title", "Curso de MindCrafted"))
-    html = html.replace("{{COURSE_SUBTITLE}}", subtitle)
-    html = html.replace("{{COURSE_DESCRIPTION}}", description)
-    html = html.replace("{{COURSE_SUBJECT}}", course.get("subject", ""))
-    html = html.replace("{{COURSE_LEVEL}}", course.get("level", ""))
-    html = html.replace("{{COURSE_TIME}}", course.get("estimated_time", ""))
+    html = html.replace("{{COURSE_TITLE}}", html_lib.escape(str(course.get("title", "Curso de MindCrafted"))))
+    html = html.replace("{{COURSE_SUBTITLE}}", html_lib.escape(str(subtitle)))
+    html = html.replace("{{COURSE_DESCRIPTION}}", html_lib.escape(str(description)))
+    html = html.replace("{{COURSE_SUBJECT}}", html_lib.escape(str(course.get("subject", ""))))
+    html = html.replace("{{COURSE_LEVEL}}", html_lib.escape(str(course.get("level", ""))))
+    html = html.replace("{{COURSE_TIME}}", html_lib.escape(str(course.get("estimated_time", ""))))
     html = html.replace("{{TOTAL_LESSONS}}", str(len(games)))
-    html = html.replace("{{OBJECTIVES_HTML}}", objectives_html)
     html = html.replace("{{GAMES_CARDS_HTML}}", games_html)
-    html = html.replace("{{MANIFEST_JSON}}", json.dumps(manifest_with_id, ensure_ascii=False))
+    manifest_json = json.dumps(manifest_with_id, ensure_ascii=False).replace("</", "<\\/")
+    html = html.replace("{{MANIFEST_JSON}}", manifest_json)
     html = html.replace("{{COVER_SCRIPT_TAGS}}", cover_script_tags)
     html = html.replace("{{COVER_RENDER_CALLS}}", cover_render_calls)
 
@@ -76,16 +74,6 @@ def assemble_course_platform(manifest: dict, output_dir: str, locale: str = DEFA
 
     for key, val in cp.items():
         html = html.replace("{{U." + key + "}}", val)
-
-    course_page_strings_json = json.dumps({"es": COURSE_PAGE_STRINGS["es"]}, ensure_ascii=False)
-    locale_names_json = json.dumps(LOCALE_NAMES, ensure_ascii=False)
-    lang_switcher_html = "".join(
-        f'<button type="button" class="course-lang-opt" data-lang="{code}" title="{name}">{name}</button>'
-        for code, name in LOCALE_NAMES.items()
-    )
-    html = html.replace("{{COURSE_PAGE_STRINGS_JSON}}", course_page_strings_json)
-    html = html.replace("{{LOCALE_NAMES_JSON}}", locale_names_json)
-    html = html.replace("{{LANG_SWITCHER_HTML}}", lang_switcher_html)
 
     output_path = Path(output_dir) / "index.html"
     output_path.write_text(html, encoding="utf-8")
@@ -103,10 +91,10 @@ def _build_games_cards(games: list[dict], output_dir: str, course_id: str = "", 
         status_class = "available" if game["status"] == "success" else "locked"
         chunk_id = game.get("chunk_id", f"chunk-{i + 1}")
         # Use player URL so game loads from package (no raw HTML exposed)
-        href = f"/play.html?course={course_id}&game={chunk_id}" if course_id and status_class == "available" else ""
+        href = html_lib.escape(f"/play?course={course_id}&game={chunk_id}", quote=True) if course_id and status_class == "available" else ""
 
         objectives_items = "".join(
-            f'<span class="tag">{obj}</span>' for obj in game.get("learning_objectives", [])[:3]
+            f'<span class="tag">{html_lib.escape(str(obj))}</span>' for obj in game.get("learning_objectives", [])[:3]
         )
 
         btn_text = cp["btnStart"] if status_class == "available" else cp["btnLocked"]
@@ -115,10 +103,10 @@ def _build_games_cards(games: list[dict], output_dir: str, course_id: str = "", 
         ch_label = f"第{i+1}章" if locale == "zh" else (f"CAP.{i+1}" if locale == "es" else f"CH.{i+1}")
 
         # Truncate long lesson titles and subtitles
-        lesson_title = game.get("title", "")
+        lesson_title = str(game.get("title", ""))
         if len(lesson_title) > 30:
             lesson_title = lesson_title[:28] + "…"
-        lesson_sub = game.get("subtitle", "")
+        lesson_sub = str(game.get("subtitle", ""))
         if len(lesson_sub) > 50:
             lesson_sub = lesson_sub[:48] + "…"
 
@@ -128,7 +116,7 @@ def _build_games_cards(games: list[dict], output_dir: str, course_id: str = "", 
             f'width="128" height="96" '
             f'style="border-color:{css["accent"]}"></canvas>'
             if game.get("cover_js_src")
-            else f'<div class="lesson-cover-fallback" style="border-color:{css["accent"]};color:{css["accent"]}">{_get_lesson_emoji(i)}</div>'
+            else f'<div class="lesson-cover-fallback" style="border-color:{css["accent"]};color:{css["accent"]}">{i + 1}</div>'
         )
 
         cards.append(f"""
@@ -137,8 +125,8 @@ def _build_games_cards(games: list[dict], output_dir: str, course_id: str = "", 
           {cover_html}
           <div class="lesson-num">{ch_label}</div>
           <div class="lesson-body">
-            <div class="lesson-title">{lesson_title}</div>
-            <div class="lesson-sub">{lesson_sub}</div>
+            <div class="lesson-title">{html_lib.escape(lesson_title)}</div>
+            <div class="lesson-sub">{html_lib.escape(lesson_sub)}</div>
             <div class="lesson-tags">{objectives_items}</div>
           </div>
           <div class="lesson-right">
@@ -170,15 +158,6 @@ def _build_cover_scripts(games: list[dict]) -> str:
     return "\n".join(script_tags), "\n".join(render_calls)
 
 
-def _build_objectives_list(objectives: list[str]) -> str:
-    return "".join(f'<li>{obj}</li>' for obj in objectives)
-
-
-def _get_lesson_emoji(index: int) -> str:
-    icons = ["✦", "◈", "✿", "⚡", "◆", "★", "♦", "⊕"]
-    return icons[index % len(icons)]
-
-
 COURSE_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="{{U.lang}}">
 <head>
@@ -187,6 +166,7 @@ COURSE_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="mobile-web-app-capable" content="yes">
 <title>{{COURSE_TITLE}} — {{COURSE_SUBTITLE}}</title>
 <style>
+@font-face{font-family:'Pixelify Sans';src:url('/assets/fonts/PixelifySans.ttf') format('truetype');font-weight:400 700;font-display:swap}
 *{margin:0;padding:0;box-sizing:border-box}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -197,7 +177,7 @@ COURSE_TEMPLATE = r"""<!DOCTYPE html>
 html{min-height:100dvh;-webkit-text-size-adjust:100%}
 body{
   background:{{T.bg}};color:{{T.text}};
-  font-family:'PixelZH','Courier New',monospace;
+  font-family:'Pixelify Sans','Courier New',monospace;
   min-height:100vh;min-height:100dvh;overflow-x:hidden;
 }
 
@@ -223,9 +203,6 @@ body{
 .hbtn-ghost:hover{border-color:{{T.accent}};color:{{T.highlight}}}
 .hbtn-fill{background:rgba(136, 206, 2, 0.15);border:2px solid {{T.accent}};color:{{T.highlight}};backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .hbtn-fill:hover{background:rgba(136, 206, 2, 0.25);box-shadow:0 0 12px {{T.glowAccent}}}
-.course-lang-switcher .course-lang-opt{padding:4px 10px;font-size:11px;border:1px solid {{T.border}};border-radius:8px;background:transparent;color:{{T.muted}};cursor:pointer;font-family:inherit;transition:all .15s}
-.course-lang-switcher .course-lang-opt:hover,.course-lang-switcher .course-lang-opt.active{border-color:{{T.accent}};color:{{T.highlight}};background:rgba(136,206,2,0.08)}
-
 /* ── Hero ── */
 .hero{
   padding:100px 24px 48px;text-align:center;position:relative;z-index:10;
@@ -397,10 +374,10 @@ body{
 <div id="af-course-gate" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,8,16,0.92);backdrop-filter:blur(20px);z-index:200;align-items:center;justify-content:center;flex-direction:column;padding:24px;text-align:center">
   <div style="max-width:400px;background:rgba(40,15,35,0.95);border:2px solid #5a3050;border-radius:20px;padding:36px 32px;box-shadow:0 0 40px rgba(255,120,180,0.15)">
     <div style="font-size:36px;margin-bottom:12px">🔒</div>
-    <h2 id="af-gate-title" style="color:#ffc0d0;font-size:20px;letter-spacing:2px;margin-bottom:10px;font-family:'PixelZH','Courier New',monospace"></h2>
-    <p id="af-gate-msg" style="color:#c080a0;font-size:13px;line-height:1.6;margin-bottom:24px;font-family:'PixelZH','Courier New',monospace"></p>
-    <button id="af-gate-btn" style="padding:12px 32px;background:rgba(136,206,2,0.2);color:#ffc0d0;border:2px solid #ff6a9a;border-radius:16px;font-family:'PixelZH','Courier New',monospace;font-size:13px;cursor:pointer;width:100%;transition:all 0.15s"></button>
-    <a href="/courses/" style="display:block;margin-top:14px;color:#8050a0;font-size:11px;font-family:'PixelZH','Courier New',monospace;text-decoration:none;letter-spacing:1px">← Volver a la lista de cursos</a>
+    <h2 id="af-gate-title" style="color:#ffc0d0;font-size:20px;letter-spacing:2px;margin-bottom:10px;font-family:'Pixelify Sans','Courier New',monospace"></h2>
+    <p id="af-gate-msg" style="color:#c080a0;font-size:13px;line-height:1.6;margin-bottom:24px;font-family:'Pixelify Sans','Courier New',monospace"></p>
+    <button id="af-gate-btn" style="padding:12px 32px;background:rgba(136,206,2,0.2);color:#ffc0d0;border:2px solid #ff6a9a;border-radius:16px;font-family:'Pixelify Sans','Courier New',monospace;font-size:13px;cursor:pointer;width:100%;transition:all 0.15s"></button>
+    <a href="/courses/" style="display:block;margin-top:14px;color:#8050a0;font-size:11px;font-family:'Pixelify Sans','Courier New',monospace;text-decoration:none;letter-spacing:1px">← Volver a la lista de cursos</a>
   </div>
 </div>
 
@@ -409,28 +386,7 @@ body{
 const MANIFEST = {{MANIFEST_JSON}};
 const OBJECTIVES = MANIFEST.course.learning_objectives || [];
 const COURSE_ID = MANIFEST.course.id || '';
-const COURSE_PAGE_STRINGS = {{COURSE_PAGE_STRINGS_JSON}};
-const LOCALE_NAMES = {{LOCALE_NAMES_JSON}};
 let courseProgress = JSON.parse(localStorage.getItem('edgame_progress') || '{}');
-let currentCourseLang = (function(){ var p = new URLSearchParams(location.search); var l = p.get('lang') || 'es'; return (l && COURSE_PAGE_STRINGS[l]) ? l : 'es'; })();
-
-function applyCourseLocale(lang) {
-  if (!COURSE_PAGE_STRINGS[lang]) return;
-  currentCourseLang = lang;
-  try { localStorage.setItem('edgame_lang', lang); } catch(e) {}
-  document.documentElement.lang = (lang === 'zh' ? 'zh-CN' : lang);
-  document.querySelectorAll('[data-i18n]').forEach(function(el) {
-    var key = el.getAttribute('data-i18n');
-    if (COURSE_PAGE_STRINGS[lang][key] != null) el.textContent = COURSE_PAGE_STRINGS[lang][key];
-  });
-  document.querySelectorAll('.course-lang-opt').forEach(function(b) {
-    b.classList.toggle('active', b.getAttribute('data-lang') === lang);
-  });
-}
-document.querySelectorAll('.course-lang-opt').forEach(function(btn) {
-  btn.addEventListener('click', function() { applyCourseLocale(btn.getAttribute('data-lang')); });
-});
-applyCourseLocale(currentCourseLang);
 
 // Handle share token from URL before auth is ready
 (function() {
@@ -458,6 +414,12 @@ function init() {
     updateProgress();
   });
   if (COURSE_ID) _checkCourseAccess();
+}
+
+function escapeCourseHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // Page-level access gate: blocks the course page for non-owners without a share token
@@ -501,7 +463,7 @@ async function _checkCourseAccess() {
 
 function renderObjectives() {
   document.getElementById('obj-grid').innerHTML = OBJECTIVES.map((o, i) =>
-    `<div class="obj-card"><div class="obj-icon">${i+1}</div><div class="obj-text">${o}</div></div>`
+    `<div class="obj-card"><div class="obj-icon">${i+1}</div><div class="obj-text">${escapeCourseHtml(o)}</div></div>`
   ).join('');
 }
 
@@ -521,9 +483,6 @@ async function launchGame(btn, idx) {
   var user = auth.getUser();
   if (user) localStorage.setItem('edgame_user_name', auth.getDisplayName());
   var href = btn.dataset.href;
-  if (href && currentCourseLang && currentCourseLang !== 'zh') {
-    href += (href.indexOf('?') >= 0 ? '&' : '?') + 'lang=' + encodeURIComponent(currentCourseLang);
-  }
   if (href) window.location.href = href;
 }
 

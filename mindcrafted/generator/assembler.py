@@ -1,8 +1,8 @@
 # =============================================================================
-# MindCrafted — AI Game-Based Learning Studio
 # =============================================================================
 """Assembles generated content with static engine templates into a single HTML file."""
 
+import html as html_lib
 import json
 import sys
 from pathlib import Path
@@ -843,6 +843,7 @@ THEME_TO_AUDIO: dict[str, str] = {
 DEFAULT_AUDIO_PROFILE = "retro"
 
 
+# -- Created by Yuqi Hang (github.com/yh2072) --
 def get_audio_profile(theme_name: str, mood_hint: str | None = None) -> dict[str, str]:
     """Return a BGM profile dict for a given theme.
 
@@ -1111,7 +1112,7 @@ def _replace_combined_line_in_html(html: str, scripts, lines, combined_line_idx:
     return html
 
 
-
+# -- Created by Yuqi Hang (github.com/yh2072) --
 def assemble(
     template_dir: str,
     content: dict,
@@ -1139,6 +1140,7 @@ def assemble(
 
     # 2. Read engine.js
     engine_js = _read_file(engine / "engine.js")
+    bkt_js = _read_file(engine / "bkt.js")
 
     # 3. Read needed minigame JS files
     mechanics = _detect_mechanics(script)
@@ -1157,7 +1159,8 @@ def assemble(
             file=sys.stderr,
         )
 
-    minigames_parts = []
+    # La ruta rápida aporta un paquete fijo y validado de retos reutilizables.
+    minigames_parts = [content.get("minigames_js", "")]
     for mechanic in sorted(mechanics):
         if mechanic.startswith("sim_") and mechanic in simulation_codes:
             minigames_parts.append(simulation_codes[mechanic])
@@ -1228,12 +1231,10 @@ def assemble(
     theme = get_theme_css(theme_name)
 
     # 5. Render the template
-    game_config_js = (
-        f"const GAME = {json.dumps(config, ensure_ascii=False, indent=2)};"
-    )
-    script_data_js = (
-        f"const SCRIPT = {json.dumps(script, ensure_ascii=False, indent=2)};"
-    )
+    game_config_json = json.dumps(config, ensure_ascii=False, indent=2).replace("</", "<\\/")
+    script_json = json.dumps(script, ensure_ascii=False, indent=2).replace("</", "<\\/")
+    game_config_js = f"const GAME = {game_config_json};"
+    script_data_js = f"const SCRIPT = {script_json};"
 
     cover_js = content.get("cover_js", "")
     init_js = _build_init_js()
@@ -1244,10 +1245,10 @@ def assemble(
     )
     tmpl = env.from_string(template_html)
 
-    from .i18n import get_ui_strings
+    from .i18n import get_ui_strings, LOCALE_NAMES
     ui = config.get("ui") or get_ui_strings("es")
     ui_locales = {"es": get_ui_strings("es")}
-    ui_locales_json = json.dumps(ui_locales, ensure_ascii=False)
+    ui_locales_json = json.dumps(ui_locales, ensure_ascii=False).replace("</", "<\\/")
 
     # Inline cover_js after pixel art so drawCover is available
     combined_pixel_js = pixel_art_js
@@ -1258,13 +1259,14 @@ def assemble(
         theme=theme,
         ui=ui,
         ui_locales_json=ui_locales_json,
-        locale_names={"es": "Español"},
-        title=config.get("title", "Juego educativo"),
-        title_display=config.get("title", "Juego educativo"),
-        subtitle=config.get("subtitle", ""),
-        description=config.get("description", ""),
+        locale_names=LOCALE_NAMES,
+        title=html_lib.escape(str(config.get("title", "EdGame"))),
+        title_display=html_lib.escape(str(config.get("title", "EdGame"))),
+        subtitle=html_lib.escape(str(config.get("subtitle", ""))),
+        description=html_lib.escape(str(config.get("description", ""))),
         total_chapters=config.get("totalChapters", 6),
         game_config=game_config_js,
+        bkt_js=bkt_js,
         engine_js=engine_js,
         pixel_art_js=combined_pixel_js,
         minigames_js=minigames_js,
@@ -1353,110 +1355,20 @@ window.applyGameUi = function(ui) {
       if (t) { o.textContent = (a === 'copy' ? '\\u2398 ' : a === 'linkedin' ? 'in ' : a === 'facebook' ? 'f ' : '') + t; o.setAttribute('title', t); }
     });
   }
-  document.documentElement.lang = ui.lang || (typeof GAME !== 'undefined' ? GAME.locale : 'es');
+  document.documentElement.lang = 'es';
 };
 
-// Switch game UI language using embedded UI_LOCALES (no fetch)
-window.setGameLocale = function(lang) {
-  if (!window.UI_LOCALES || !UI_LOCALES[lang]) return;
-  Object.assign(GAME.ui, UI_LOCALES[lang]);
-  GAME.locale = lang;
+// El producto es monolingüe: se normaliza cualquier preferencia previa a español.
+window.setGameLocale = function() {
+  if (window.UI_LOCALES && UI_LOCALES.es) Object.assign(GAME.ui, UI_LOCALES.es);
+  GAME.locale = 'es';
   window.applyGameUi(GAME.ui);
-  document.querySelectorAll('.lang-opt').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-lang') === lang); });
-  try { localStorage.setItem('edgame_lang', lang); } catch(e) {}
+  try { localStorage.setItem('edgame_lang', 'es'); } catch(e) {}
 };
 
-// Async locale loader — prefers embedded UI_LOCALES, then locales/{lang}.json
+// Conserva la promesa esperada por el arranque sin cargar traducciones externas.
 window._localeReady = (function() {
-  var params = new URLSearchParams(location.search);
-  var lang = params.get('lang') || (typeof GAME !== 'undefined' ? GAME.locale : 'es');
-
-  // Prefer embedded UI locales (no fetch)
-  if (lang && window.UI_LOCALES && UI_LOCALES[lang] && GAME.locale !== lang) {
-    Object.assign(GAME.ui, UI_LOCALES[lang]);
-    GAME.locale = lang;
-    window.applyGameUi(GAME.ui);
-    document.querySelectorAll('.lang-opt').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-lang') === lang); });
-    try { localStorage.setItem('edgame_lang', lang); } catch(e) {}
-    return Promise.resolve();
-  }
-
-  if (!lang || lang === GAME.locale) return Promise.resolve();
-
-  var basePath = location.pathname.replace(/\\/[^\\/]*$/, '');
-  var url = basePath + '/locales/' + lang + '.json';
-
-  return fetch(url).then(function(r) {
-    if (!r.ok) return;
-    return r.json();
-  }).then(function(loc) {
-    if (!loc) return;
-
-    if (loc.meta) {
-      if (loc.meta.title) GAME.title = loc.meta.title;
-      if (loc.meta.subtitle) GAME.subtitle = loc.meta.subtitle;
-      if (loc.meta.description) GAME.description = loc.meta.description;
-      if (loc.meta.defaultPlayerName) GAME.defaultPlayerName = loc.meta.defaultPlayerName;
-    }
-    if (loc.characters && GAME.characters) {
-      Object.keys(loc.characters).forEach(function(cid) {
-        if (GAME.characters[cid]) GAME.characters[cid].name = loc.characters[cid];
-      });
-    }
-    if (loc.dialogs && typeof SCRIPT !== 'undefined') {
-      loc.dialogs.forEach(function(d) {
-        var idx = d[0], name = d[1], text = d[2];
-        if (SCRIPT[idx] && SCRIPT[idx].type === 'dialog') {
-          SCRIPT[idx].name = name;
-          SCRIPT[idx].text = text;
-        }
-      });
-    }
-    if (loc.minigames && GAME.minigames) {
-      Object.keys(loc.minigames).forEach(function(key) {
-        if (GAME.minigames[key]) GAME.minigames[key] = loc.minigames[key];
-      });
-    }
-    if (loc.endScreen && GAME.endScreen && loc.endScreen.mechanics) GAME.endScreen.mechanics = loc.endScreen.mechanics;
-    if (loc.ui) Object.assign(GAME.ui, loc.ui);
-    GAME.locale = loc.locale || lang;
-
-    var el;
-    el = document.getElementById('title-text');
-    if (el && loc.meta && loc.meta.title) el.textContent = loc.meta.title;
-    el = document.getElementById('subtitle-text');
-    if (el && loc.meta && loc.meta.subtitle) el.textContent = loc.meta.subtitle;
-    el = document.getElementById('desc-text');
-    if (el && loc.meta && loc.meta.description) el.textContent = loc.meta.description;
-    if (window.applyGameUi && loc.ui) window.applyGameUi(loc.ui);
-    else {
-      el = document.getElementById('name-label');
-      if (el && loc.ui && loc.ui.nameLabel) el.textContent = loc.ui.nameLabel;
-      el = document.getElementById('player-name-input');
-      if (el && loc.ui && loc.ui.namePlaceholder) el.placeholder = loc.ui.namePlaceholder;
-      el = document.getElementById('start-btn');
-      if (el && loc.ui && loc.ui.startGame) el.textContent = loc.ui.startGame;
-      el = document.getElementById('start-hint');
-      if (el && loc.ui) el.textContent = (loc.ui.startHint || '') + ' \\u00B7 ' + (GAME.totalChapters || '') + ' ' + (loc.ui.chapters || '');
-      el = document.getElementById('dialog-next');
-      if (el && loc.ui && loc.ui.clickToContinue) el.textContent = loc.ui.clickToContinue;
-    }
-    document.documentElement.lang = loc.ui && loc.ui.lang ? loc.ui.lang : lang;
-    document.querySelectorAll('.lang-opt').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-lang') === lang); });
-    try { localStorage.setItem('edgame_lang', lang); } catch(e) {}
-  }).catch(function() {});
-})();
-
-// Wire language switcher buttons and set active state
-(function() {
-  function wire() {
-    document.querySelectorAll('.lang-opt').forEach(function(btn) {
-      var l = btn.getAttribute('data-lang');
-      btn.addEventListener('click', function() { if (window.setGameLocale) setGameLocale(l); });
-      if (typeof GAME !== 'undefined' && GAME.locale === l) btn.classList.add('active');
-    });
-  }
-  if (typeof GAME !== 'undefined') wire();
-  else document.addEventListener('DOMContentLoaded', wire);
+  window.setGameLocale();
+  return Promise.resolve();
 })();
 """

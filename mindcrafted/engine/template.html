@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>{{ title }} — {{ subtitle }}</title>
 <style>
-@font-face{font-family:'PixelZH';src:url('/assets/ZhengQingKeNanBeiCiGongPuSongTi-2.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Pixelify Sans';src:url('/assets/fonts/PixelifySans.ttf') format('truetype');font-weight:400 700;font-display:swap}
 *{margin:0;padding:0;box-sizing:border-box}
 html{height:100%;min-height:100dvh;-webkit-text-size-adjust:100%}
 ::-webkit-scrollbar{width:4px}
@@ -14,7 +14,7 @@ html{height:100%;min-height:100dvh;-webkit-text-size-adjust:100%}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:4px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.25)}
 *{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent}
-body{background:{{ theme.bg }};display:flex;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;font-family:'PixelZH','Courier New',monospace;overflow:hidden}
+body{background:{{ theme.bg }};display:flex;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;font-family:'Pixelify Sans','Courier New',monospace;overflow:hidden}
 #game-container{position:relative;width:768px;height:576px;border:3px solid {{ theme.border }};border-radius:12px;overflow:hidden;background:rgba(17, 13, 32, 0.18);backdrop-filter:blur(24px) saturate(1.3);-webkit-backdrop-filter:blur(24px) saturate(1.3);box-shadow:0 4px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 40px {{ theme.glow }};z-index:10}
 canvas#main{width:768px;height:576px;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 #ui-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
@@ -27,7 +27,7 @@ canvas#main{width:768px;height:576px;image-rendering:pixelated;image-rendering:c
 .char-wrapper.speaking .char-name-tag{opacity:1}
 #dialog-click-area{position:absolute;bottom:0;left:0;right:0;height:180px;pointer-events:auto;cursor:pointer;z-index:6}
 #dialog-box{position:absolute;bottom:20px;left:20px;right:20px;background:{{ theme.dialogBg }};border:2px solid {{ theme.dialogBorder }};border-radius:12px;padding:16px 20px 14px;pointer-events:auto;display:none;min-height:120px;z-index:7;cursor:pointer;box-shadow:0 0 20px {{ theme.glow }};backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-#dialog-name{color:{{ theme.highlight }};font-size:14px;font-weight:bold;margin-bottom:6px;letter-spacing:1px;font-family:'PixelZH',system-ui,-apple-system,sans-serif}
+#dialog-name{color:{{ theme.highlight }};font-size:14px;font-weight:bold;margin-bottom:6px;letter-spacing:1px;font-family:'Pixelify Sans',system-ui,-apple-system,sans-serif}
 #dialog-text{color:{{ theme.text }};font-size:13px;line-height:1.6;min-height:48px}
 #dialog-next{position:absolute;bottom:10px;right:16px;color:{{ theme.accent }};font-size:11px;animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -61,7 +61,7 @@ canvas#main{width:768px;height:576px;image-rendering:pixelated;image-rendering:c
 #player-name-input::placeholder{color:{{ theme.muted }};font-size:12px}
 #mini-game-overlay{background:rgba(10, 8, 16, 0.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:15;display:none;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:16px 24px;justify-content:flex-start}
 #mini-game-overlay>*{max-width:100%;box-sizing:border-box}
-#mini-game-overlay,#mini-game-overlay *{font-family:'PixelZH','Courier New',monospace}
+#mini-game-overlay,#mini-game-overlay *{font-family:'Pixelify Sans','Courier New',monospace}
 #mini-game-overlay div,#mini-game-overlay p,#mini-game-overlay span{word-wrap:break-word;overflow-wrap:break-word}
 #particles-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:16}
 #audio-controls{position:absolute;bottom:16px;left:16px;z-index:25;display:flex;gap:6px;pointer-events:auto}
@@ -170,11 +170,23 @@ canvas#main{width:768px;height:576px;image-rendering:pixelated;image-rendering:c
 #share-toast.visible{opacity:1}
 #title-screen .share-link{margin-top:12px;font-size:11px;color:{{ theme.muted }};cursor:pointer;text-decoration:underline;transition:color 0.2s}
 #title-screen .share-link:hover{color:{{ theme.accent }}}
-.lang-switcher .lang-opt{transition:border-color 0.2s,color 0.2s,background 0.2s}
-.lang-switcher .lang-opt:hover{border-color:{{ theme.accent }};color:{{ theme.highlight }};background:rgba(255,255,255,0.06)}
-.lang-switcher .lang-opt.active{border-color:{{ theme.accent }};color:{{ theme.highlight }};background:rgba(255,255,255,0.08)}
 html,body{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
 input,textarea{-webkit-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}
+/* Pixel-art skin: crisp edges, stepped borders and tactile controls. */
+body{image-rendering:pixelated;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:8px 8px}
+#game-container{border-radius:0;background:{{ theme.bg }};backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:8px 8px 0 rgba(0,0,0,.28),0 0 0 4px rgba(0,0,0,.28),0 0 28px {{ theme.glow }} }
+#dialog-box,#title-screen,#mini-game-overlay,#chapter-transition{backdrop-filter:none;-webkit-backdrop-filter:none}
+#dialog-box{border-radius:0;box-shadow:6px 6px 0 rgba(0,0,0,.28)}
+#title-screen .start-btn,.mg-btn,.audio-btn,#share-btn,.share-opt,#share-close{border-radius:0;box-shadow:4px 4px 0 rgba(0,0,0,.28)}
+#title-screen .start-btn:hover,.mg-btn:hover,.audio-btn:hover,#share-btn:hover,.share-opt:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 rgba(0,0,0,.3)}
+#title-screen .start-btn:active,.mg-btn:active,.audio-btn:active,#share-btn:active,.share-opt:active{transform:translate(3px,3px);box-shadow:1px 1px 0 rgba(0,0,0,.3)}
+.match-card,.formula-target,.formula-slot,.formula-piece,.sort-bucket,.search-area,.trial-info,.brain-region,.discovery-card,.seq-timeline,.seq-slot,.resource-card,.pattern-cell,.collection-item,.decision-card,.nav-node{border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+#mini-game-overlay *{border-radius:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+#xp-track{border-radius:0;border:1px solid {{ theme.border }};height:8px}
+#xp-fill{border-radius:0;background:repeating-linear-gradient(135deg,{{ theme.accent }} 0 6px,{{ theme.success }} 6px 12px)}
+#share-modal-inner{border-radius:0;box-shadow:6px 6px 0 rgba(0,0,0,.3)}
+#share-toast{border-radius:0}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges}
 </style>
 <script>
 (function(){
@@ -191,18 +203,18 @@ input,textarea{-webkit-user-select:text;-moz-user-select:text;-ms-user-select:te
 <body>
 <canvas id="grain-noise" style="position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;mix-blend-mode:soft-light;opacity:0.55" aria-hidden="true"></canvas>
 <a id="back-to-course" href="../..">← {{ ui.backToCourse }}</a>
-<button type="button" id="share-btn" onclick="window.openShareModal && window.openShareModal()" aria-label="{{ ui.shareGame }}">🔗 {{ ui.shareGame }}</button>
+<button type="button" id="share-btn" onclick="window.openShareModal && window.openShareModal()" aria-label="{{ ui.shareGame }}">{{ ui.shareGame }}</button>
 <div id="share-modal" role="dialog" aria-label="{{ ui.shareGame }}">
   <div id="share-modal-inner">
     <h3>{{ ui.shareGame }}</h3>
     <div class="share-options">
-      <button type="button" class="share-opt" data-action="copy" title="{{ ui.shareCopyLink }}">📋 {{ ui.shareCopyLink }}</button>
-      <button type="button" class="share-opt" data-action="wechat" title="{{ ui.shareWeChat }}">💬 {{ ui.shareWeChat }}</button>
-      <button type="button" class="share-opt" data-action="xiaohongshu" title="{{ ui.shareXiaohongshu }}">📕 {{ ui.shareXiaohongshu }}</button>
+      <button type="button" class="share-opt" data-action="copy" title="{{ ui.shareCopyLink }}">{{ ui.shareCopyLink }}</button>
+      <button type="button" class="share-opt" data-action="wechat" title="{{ ui.shareWeChat }}">{{ ui.shareWeChat }}</button>
+      <button type="button" class="share-opt" data-action="xiaohongshu" title="{{ ui.shareXiaohongshu }}">{{ ui.shareXiaohongshu }}</button>
       <button type="button" class="share-opt" data-action="linkedin" title="{{ ui.shareLinkedIn }}">in {{ ui.shareLinkedIn }}</button>
       <button type="button" class="share-opt" data-action="twitter" title="{{ ui.shareTwitter }}">𝕏 {{ ui.shareTwitter }}</button>
       <button type="button" class="share-opt" data-action="facebook" title="{{ ui.shareFacebook }}">f {{ ui.shareFacebook }}</button>
-      <button type="button" class="share-opt" data-action="instagram" title="{{ ui.shareInstagram }}">📷 {{ ui.shareInstagram }}</button>
+      <button type="button" class="share-opt" data-action="instagram" title="{{ ui.shareInstagram }}">{{ ui.shareInstagram }}</button>
     </div>
     <button type="button" id="share-close">×</button>
   </div>
@@ -259,6 +271,7 @@ input,textarea{-webkit-user-select:text;-moz-user-select:text;-ms-user-select:te
 </script>
 <script>window.UI_LOCALES = {{ ui_locales_json | safe }};</script>
 <script>
+{{ bkt_js }}
 {{ engine_js }}
 {{ pixel_art_js }}
 {{ minigames_js }}

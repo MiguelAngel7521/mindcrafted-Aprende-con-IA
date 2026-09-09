@@ -79,8 +79,6 @@ import json
 import os
 import re
 import shutil
-import socket
-import subprocess
 import sys
 import time
 import uuid
@@ -113,6 +111,7 @@ COURSES_DIR = INSTALL_ROOT / "courses"
 ASSETS_DIR = INSTALL_ROOT / "assets"
 AUDIO_DIR = ASSETS_DIR / "audio"
 JOBS_DIR = INSTALL_ROOT / "jobs"
+REPORTS_DIR = INSTALL_ROOT / "reports"
 STATIC_DIR = PACKAGE_DIR / "static"
 ENGINE_DIR = PACKAGE_DIR / "engine"
 REGISTRY = INSTALL_ROOT / "courses.json"
@@ -126,78 +125,6 @@ API_KEY      = (os.environ.get("API_KEY") or "").strip()
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://openrouter.ai/api/v1").strip()
 MODEL        = os.environ.get("MODEL", "google/gemini-3-flash-preview").strip()
 
-# Servidor de estado del motor Node (puede iniciarse junto con este servidor)
-ENGINE_STATE_URL = os.environ.get("ENGINE_STATE_URL", "http://127.0.0.1:3100").rstrip("/")
-
-# Auto-spawn bundled node/ when nothing is listening (e.g. pip install without cloning).
-# Set MINDCRAFTED_ENGINE_STATE_AUTO=0 to disable and run `node server.js` yourself.
-_embedded_node_proc: subprocess.Popen | None = None
-
-
-def _engine_state_port() -> int:
-    u = urlparse(ENGINE_STATE_URL)
-    if u.port:
-        return int(u.port)
-    return 3100
-
-
-def _tcp_port_in_use(host: str, port: int) -> bool:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        s.settimeout(0.25)
-        return s.connect_ex((host, port)) == 0
-    except OSError:
-        return False
-    finally:
-        s.close()
-
-
-def _maybe_start_embedded_node() -> None:
-    """If bundled ``mindcrafted/node`` exists and the engine-state HTTP service is down, start it."""
-    global _embedded_node_proc
-
-    flag = (os.environ.get("MINDCRAFTED_ENGINE_STATE_AUTO") or "1").strip().lower()
-    if flag in ("0", "false", "no", "off"):
-        return
-    nd = PACKAGE_DIR / "node"
-    if not (nd / "server.js").exists():
-        return
-    host = urlparse(ENGINE_STATE_URL).hostname or "127.0.0.1"
-    port = _engine_state_port()
-    if _tcp_port_in_use(host, port):
-        return
-    node_exe = shutil.which("node")
-    if not node_exe:
-        print("[AVISO] No se encontró Node.js en PATH; instala Node 18+ o usa MINDCRAFTED_ENGINE_STATE_AUTO=0 si ejecutas el servicio de estado por separado.", flush=True)
-        return
-    env = {**os.environ, "PORT": str(port)}
-    try:
-        _embedded_node_proc = subprocess.Popen(
-            [node_exe, "server.js"],
-            cwd=str(nd),
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-        )
-        print(f"[MindCrafted] Servicio de estado integrado iniciado en el puerto {port}", flush=True)
-    except Exception as exc:
-        print(f"[AVISO] No se pudo iniciar el servicio de estado integrado de Node: {exc}", flush=True)
-
-
-def _stop_embedded_node() -> None:
-    global _embedded_node_proc
-    if _embedded_node_proc is None:
-        return
-    try:
-        _embedded_node_proc.terminate()
-        _embedded_node_proc.wait(timeout=5)
-    except Exception:
-        try:
-            _embedded_node_proc.kill()
-        except Exception:
-            pass
-    _embedded_node_proc = None
-
 # ── Themes (must match generator/assembler.py) ──────────────────────────────
 THEMES = [
     "pink-cute", "ocean-dream", "forest-sage", "sunset-warm", "galaxy-purple",
@@ -208,6 +135,9 @@ THEMES = [
 ]
 
 ALLOWED_LOCALES = frozenset({"es"})
+MAX_MARKDOWN_CHARS = 300_000
+MAX_GAME_CHUNKS = 24
+MAX_CHUNK_CHARS = 60_000
 
 # ── Logging filter ───────────────────────────────────────────────────────────
 import logging as _logging
@@ -223,16 +153,33 @@ _logging.getLogger("uvicorn.access").addFilter(_PollFilter())
 
 # ── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(title="MindCrafted")
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get(
+        "MINDCRAFTED_CORS_ORIGINS",
+        "http://localhost:8000,http://127.0.0.1:8000",
+    ).split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    return response
+
 @app.on_event("startup")
 async def _startup():
-    _maybe_start_embedded_node()
     _prune_registry()
     if not API_KEY:
         print("[AVISO] API_KEY no está configurada. Agrégala a .env para habilitar la generación.", flush=True)
@@ -241,7 +188,6 @@ async def _startup():
 @app.on_event("shutdown")
 async def _shutdown():
     global _ai_client
-    _stop_embedded_node()
     if _ai_client:
         try: await _ai_client.aclose()
         except Exception: pass
@@ -431,6 +377,74 @@ def _safe_chunk_id(s: str) -> str:
     if not re.match(r"^[a-zA-Z0-9_.-]+$", s):
         raise HTTPException(400, "El identificador de la lección no es válido")
     return s
+
+
+def _safe_job_id(s: str) -> str:
+    if not re.fullmatch(r"[a-f0-9]{10}", s or ""):
+        raise HTTPException(400, "El identificador de la tarea no es válido")
+    return s
+
+
+def _validate_ai_base_url(value: str) -> str:
+    if not isinstance(value, str):
+        raise HTTPException(400, "La URL base de IA no es válida")
+    value = value.strip().rstrip("/")
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+        raise HTTPException(400, "La URL base de IA debe ser una URL HTTP(S) válida y sin credenciales")
+    return value
+
+
+def _validate_generation_content(content: object) -> dict:
+    if not isinstance(content, dict):
+        raise HTTPException(400, "El contenido del curso no es válido")
+    course = content.get("course")
+    chunks = content.get("chunks")
+    if not isinstance(course, dict) or not isinstance(chunks, list):
+        raise HTTPException(400, "La estructura del curso no es válida")
+    title = course.get("title")
+    if not isinstance(title, str) or not title.strip():
+        raise HTTPException(400, "El título del curso es obligatorio")
+    if len(title) > 200:
+        raise HTTPException(400, "El título del curso es demasiado largo")
+    if not isinstance(course.get("subject", ""), str) or len(course.get("subject", "")) > 200:
+        raise HTTPException(400, "La materia no es válida")
+    if course.get('gameplay', 'aventura') not in ('aventura', 'practica'):
+        raise HTTPException(400, 'El estilo de juego no es válido')
+    if course.get('difficulty', 'normal') not in ('normal', 'calm', 'study'):
+        raise HTTPException(400, 'El ritmo no es válido')
+    if not chunks:
+        raise HTTPException(400, "No se proporcionaron lecciones. Primero analiza el contenido.")
+    if len(chunks) > MAX_GAME_CHUNKS:
+        raise HTTPException(400, f"Un curso puede tener como máximo {MAX_GAME_CHUNKS} lecciones")
+    total_chars = 0
+    chunk_ids: set[str] = set()
+    for index, chunk in enumerate(chunks, 1):
+        if not isinstance(chunk, dict):
+            raise HTTPException(400, f"La lección {index} no es válida")
+        chunk_title = chunk.get("title")
+        chunk_content = chunk.get("content", "")
+        if chunk.get('world', '') not in ('', 'technology', 'laboratory', 'mathematics', 'biology'):
+            raise HTTPException(400, 'El mundo de la lección no es válido')
+        raw_chunk_id = chunk.get("id")
+        if not isinstance(raw_chunk_id, str):
+            raise HTTPException(400, f"La lección {index} necesita un identificador válido")
+        chunk_id = _safe_chunk_id(raw_chunk_id)
+        if chunk_id in chunk_ids:
+            raise HTTPException(400, f"El identificador de la lección {index} está duplicado")
+        chunk_ids.add(chunk_id)
+        if not isinstance(chunk_title, str) or not chunk_title.strip():
+            raise HTTPException(400, f"La lección {index} necesita un título")
+        if len(chunk_title) > 200:
+            raise HTTPException(400, f"El título de la lección {index} es demasiado largo")
+        if not isinstance(chunk_content, str):
+            raise HTTPException(400, f"El contenido de la lección {index} no es válido")
+        if len(chunk_content) > MAX_CHUNK_CHARS:
+            raise HTTPException(400, f"La lección {index} supera {MAX_CHUNK_CHARS:,} caracteres")
+        total_chars += len(chunk_content)
+    if total_chars > MAX_MARKDOWN_CHARS:
+        raise HTTPException(400, f"El curso supera {MAX_MARKDOWN_CHARS:,} caracteres")
+    return content
 
 
 # ── Registry (courses.json) ─────────────────────────────────────────────────
@@ -666,9 +680,21 @@ async def _run_generation(
             api_key=api_key, base_url=base_url, model=model,
         )
 
+        manifest_path = out_dir / "course-manifest.json"
+        if not manifest_path.exists():
+            raise RuntimeError("La generación terminó sin crear el manifiesto del curso")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        successful_games = [game for game in manifest.get("games", []) if game.get("status") == "success"]
+        if not successful_games:
+            raise RuntimeError("No se pudo generar ningún juego; revisa la configuración de IA y vuelve a intentar")
+
         _rlog("Proceso completado; registrando el curso…")
         _register_course()
-        job_mgr.done(jid, result={"course_id": course_id})
+        job_mgr.done(jid, result={"course_id": course_id,
+            "first_game": successful_games[0]["chunk_id"],
+            "boss_status": manifest.get('boss_status'),
+            "partial": len(successful_games) != len(manifest.get("games", [])),
+            "games": [{k: g.get(k) for k in ("chunk_id", "title", "status", "error", "world", "puzzle_count")} for g in manifest.get("games", [])]})
         _rlog("✅ ¡Listo! Abre el estudio para jugar tu curso.")
 
     except Exception as e:
@@ -687,12 +713,6 @@ async def _run_generation(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
-    p = STATIC_DIR / "index.html"
-    if p.exists():
-        return HTMLResponse(p.read_text(encoding="utf-8"))
-    return HTMLResponse("<meta http-equiv='refresh' content='0;url=/studio'>")
-
 @app.get("/studio", response_class=HTMLResponse)
 @app.get("/studio/", response_class=HTMLResponse)
 async def studio():
@@ -703,8 +723,21 @@ async def studio():
 
 @app.get("/play", response_class=HTMLResponse)
 @app.get("/play/", response_class=HTMLResponse)
-async def play_page():
+async def play_page(request: Request):
     player_path = ENGINE_DIR / "player.html"
+    if request.query_params.get("course") and request.query_params.get("game"):
+        course_id = _safe_course_id(request.query_params["course"])
+        chunk_id = _safe_chunk_id(request.query_params["game"])
+        package_path = COURSES_DIR / course_id / "games" / chunk_id / "game.pkg.json"
+        if package_path.exists():
+            try:
+                package = json.loads(package_path.read_text(encoding="utf-8"))
+                if package.get("config", {}).get("generationMode") == "aventura":
+                    player_path = ENGINE_DIR / "adventure" / "player.html"
+                elif package.get("config", {}).get("generationMode") == "practica":
+                    player_path = ENGINE_DIR / "practice" / "player.html"
+            except (ValueError, AttributeError):
+                raise HTTPException(500, "El paquete del juego no es válido")
     if not player_path.exists():
         raise HTTPException(404, "No se encontró el reproductor")
     return HTMLResponse(player_path.read_text(encoding="utf-8"))
@@ -744,37 +777,90 @@ async def delete_course(course_id: str):
 
 # ── Parse markdown ───────────────────────────────────────────────────────────
 
+async def _read_limited_upload(request: Request, max_bytes: int, label: str) -> bytes:
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > max_bytes:
+                raise HTTPException(413, f"{label} supera el límite de {max_bytes // (1024 * 1024)} MB")
+        except ValueError:
+            raise HTTPException(400, "La longitud del archivo no es válida")
+    data = await request.body()
+    if len(data) > max_bytes:
+        raise HTTPException(413, f"{label} supera el límite de {max_bytes // (1024 * 1024)} MB")
+    return data
+
 @app.post("/api/parse-md-text")
 async def parse_md_text(body: dict):
     md = body.get("markdown", "")
+    if not isinstance(md, str):
+        raise HTTPException(400, "El contenido Markdown no es válido")
     if not md.strip():
         raise HTTPException(400, "El contenido Markdown está vacío")
+    if len(md) > MAX_MARKDOWN_CHARS:
+        raise HTTPException(400, f"El contenido supera {MAX_MARKDOWN_CHARS:,} caracteres")
     return parse_markdown(md)
+
+
+@app.post("/api/import-pdf")
+async def import_pdf_document(request: Request, filename: str = "documento.pdf"):
+    """Recibe bytes PDF sin multipart y devuelve Markdown listo para revisar."""
+    from .pdf_import import MAX_PDF_BYTES, PDFImportError, import_pdf
+
+    content_type = (request.headers.get("content-type") or "").split(";", 1)[0].lower()
+    if content_type not in {"application/pdf", "application/octet-stream"}:
+        raise HTTPException(415, "El tipo de archivo debe ser application/pdf")
+    data = await _read_limited_upload(request, MAX_PDF_BYTES, "El PDF")
+    try:
+        # pypdf is local and CPU-bound. Keeping it in the request avoids a
+        # Python 3.14 executor-shutdown deadlock observed in some deployments.
+        result = import_pdf(data, filename)
+    except PDFImportError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return result.as_dict()
+
+
+@app.post("/api/import-pptx")
+async def import_pptx_document(request: Request, filename: str = "presentacion.pptx"):
+    """Recibe una presentación PPTX y devuelve Markdown listo para revisar."""
+    from .pptx_import import MAX_PPTX_BYTES, PPTXImportError, import_pptx
+
+    content_type = (request.headers.get("content-type") or "").split(";", 1)[0].lower()
+    allowed = {
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/octet-stream",
+    }
+    if content_type not in allowed:
+        raise HTTPException(415, "El tipo de archivo debe corresponder a PowerPoint .pptx")
+    data = await _read_limited_upload(request, MAX_PPTX_BYTES, "La presentación")
+    try:
+        result = import_pptx(data, filename)
+    except PPTXImportError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return result.as_dict()
 
 
 # ── Generate course ──────────────────────────────────────────────────────────
 
 @app.post("/api/generate")
 async def generate(body: dict):
-    content = body.get("content", {})
+    content = _validate_generation_content(body.get("content", {}))
     locale = "es"
 
     # API key: from body (BYOK) or server env
     api_key = body.get("api_key") or API_KEY
-    base_url = body.get("base_url") or API_BASE_URL
+    base_url = _validate_ai_base_url(body.get("base_url") or API_BASE_URL)
     model = body.get("model") or MODEL
 
-    if not api_key:
+    if not isinstance(api_key, str) or not api_key.strip():
         raise HTTPException(400, "La clave de API es obligatoria. Configura API_KEY en .env o envíala en la solicitud.")
-    if not content.get("chunks"):
-        raise HTTPException(400, "No se proporcionaron lecciones. Primero analiza el contenido.")
-    if not content.get("course", {}).get("title"):
-        raise HTTPException(400, "El título del curso es obligatorio")
+    if not isinstance(model, str) or not model.strip() or len(model) > 200:
+        raise HTTPException(400, "El modelo de IA no es válido")
 
     course_id = _safe_course_id(body.get("course_id") or f"course-{int(time.time())}")
     resumed = (COURSES_DIR / course_id / "games").exists()
     jid = job_mgr.create(course_id)
-    status_msg = "Reanudando con pasos guardados…" if resumed else "Iniciando generación…"
+    status_msg = "Generando una nueva práctica para este curso…" if resumed else "Iniciando generación…"
     job_mgr.log(jid, json.dumps({"type": "info", "label": "status", "value": status_msg}))
 
     asyncio.create_task(_run_generation(
@@ -788,6 +874,7 @@ async def generate(body: dict):
 
 @app.get("/api/jobs/{jid}")
 async def get_job(jid: str):
+    jid = _safe_job_id(jid)
     j = job_mgr.get(jid)
     if not j:
         raise HTTPException(404, "No se encontró la tarea")
@@ -799,15 +886,21 @@ async def get_job(jid: str):
 @app.post("/api/ai-chat")
 async def ai_chat(body: dict):
     api_key = body.get("api_key") or API_KEY
-    base_url = body.get("base_url") or API_BASE_URL
+    base_url = _validate_ai_base_url(body.get("base_url") or API_BASE_URL)
     model = body.get("model") or MODEL
     messages = body.get("messages", [])
     max_tokens = body.get("max_tokens", 1024)
 
-    if not api_key:
+    if not isinstance(api_key, str) or not api_key.strip():
         raise HTTPException(400, "La clave de API es obligatoria")
-    if not messages:
+    if not isinstance(messages, list) or not messages:
         raise HTTPException(400, "Los mensajes son obligatorios")
+    if len(messages) > 20 or sum(len(str(message.get("content", ""))) for message in messages if isinstance(message, dict)) > 100_000:
+        raise HTTPException(400, "Los mensajes superan el límite permitido")
+    if not isinstance(model, str) or not model.strip() or len(model) > 200:
+        raise HTTPException(400, "El modelo de IA no es válido")
+    if not isinstance(max_tokens, int) or not 1 <= max_tokens <= 16_384:
+        raise HTTPException(400, "max_tokens debe estar entre 1 y 16384")
 
     client = _get_ai_client()
     url = base_url.rstrip("/") + "/chat/completions"
@@ -830,6 +923,34 @@ async def ai_chat(body: dict):
         raise
     except Exception as e:
         raise HTTPException(500, f"Error en la solicitud a la IA: {type(e).__name__}: {e}")
+
+
+@app.post("/api/report-minigame-error", status_code=201)
+async def report_minigame_error(body: dict):
+    """Guarda reportes locales del jugador para poder auditar juegos generados."""
+    course_id = _safe_course_id(str(body.get("course_id", "")))
+    chunk_id = _safe_chunk_id(str(body.get("chunk_id", "")))
+    if not (COURSES_DIR / course_id / "games" / chunk_id).is_dir():
+        raise HTTPException(404, "No se encontró el juego reportado")
+
+    minigame_type = str(body.get("minigame_type", "")).strip()[:100]
+    error = str(body.get("error", "")).strip()[:2_000]
+    message = str(body.get("message", "")).strip()[:1_000]
+    if not error and not message:
+        message = "Reporte sin descripción"
+    report = {
+        "id": uuid.uuid4().hex,
+        "course_id": course_id,
+        "chunk_id": chunk_id,
+        "minigame_type": minigame_type,
+        "error": error,
+        "message": message,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    target = REPORTS_DIR / f"{report['id']}.json"
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"ok": True, "report_id": report["id"]}
 
 
 # ── Game player ──────────────────────────────────────────────────────────────
@@ -857,60 +978,19 @@ async def get_game_package(course_id: str, chunk_id: str):
     pkg["config"]["courseId"] = course_id
     pkg["config"]["chunkId"] = chunk_id
 
-    # Inject next game URL
-    games_dir = game_dir.parent
-    if games_dir.is_dir():
-        siblings = sorted(p.name for p in games_dir.iterdir() if p.is_dir())
-        try:
+    # Manifest order preserves custom IDs and excludes failed lessons.
+    manifest_path = game_dir.parent.parent / "course-manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        siblings = [g["chunk_id"] for g in manifest.get("games", []) if g.get("status") == "success"]
+        pkg["config"].pop("nextGameUrl", None)
+        if chunk_id in siblings:
             idx = siblings.index(chunk_id)
             if idx + 1 < len(siblings):
-                next_chunk = siblings[idx + 1]
+                next_chunk = _safe_chunk_id(siblings[idx + 1])
                 pkg["config"]["nextGameUrl"] = f"/play?course={course_id}&game={next_chunk}"
-        except ValueError:
-            pass
 
     return pkg
-
-@app.post("/api/play/{course_id}/{chunk_id}/state")
-async def play_state_proxy(request: Request, course_id: str, chunk_id: str):
-    course_id = _safe_course_id(course_id)
-    chunk_id = _safe_chunk_id(chunk_id)
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(400, "El contenido JSON no es válido")
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(f"{ENGINE_STATE_URL}/state", json=body)
-        return JSONResponse(
-            status_code=r.status_code,
-            content=r.json() if r.headers.get("content-type", "").startswith("application/json") else {"error": r.text},
-        )
-    except httpx.ConnectError:
-        raise HTTPException(503, "El servicio de estado del motor no está disponible; inícialo con: cd node && node server.js")
-    except Exception as e:
-        raise HTTPException(502, str(e))
-
-@app.post("/api/play/{course_id}/{chunk_id}/next")
-async def play_next_proxy(request: Request, course_id: str, chunk_id: str):
-    course_id = _safe_course_id(course_id)
-    chunk_id = _safe_chunk_id(chunk_id)
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(400, "El contenido JSON no es válido")
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(f"{ENGINE_STATE_URL}/next", json=body)
-        return JSONResponse(
-            status_code=r.status_code,
-            content=r.json() if r.headers.get("content-type", "").startswith("application/json") else {"error": r.text},
-        )
-    except httpx.ConnectError:
-        raise HTTPException(503, "El servicio de estado del motor no está disponible")
-    except Exception as e:
-        raise HTTPException(502, str(e))
-
 
 # ── Config info endpoint ──────────────────────────────────────────────────────
 @app.get("/api/config")
@@ -935,7 +1015,3 @@ if ASSETS_DIR.exists():
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-readme_dir = PACKAGE_DIR / "readme"
-if readme_dir.exists():
-    app.mount("/readme", StaticFiles(directory=str(readme_dir)), name="readme")

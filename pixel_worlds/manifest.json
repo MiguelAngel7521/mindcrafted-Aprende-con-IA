@@ -1,0 +1,638 @@
+{
+  "assets": [
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "terrain-laboratory",
+      "image": "art/exports/terrain-laboratory.png",
+      "source": "art/source/terrain-laboratory.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 256
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "terrain-mathematics",
+      "image": "art/exports/terrain-mathematics.png",
+      "source": "art/source/terrain-mathematics.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 256
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "terrain-biology",
+      "image": "art/exports/terrain-biology.png",
+      "source": "art/source/terrain-biology.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 256
+    },
+    {
+      "frameDuration": 160,
+      "frames": 6,
+      "height": 112,
+      "id": "lab-reactor",
+      "image": "art/exports/lab-reactor.png",
+      "sheet": "art/exports/lab-reactor-sheet.png",
+      "source": "art/source/lab-reactor.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          6
+        ]
+      ],
+      "width": 80
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 72,
+      "id": "lab-console",
+      "image": "art/exports/lab-console.png",
+      "sheet": "art/exports/lab-console-sheet.png",
+      "source": "art/source/lab-console.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 96
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 72,
+      "id": "lab-workbench",
+      "image": "art/exports/lab-workbench.png",
+      "source": "art/source/lab-workbench.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 112
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 48,
+      "id": "lab-battery",
+      "image": "art/exports/lab-battery.png",
+      "source": "art/source/lab-battery.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 40
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 80,
+      "id": "lab-lamp",
+      "image": "art/exports/lab-lamp.png",
+      "sheet": "art/exports/lab-lamp-sheet.png",
+      "source": "art/source/lab-lamp.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 48
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "lab-coil",
+      "image": "art/exports/lab-coil.png",
+      "source": "art/source/lab-coil.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 64
+    },
+    {
+      "frameDuration": 160,
+      "frames": 6,
+      "height": 96,
+      "id": "math-balance",
+      "image": "art/exports/math-balance.png",
+      "sheet": "art/exports/math-balance-sheet.png",
+      "source": "art/source/math-balance.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          6
+        ]
+      ],
+      "width": 112
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 80,
+      "id": "math-board",
+      "image": "art/exports/math-board.png",
+      "source": "art/source/math-board.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 128
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 112,
+      "id": "math-library",
+      "image": "art/exports/math-library.png",
+      "source": "art/source/math-library.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 96
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 80,
+      "id": "math-table",
+      "image": "art/exports/math-table.png",
+      "source": "art/source/math-table.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 112
+    },
+    {
+      "frameDuration": 160,
+      "frames": 6,
+      "height": 104,
+      "id": "math-orrery",
+      "image": "art/exports/math-orrery.png",
+      "sheet": "art/exports/math-orrery-sheet.png",
+      "source": "art/source/math-orrery.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          6
+        ]
+      ],
+      "width": 80
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 48,
+      "id": "math-crate",
+      "image": "art/exports/math-crate.png",
+      "source": "art/source/math-crate.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 48
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 128,
+      "id": "forest-oak",
+      "image": "art/exports/forest-oak.png",
+      "source": "art/source/forest-oak.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 112
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 128,
+      "id": "forest-pine",
+      "image": "art/exports/forest-pine.png",
+      "source": "art/source/forest-pine.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 80
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 48,
+      "id": "forest-fern",
+      "image": "art/exports/forest-fern.png",
+      "source": "art/source/forest-fern.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 64
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "forest-rock",
+      "image": "art/exports/forest-rock.png",
+      "source": "art/source/forest-rock.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 80
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 48,
+      "id": "forest-mushrooms",
+      "image": "art/exports/forest-mushrooms.png",
+      "source": "art/source/forest-mushrooms.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 48
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "forest-sign",
+      "image": "art/exports/forest-sign.png",
+      "source": "art/source/forest-sign.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 64
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 80,
+      "id": "forest-beehive",
+      "image": "art/exports/forest-beehive.png",
+      "sheet": "art/exports/forest-beehive-sheet.png",
+      "source": "art/source/forest-beehive.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 64
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 40,
+      "id": "forest-flower",
+      "image": "art/exports/forest-flower.png",
+      "sheet": "art/exports/forest-flower-sheet.png",
+      "source": "art/source/forest-flower.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 32
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "shared-planter",
+      "image": "art/exports/shared-planter.png",
+      "source": "art/source/shared-planter.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 48
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 112,
+      "id": "shared-door",
+      "image": "art/exports/shared-door.png",
+      "source": "art/source/shared-door.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 80
+    },
+    {
+      "frameDuration": 160,
+      "frames": 8,
+      "height": 48,
+      "id": "explorer",
+      "image": "art/exports/explorer.png",
+      "sheet": "art/exports/explorer-sheet.png",
+      "source": "art/source/explorer.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          2
+        ],
+        [
+          "walk",
+          3,
+          8
+        ]
+      ],
+      "width": 32
+    },
+    {
+      "frameDuration": 160,
+      "frames": 1,
+      "height": 64,
+      "id": "terrain-technology",
+      "image": "art/exports/terrain-technology.png",
+      "source": "art/source/terrain-technology.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          1
+        ]
+      ],
+      "width": 256
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 96,
+      "id": "tech-server",
+      "image": "art/exports/tech-server.png",
+      "sheet": "art/exports/tech-server-sheet.png",
+      "source": "art/source/tech-server.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 64
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 64,
+      "id": "tech-terminal",
+      "image": "art/exports/tech-terminal.png",
+      "sheet": "art/exports/tech-terminal-sheet.png",
+      "source": "art/source/tech-terminal.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 48
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 48,
+      "id": "tech-beacon",
+      "image": "art/exports/tech-beacon.png",
+      "sheet": "art/exports/tech-beacon-sheet.png",
+      "source": "art/source/tech-beacon.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 32
+    },
+    {
+      "frameDuration": 160,
+      "frames": 16,
+      "height": 48,
+      "id": "adventure-explorer",
+      "image": "art/exports/adventure-explorer.png",
+      "sheet": "art/exports/adventure-explorer-sheet.png",
+      "source": "art/source/adventure-explorer.aseprite",
+      "tags": [
+        [
+          "down",
+          1,
+          4
+        ],
+        [
+          "left",
+          5,
+          8
+        ],
+        [
+          "right",
+          9,
+          12
+        ],
+        [
+          "up",
+          13,
+          16
+        ]
+      ],
+      "width": 32
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 96,
+      "id": "adventure-boss-1",
+      "image": "art/exports/adventure-boss-1.png",
+      "sheet": "art/exports/adventure-boss-1-sheet.png",
+      "source": "art/source/adventure-boss-1.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 96
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 96,
+      "id": "adventure-boss-2",
+      "image": "art/exports/adventure-boss-2.png",
+      "sheet": "art/exports/adventure-boss-2-sheet.png",
+      "source": "art/source/adventure-boss-2.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 96
+    },
+    {
+      "frameDuration": 160,
+      "frames": 4,
+      "height": 96,
+      "id": "adventure-boss-3",
+      "image": "art/exports/adventure-boss-3.png",
+      "sheet": "art/exports/adventure-boss-3-sheet.png",
+      "source": "art/source/adventure-boss-3.aseprite",
+      "tags": [
+        [
+          "idle",
+          1,
+          4
+        ]
+      ],
+      "width": 96
+    }
+  ],
+  "height": 512,
+  "license": "AGPL-3.0-or-later",
+  "tileSize": 32,
+  "version": 1,
+  "width": 768,
+  "worlds": [
+    {
+      "accent": "#78ddd0",
+      "id": "laboratory",
+      "location": "Estación Aurora · Taller 01",
+      "map": "maps/laboratory.tmj",
+      "mechanic": "circuit",
+      "objective": "Relacionar voltaje, resistencia y corriente en un circuito de corriente continua ideal.",
+      "preview": "previews/laboratory.png",
+      "subject": "Física",
+      "subtitle": "Conecta ideas. Enciende posibilidades.",
+      "title": "El laboratorio de la luz"
+    },
+    {
+      "accent": "#ebc184",
+      "id": "mathematics",
+      "location": "Biblioteca Áurea · Sala 02",
+      "map": "maps/mathematics.tmj",
+      "mechanic": "balance",
+      "objective": "Resolver una ecuación lineal conservando la igualdad en ambos miembros.",
+      "preview": "previews/mathematics.png",
+      "subject": "Matemáticas",
+      "subtitle": "Cada cambio tiene dos lados.",
+      "title": "El taller del equilibrio"
+    },
+    {
+      "accent": "#b3d78a",
+      "id": "biology",
+      "location": "Reserva Niebla · Sendero 03",
+      "map": "maps/biology.tmj",
+      "mechanic": "ecosystem",
+      "objective": "Explorar cómo agua y polinización limitan la reproducción de plantas en un modelo didáctico.",
+      "preview": "previews/biology.png",
+      "subject": "Biología",
+      "subtitle": "Un mundo pequeño. Muchas conexiones.",
+      "title": "El bosque de los vínculos"
+    },
+    {
+      "id": "technology",
+      "title": "Nexo Digital",
+      "subject": "Tecnología",
+      "accent": "#65e5d1",
+      "subtitle": "Reconecta el conocimiento.",
+      "location": "Nexo · Centro de datos",
+      "objective": "Aplicar conceptos tecnológicos para restaurar estaciones y conexiones.",
+      "mechanic": "packet_route",
+      "map": "maps/technology.tmj",
+      "preview": "previews/technology.png"
+    }
+  ]
+}
