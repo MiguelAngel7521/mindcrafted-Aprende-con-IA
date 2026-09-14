@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MindCrafted · Mundo</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="/engine/world/style.css"></head>
+<body><header><a class="brand" href="/">M<span>✦</span> MindCrafted</a><span>APRENDER ES EXPLORAR</span><a href="/" id="back">← Mi curso</a></header>
+<main><div id="loading" role="status">Preparando tu expedición…</div><div id="app" hidden>
+<section class="intro"><div><p class="eyebrow">EXPEDICIÓN / <span id="region-name"></span></p><h1 id="title"></h1><p id="introduction"></p></div>
+<div class="progress"><strong id="progress">0 / 0</strong><span>DISTRITOS RESTAURADOS</span><span id="xp">0 XP</span></div></section>
+<div class="layout"><section class="viewport" aria-label="Mundo persistente">
+<div class="scene-bar"><span><i></i> EN EL MUNDO</span><span id="position"></span><button id="pause" type="button">Pausa · Esc</button></div>
+<div id="stage" tabindex="0" aria-label="Mundo. Flechas o WASD para caminar. E para interactuar. R reinicia el puzzle. H muestra una pista.">
+<canvas id="world" width="864" height="624" aria-label="Mapa, personaje y puzzles"></canvas>
+<div id="pause-note" hidden>En pausa · Esc para continuar</div>
+</div>
+<div class="interaction"><span id="interaction">Acércate a Luna para conversar.</span><button id="interact" class="primary" type="button">Interactuar · E</button></div>
+<section id="dialogue" class="dialogue" aria-label="Conversación" hidden><span class="portrait">L</span><div><strong id="speaker"></strong><p id="dialogue-text"></p></div><button id="advance" type="button">Continuar · E</button></section>
+<p id="feedback" role="status" aria-live="polite">Tu viaje comienza aquí.</p>
+<div class="controls"><div class="dpad" aria-label="Movimiento táctil"><button data-direction="up" aria-label="Mover arriba">↑</button><button data-direction="left" aria-label="Mover izquierda">←</button><button data-direction="down" aria-label="Mover abajo">↓</button><button data-direction="right" aria-label="Mover derecha">→</button></div><span>WASD / flechas: caminar<br>E: interactuar · R: reiniciar · H: pista</span><button id="reset">Reiniciar puzzle</button></div>
+</section><aside><p class="eyebrow">CUADERNO DE CAMPO</p><h2 id="quest-title">Una ciudad por reconectar</h2><p id="objective"></p><div id="missions" aria-label="Misiones"></div>
+<details id="rules" open><summary>Reglas del mundo</summary><div id="rule-list"></div></details><button id="hint">Consultar una pista · H</button>
+<div class="mastery"><p class="eyebrow">LO QUE ESTÁS APRENDIENDO</p><div id="mastery"></div></div><p id="inventory" class="note"></p><p class="note">Cada decisión cambia el mundo. Puedes equivocarte y volver a intentarlo.</p></aside></div>
+<section id="completion" hidden><p class="eyebrow">REGIÓN COMPLETADA</p><h2>La ciudad vuelve a conectar.</h2><p>Las rutas están activas y las compuertas abiertas. Luna recuerda lo que has conseguido.</p><a id="next" class="primary" href="/">Continuar el viaje →</a></section>
+</div></main><script src="/engine/bkt.js"></script><script src="/engine/world/core.js"></script><script src="/engine/world/campaign.js"></script><script src="/engine/world/runtime.js"></script></body></html>

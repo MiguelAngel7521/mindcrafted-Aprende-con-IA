@@ -158,26 +158,29 @@ def _line_fingerprint(line: str) -> str:
 
 
 def _remove_repeated_margins(pages: list[list[str]]) -> list[list[str]]:
-    if len(pages) < 3:
+    if len(pages) < 2:
         return pages
+    # Two pages provide less evidence: only inspect their outermost lines so
+    # adjacent lesson headings and repeated source facts remain intact.
+    margin_width = 1 if len(pages) == 2 else 2
     candidates: Counter[str] = Counter()
     for lines in pages:
         if len(lines) < 3:
             continue
-        for line in list(dict.fromkeys(lines[:2] + lines[-2:])):
+        for line in list(dict.fromkeys(lines[:margin_width] + lines[-margin_width:])):
             if len(line) <= 180:
                 candidates[_line_fingerprint(line)] += 1
-    threshold = max(3, math.ceil(len(pages) * 0.55))
+    threshold = 2 if len(pages) == 2 else max(3, math.ceil(len(pages) * 0.55))
     repeated = {line for line, count in candidates.items() if count >= threshold}
     result: list[list[str]] = []
     for lines in pages:
         if len(lines) < 3:
             result.append(lines)
             continue
-        last_margin = len(lines) - 2
+        last_margin = len(lines) - margin_width
         result.append([
             line for index, line in enumerate(lines)
-            if not ((index < 2 or index >= last_margin) and _line_fingerprint(line) in repeated)
+            if not ((index < margin_width or index >= last_margin) and _line_fingerprint(line) in repeated)
         ])
     return result
 

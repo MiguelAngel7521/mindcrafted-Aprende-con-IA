@@ -365,14 +365,14 @@ sys.stderr = StderrDispatcher(job_mgr, _REAL_STDERR)
 
 # ── Safety helpers ───────────────────────────────────────────────────────────
 def _safe_course_id(s: str) -> str:
-    if not s or ".." in s or "/" in s or "\\" in s:
+    if not isinstance(s, str) or not s or s == "." or len(s) > 128 or ".." in s or "/" in s or "\\" in s:
         raise HTTPException(400, "El identificador del curso no es válido")
     if not re.match(r"^[a-zA-Z0-9_.-]+$", s):
         raise HTTPException(400, "El identificador del curso no es válido")
     return s
 
 def _safe_chunk_id(s: str) -> str:
-    if not s or ".." in s or "/" in s or "\\" in s:
+    if not isinstance(s, str) or not s or s == "." or len(s) > 128 or ".." in s or "/" in s or "\\" in s:
         raise HTTPException(400, "El identificador de la lección no es válido")
     if not re.match(r"^[a-zA-Z0-9_.-]+$", s):
         raise HTTPException(400, "El identificador de la lección no es válido")
@@ -409,9 +409,9 @@ def _validate_generation_content(content: object) -> dict:
         raise HTTPException(400, "El título del curso es demasiado largo")
     if not isinstance(course.get("subject", ""), str) or len(course.get("subject", "")) > 200:
         raise HTTPException(400, "La materia no es válida")
-    if course.get('gameplay', 'aventura') not in ('aventura', 'practica'):
+    if course.get('gameplay', 'aventura') not in ('aventura', 'practica', 'world'):
         raise HTTPException(400, 'El estilo de juego no es válido')
-    if course.get('difficulty', 'normal') not in ('normal', 'calm', 'study'):
+    if course.get('difficulty', 'normal') not in ('normal', 'calm', 'study', 'hard'):
         raise HTTPException(400, 'El ritmo no es válido')
     if not chunks:
         raise HTTPException(400, "No se proporcionaron lecciones. Primero analiza el contenido.")
@@ -439,6 +439,8 @@ def _validate_generation_content(content: object) -> dict:
             raise HTTPException(400, f"El título de la lección {index} es demasiado largo")
         if not isinstance(chunk_content, str):
             raise HTTPException(400, f"El contenido de la lección {index} no es válido")
+        if course.get('gameplay', 'aventura') in ('aventura', 'world') and len(chunk_content.strip()) < 60:
+            raise HTTPException(400, f"La lección {index} necesita al menos 60 caracteres de material educativo")
         if len(chunk_content) > MAX_CHUNK_CHARS:
             raise HTTPException(400, f"La lección {index} supera {MAX_CHUNK_CHARS:,} caracteres")
         total_chars += len(chunk_content)
@@ -725,6 +727,10 @@ async def studio():
 @app.get("/play/", response_class=HTMLResponse)
 async def play_page(request: Request):
     player_path = ENGINE_DIR / "player.html"
+    if request.query_params.get("course") and not request.query_params.get("game"):
+        course_id = _safe_course_id(request.query_params["course"])
+        if (COURSES_DIR / course_id / "campaign" / "game.pkg.json").exists():
+            player_path = ENGINE_DIR / "world" / "player.html"
     if request.query_params.get("course") and request.query_params.get("game"):
         course_id = _safe_course_id(request.query_params["course"])
         chunk_id = _safe_chunk_id(request.query_params["game"])
@@ -732,7 +738,9 @@ async def play_page(request: Request):
         if package_path.exists():
             try:
                 package = json.loads(package_path.read_text(encoding="utf-8"))
-                if package.get("config", {}).get("generationMode") == "aventura":
+                if package.get("config", {}).get("generationMode") == "world":
+                    player_path = ENGINE_DIR / "world" / "player.html"
+                elif package.get("config", {}).get("generationMode") == "aventura":
                     player_path = ENGINE_DIR / "adventure" / "player.html"
                 elif package.get("config", {}).get("generationMode") == "practica":
                     player_path = ENGINE_DIR / "practice" / "player.html"
@@ -975,6 +983,10 @@ async def get_game_package(course_id: str, chunk_id: str):
 
     if "config" not in pkg:
         pkg["config"] = {}
+    if pkg["config"].get("generationMode") == "world" and (COURSES_DIR / course_id / "campaign" / "game.pkg.json").exists():
+        campaign = _read_campaign_package(course_id)
+        if any(r["id"] == chunk_id and r["worldHash"] == pkg["config"].get("worldHash") for r in campaign["campaign"]["regions"]):
+            return campaign
     pkg["config"]["courseId"] = course_id
     pkg["config"]["chunkId"] = chunk_id
 
@@ -991,6 +1003,48 @@ async def get_game_package(course_id: str, chunk_id: str):
                 pkg["config"]["nextGameUrl"] = f"/play?course={course_id}&game={next_chunk}"
 
     return pkg
+
+
+def _read_campaign_package(course_id: str):
+    path = COURSES_DIR / course_id / "campaign" / "game.pkg.json"
+    if not path.exists():
+        raise HTTPException(404, "No se encontró una campaña V2 para este curso")
+    try:
+        from .generator.world import schema_check
+        from .generator.world_campaign import campaign_hash
+        from .generator.world_schema import CAMPAIGN_SCHEMA
+        package = json.loads(path.read_text(encoding="utf-8"))
+        schema_check(package["campaign"], CAMPAIGN_SCHEMA)
+        if package["config"]["worldHash"] != campaign_hash(package["campaign"]):
+            raise ValueError("Hash de campaña inválido")
+        package["config"]["courseId"] = course_id
+        return package
+    except (ValueError, KeyError, TypeError) as error:
+        raise HTTPException(500, "El paquete de campaña no es válido") from error
+
+
+@app.get("/api/v2/campaigns/{course_id}/package")
+async def get_campaign_package(course_id: str):
+    return _read_campaign_package(_safe_course_id(course_id))
+
+
+@app.get("/api/v2/campaigns/{course_id}")
+async def get_campaign_manifest(course_id: str):
+    package = _read_campaign_package(_safe_course_id(course_id))
+    campaign = package["campaign"]
+    return {"format": campaign["format"], "version": campaign["version"], "id": course_id,
+            "title": campaign["title"], "hash": package["config"]["worldHash"],
+            "regions": [{"id": r["id"], "title": r["world"]["title"]} for r in campaign["regions"]]}
+
+
+@app.post("/api/v2/generate")
+async def generate_v2(body: dict):
+    from copy import deepcopy
+    body = deepcopy(body)
+    content = body.get("content")
+    if isinstance(content, dict) and isinstance(content.get("course"), dict):
+        content["course"]["gameplay"] = "world"
+    return await generate(body)
 
 # ── Config info endpoint ──────────────────────────────────────────────────────
 @app.get("/api/config")

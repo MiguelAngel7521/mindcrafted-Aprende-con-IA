@@ -2383,6 +2383,9 @@ async def generate_game(
     adventure: bool = True,
     world_override: str = '',
     difficulty: str = 'normal',
+    world_native: bool = True,
+    world_learning_context: dict | None = None,
+    world_boss: bool = False,
 ) -> str:
     """Generate a complete educational game from a topic.
 
@@ -2392,6 +2395,12 @@ async def generate_game(
 
     # El producto es monolingüe; el plan admite una reparación acotada.
     locale = "es"
+    if fast_mode and adventure and world_native:
+        from .world_pipeline import generate_campaign
+        return await generate_campaign(source_text if source_text is not None else topic, output_dir,
+                                       generate=_get_generate(), parse_json=_parse_json_robust,
+                                       chunk_id=chunk_id, title=forced_title or topic.splitlines()[0], difficulty=difficulty,
+                                       previous_context=world_learning_context, require_boss=world_boss)
     if fast_mode:
         return await _generate_fast_game(topic, output_dir, chunk_id=chunk_id, game_index=game_index, forced_title=forced_title, subject=subject, source_text=source_text, previous=exclude_mechanics, adventure=adventure, world_override=world_override, difficulty=difficulty)
 

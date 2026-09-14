@@ -622,7 +622,7 @@ function renderStructure(data) {
     <div class="fg"><label>Subtítulo</label><input type="text" id="cSubtitle" value="${escHtml(meta.subtitle || '')}"></div>
     <div class="fg"><label>Materia</label><input type="text" id="cSubject" value="${escHtml(meta.subject || '')}"></div>
     <div class="fg"><label>Nivel</label><input type="text" id="cLevel" value="${escHtml(meta.level || '')}"></div>
-    <div class="fg"><label>Ritmo de la aventura</label><select id="cDifficulty"><option value="normal">Normal</option><option value="calm">Tranquilo</option><option value="study">Estudio sin presión</option></select></div>
+    <div class="fg"><label>Ritmo de la aventura</label><select id="cDifficulty"><option value="normal">Normal</option><option value="calm">Tranquilo</option><option value="study">Estudio sin presión</option><option value="hard">Desafiante</option></select></div>
   `;
 
   document.getElementById('chunkList').innerHTML = chunks.map((c, i) => `
@@ -661,7 +661,7 @@ function collectContent() {
       subtitle: document.getElementById('cSubtitle')?.value || '',
       subject: document.getElementById('cSubject')?.value || '',
       level: document.getElementById('cLevel')?.value || '',
-      gameplay: 'aventura',
+      gameplay: 'world',
       difficulty: document.getElementById('cDifficulty')?.value || 'normal',
     },
     chunks,

@@ -1,5 +1,31 @@
 [
   {
+    "id": "course-1789346745180",
+    "title": "Introducción al aprendizaje automático",
+    "subtitle": "¿Qué es el aprendizaje automático? · Cómo funcionan las redes neuronales · Aplicaciones del aprendizaje automático",
+    "description": "El aprendizaje automático es un método de análisis de datos que automatiza la creación de modelos analíticos.",
+    "subject": "",
+    "level": "",
+    "estimated_time": "",
+    "learning_objectives": [],
+    "total_lessons": 0,
+    "created_at": "2026-09-13T20:45:47",
+    "tags": []
+  },
+  {
+    "id": "course-1789346625834",
+    "title": "Introducción al aprendizaje automático",
+    "subtitle": "¿Qué es el aprendizaje automático? · Cómo funcionan las redes neuronales · Aplicaciones del aprendizaje automático",
+    "description": "El aprendizaje automático es un método de análisis de datos que automatiza la creación de modelos analíticos.",
+    "subject": "",
+    "level": "",
+    "estimated_time": "",
+    "learning_objectives": [],
+    "total_lessons": 0,
+    "created_at": "2026-09-13T20:43:51",
+    "tags": []
+  },
+  {
     "id": "course-1788927433513",
     "title": "Introducción al aprendizaje automático",
     "subtitle": "¿Qué es el aprendizaje automático? · Cómo funcionan las redes neuronales · Aplicaciones del aprendizaje automático",

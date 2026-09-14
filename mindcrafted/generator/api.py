@@ -3,6 +3,7 @@
 # =============================================================================
 import asyncio
 import contextvars
+import hashlib
 import os
 import sys
 import time
@@ -22,15 +23,20 @@ _DEFAULT_MODEL = (
     or "google/gemini-3-flash-preview"
 )
 
+def _get_default_model() -> str:
+    return (
+        (os.environ.get("STUDIO_MODEL") or "").strip()
+        or (os.environ.get("MODEL") or "").strip()
+        or _DEFAULT_MODEL
+    )
+
+
 # Per-step model override: STUDIO_MODEL_<STEP> (e.g. STUDIO_MODEL_KNOWLEDGE, STUDIO_MODEL_SIM_DESIGN).
 # Step names: knowledge, dialog, pixel_icons, pixel_chars, pixel_backgrounds, cover_art,
 # sim_visual_objects, sim_design, sim_implement, sim_judge, sim_refine, review_batch, minigame_icons.
-def get_model_for_step(step: str) -> str:
-    key = f"STUDIO_MODEL_{step.upper()}"
-    return os.environ.get(
-        key,
-        os.environ.get("STUDIO_MODEL") or os.environ.get("MODEL") or _DEFAULT_MODEL,
-    )
+def get_model_for_step(step: str, model: str | None = None) -> str:
+    override = (os.environ.get(f"STUDIO_MODEL_{step.upper()}") or "").strip()
+    return override or (model or "").strip() or _get_default_model()
 
 _clients: dict[str, AsyncOpenAI] = {}
 _api_semaphore: asyncio.Semaphore | None = None
@@ -66,31 +72,29 @@ def _get_base_url() -> str:
         os.environ.get("STUDIO_AI_BASE_URL")
         or os.environ.get("API_BASE_URL")
         or "https://openrouter.ai/api/v1"
-    ).strip()
+    ).strip().rstrip("/")
 
 
 def _get_client(api_key: str | None = None, base_url: str | None = None) -> tuple[AsyncOpenAI, str]:
     """Returns (client, cache_key) so caller can invalidate on error."""
-    if api_key:
-        api_key = api_key.strip()
-        cache_key = f"{api_key[:8]}@{base_url or _get_base_url()}"
-    else:
-        cache_key = "__default__"
-        api_key = (
+    resolved_key = (api_key or "").strip()
+    if not resolved_key:
+        resolved_key = (
             (os.environ.get("OPENROUTER_API_KEY_studio") or "").strip()
             or (os.environ.get("OPENROUTER_API_KEY") or "").strip()
             or (os.environ.get("API_KEY") or "").strip()
         )
-        if not api_key:
+        if not resolved_key:
             raise RuntimeError(
                 "No API key in environment. Set API_KEY in .env (or OPENROUTER_API_KEY / "
                 "OPENROUTER_API_KEY_studio), or pass api_key from the Studio / CLI."
             )
-        base_url = _get_base_url()
 
-    resolved_url = (base_url or _get_base_url()).strip()
+    resolved_url = (base_url or "").strip().rstrip("/") or _get_base_url()
+    identity = f"{resolved_key}\0{resolved_url}".encode("utf-8")
+    cache_key = hashlib.sha256(identity).hexdigest()
     if cache_key not in _clients:
-        _clients[cache_key] = _make_client(api_key, resolved_url)
+        _clients[cache_key] = _make_client(resolved_key, resolved_url)
     return _clients[cache_key], cache_key
 
 
@@ -119,11 +123,11 @@ async def generate(
     base_url: str | None = None,
 ) -> str:
     """Call the AI API with streaming, concurrency control, retry logic.
-    When step= is set, model is taken from STUDIO_MODEL_<STEP> env (same api_key/base_url)."""
+    A non-empty step override takes priority over the explicit and global models."""
     if step:
-        model = get_model_for_step(step)
-    elif model is None:
-        model = os.environ.get("STUDIO_MODEL") or os.environ.get("MODEL") or _DEFAULT_MODEL
+        model = get_model_for_step(step, model)
+    else:
+        model = (model or "").strip() or _get_default_model()
     last_error: Exception | None = None
     sem = _get_semaphore()
 

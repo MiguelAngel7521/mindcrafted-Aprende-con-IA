@@ -1,0 +1,1263 @@
+{
+  "$defs": {
+    "Anchor": {
+      "additionalProperties": false,
+      "properties": {
+        "region": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Region",
+          "type": "string"
+        },
+        "anchorEntity": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Anchorentity",
+          "type": "string"
+        },
+        "offset": {
+          "$ref": "#/$defs/Point"
+        }
+      },
+      "required": [
+        "region",
+        "anchorEntity",
+        "offset"
+      ],
+      "title": "Anchor",
+      "type": "object"
+    },
+    "Block": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "id",
+        "kind",
+        "ruleId"
+      ],
+      "title": "Block",
+      "type": "object"
+    },
+    "Blocks": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "push_blocks",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "board": {
+          "items": {
+            "pattern": "^[.#]{4,10}$",
+            "type": "string"
+          },
+          "maxItems": 9,
+          "minItems": 4,
+          "title": "Board",
+          "type": "array"
+        },
+        "spawn": {
+          "$ref": "#/$defs/Point"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Blocks",
+          "type": "array"
+        },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/Goal"
+          },
+          "maxItems": 6,
+          "minItems": 2,
+          "title": "Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "board",
+        "spawn",
+        "blocks",
+        "goals"
+      ],
+      "title": "Blocks",
+      "type": "object"
+    },
+    "CampaignRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^(?!\\.{1,2}$)(?!.*\\.\\.)[a-zA-Z0-9_.-]{1,128}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "worldHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Worldhash",
+          "type": "string"
+        },
+        "sourceHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sourcehash",
+          "type": "string"
+        },
+        "world": {
+          "$ref": "#/$defs/WorldSpec"
+        }
+      },
+      "required": [
+        "id",
+        "worldHash",
+        "sourceHash",
+        "world"
+      ],
+      "title": "CampaignRegion",
+      "type": "object"
+    },
+    "Dialogue": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Trigger"
+        },
+        "speaker": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Speaker",
+          "type": "string"
+        },
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/Line"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Lines",
+          "type": "array"
+        },
+        "onComplete": {
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "maxItems": 8,
+          "title": "Oncomplete",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "trigger",
+        "speaker",
+        "lines",
+        "onComplete"
+      ],
+      "title": "Dialogue",
+      "type": "object"
+    },
+    "Difficulty": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "default": "normal",
+          "enum": [
+            "normal",
+            "calm",
+            "study",
+            "hard"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "minSolutionSteps": {
+          "maximum": 250,
+          "minimum": 1,
+          "title": "Minsolutionsteps",
+          "type": "integer"
+        },
+        "maxSolutionSteps": {
+          "maximum": 250,
+          "minimum": 1,
+          "title": "Maxsolutionsteps",
+          "type": "integer"
+        },
+        "randomSuccessProbabilityMax": {
+          "exclusiveMinimum": 0,
+          "maximum": 0.1,
+          "title": "Randomsuccessprobabilitymax",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minSolutionSteps",
+        "maxSolutionSteps",
+        "randomSuccessProbabilityMax"
+      ],
+      "title": "Difficulty",
+      "type": "object"
+    },
+    "Edge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target"
+      ],
+      "title": "Edge",
+      "type": "object"
+    },
+    "Effect": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "setFlag",
+            "startQuest"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "title": "Effect",
+      "type": "object"
+    },
+    "Entity": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "npc",
+            "console",
+            "switch",
+            "router",
+            "door",
+            "exit",
+            "goal"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "puzzleId": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Puzzleid"
+        },
+        "controlId": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Controlid"
+        },
+        "dialogueId": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dialogueid"
+        },
+        "requiresFlag": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requiresflag"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "id",
+        "type",
+        "label"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "Failure": {
+      "additionalProperties": false,
+      "properties": {
+        "autoReset": {
+          "const": true,
+          "title": "Autoreset",
+          "type": "boolean"
+        },
+        "hintAfterAttempts": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Hintafterattempts",
+          "type": "integer"
+        },
+        "worldEffect": {
+          "const": "power_loss",
+          "title": "Worldeffect",
+          "type": "string"
+        }
+      },
+      "required": [
+        "autoReset",
+        "hintAfterAttempts",
+        "worldEffect"
+      ],
+      "title": "Failure",
+      "type": "object"
+    },
+    "Goal": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "accepts": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Accepts",
+          "type": "array"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "id",
+        "label",
+        "accepts",
+        "ruleId"
+      ],
+      "title": "Goal",
+      "type": "object"
+    },
+    "Knowledge": {
+      "additionalProperties": false,
+      "properties": {
+        "concept": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Concept",
+          "type": "string"
+        },
+        "learning_action": {
+          "maxLength": 2000,
+          "minLength": 15,
+          "title": "Learning Action",
+          "type": "string"
+        },
+        "requiredRules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Requiredrules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "concept",
+        "learning_action",
+        "requiredRules"
+      ],
+      "title": "Knowledge",
+      "type": "object"
+    },
+    "Line": {
+      "additionalProperties": false,
+      "properties": {
+        "speaker": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Speaker",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "speaker",
+        "text"
+      ],
+      "title": "Line",
+      "type": "object"
+    },
+    "Network": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "route_network",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/NetworkNode"
+          },
+          "maxItems": 10,
+          "minItems": 3,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "maxItems": 24,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        },
+        "packets": {
+          "items": {
+            "$ref": "#/$defs/Packet"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Packets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "nodes",
+        "edges",
+        "packets"
+      ],
+      "title": "Network",
+      "type": "object"
+    },
+    "NetworkNode": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "capacity": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Capacity",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "capacity",
+        "ruleId"
+      ],
+      "title": "NetworkNode",
+      "type": "object"
+    },
+    "OrderRule": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Before",
+          "type": "string"
+        },
+        "after": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "After",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "before",
+        "after",
+        "ruleId"
+      ],
+      "title": "OrderRule",
+      "type": "object"
+    },
+    "Packet": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "amount": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Amount",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target",
+        "amount",
+        "ruleId"
+      ],
+      "title": "Packet",
+      "type": "object"
+    },
+    "Player": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "controllable": {
+          "const": true,
+          "title": "Controllable",
+          "type": "boolean"
+        },
+        "spawnRegion": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Spawnregion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "controllable",
+        "spawnRegion"
+      ],
+      "title": "Player",
+      "type": "object"
+    },
+    "Point": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point",
+      "type": "object"
+    },
+    "Puzzle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "knowledge": {
+          "$ref": "#/$defs/Knowledge"
+        },
+        "mechanics": {
+          "discriminator": {
+            "mapping": {
+              "push_blocks": "#/$defs/Blocks",
+              "route_network": "#/$defs/Network",
+              "switch_sequence": "#/$defs/Sequence"
+            },
+            "propertyName": "archetype"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Sequence"
+            },
+            {
+              "$ref": "#/$defs/Network"
+            },
+            {
+              "$ref": "#/$defs/Blocks"
+            }
+          ],
+          "title": "Mechanics"
+        },
+        "hint": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Hint",
+          "type": "string"
+        },
+        "introduction": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Introduction",
+          "type": "string"
+        },
+        "reflection": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Reflection",
+          "type": "string"
+        },
+        "role": {
+          "default": "challenge",
+          "enum": [
+            "challenge",
+            "boss"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "runtime": {
+          "const": "world",
+          "title": "Runtime",
+          "type": "string"
+        },
+        "archetype": {
+          "enum": [
+            "switch_sequence",
+            "route_network",
+            "push_blocks"
+          ],
+          "title": "Archetype",
+          "type": "string"
+        },
+        "mandatory": {
+          "const": true,
+          "title": "Mandatory",
+          "type": "boolean"
+        },
+        "resettable": {
+          "const": true,
+          "title": "Resettable",
+          "type": "boolean"
+        },
+        "world": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "success": {
+          "$ref": "#/$defs/Success"
+        },
+        "failure": {
+          "$ref": "#/$defs/Failure"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/Difficulty"
+        },
+        "prerequisites": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 24,
+          "title": "Prerequisites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "objective",
+        "knowledge",
+        "mechanics",
+        "hint",
+        "introduction",
+        "reflection",
+        "runtime",
+        "archetype",
+        "mandatory",
+        "resettable",
+        "world",
+        "success",
+        "failure",
+        "difficulty"
+      ],
+      "title": "Puzzle",
+      "type": "object"
+    },
+    "Quest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "puzzleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Puzzleid",
+          "type": "string"
+        },
+        "giver": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Giver",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "puzzleId",
+        "giver"
+      ],
+      "title": "Quest",
+      "type": "object"
+    },
+    "Region": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "width": {
+          "maximum": 100,
+          "minimum": 8,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "maximum": 30,
+          "minimum": 8,
+          "title": "Height",
+          "type": "integer"
+        },
+        "tiles": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "minItems": 8,
+          "title": "Tiles",
+          "type": "array"
+        },
+        "entities": {
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Entities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "width",
+        "height",
+        "tiles",
+        "entities"
+      ],
+      "title": "Region",
+      "type": "object"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "skill": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Skill",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "evidence": {
+          "maxLength": 2000,
+          "minLength": 15,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "skill",
+        "description",
+        "evidence"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "Sequence": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "switch_sequence",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "switches": {
+          "items": {
+            "$ref": "#/$defs/Switch"
+          },
+          "maxItems": 7,
+          "minItems": 4,
+          "title": "Switches",
+          "type": "array"
+        },
+        "constraints": {
+          "items": {
+            "$ref": "#/$defs/OrderRule"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Constraints",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "switches",
+        "constraints"
+      ],
+      "title": "Sequence",
+      "type": "object"
+    },
+    "Success": {
+      "additionalProperties": false,
+      "properties": {
+        "setFlags": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Setflags",
+          "type": "array"
+        },
+        "xp": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Xp",
+          "type": "integer"
+        },
+        "openEntity": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Openentity",
+          "type": "string"
+        },
+        "dialogue": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Dialogue",
+          "type": "string"
+        }
+      },
+      "required": [
+        "setFlags",
+        "xp",
+        "openEntity",
+        "dialogue"
+      ],
+      "title": "Success",
+      "type": "object"
+    },
+    "Switch": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Switch",
+      "type": "object"
+    },
+    "Trigger": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "enum": [
+            "entity.interacted",
+            "puzzle.solved"
+          ],
+          "title": "Event",
+          "type": "string"
+        },
+        "entityId": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entityid"
+        },
+        "puzzleId": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Puzzleid"
+        }
+      },
+      "required": [
+        "event"
+      ],
+      "title": "Trigger",
+      "type": "object"
+    },
+    "WorldSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 2,
+          "title": "Version",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "introduction": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Introduction",
+          "type": "string"
+        },
+        "priorSkills": {
+          "default": [],
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 24,
+          "title": "Priorskills",
+          "type": "array"
+        },
+        "player": {
+          "$ref": "#/$defs/Player"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/Region"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Regions",
+          "type": "array"
+        },
+        "puzzles": {
+          "items": {
+            "$ref": "#/$defs/Puzzle"
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "Puzzles",
+          "type": "array"
+        },
+        "quests": {
+          "items": {
+            "$ref": "#/$defs/Quest"
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "Quests",
+          "type": "array"
+        },
+        "dialogues": {
+          "items": {
+            "$ref": "#/$defs/Dialogue"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Dialogues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "title",
+        "introduction",
+        "player",
+        "regions",
+        "puzzles",
+        "quests",
+        "dialogues"
+      ],
+      "title": "WorldSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "mindcrafted-campaign",
+      "title": "Format",
+      "type": "string"
+    },
+    "version": {
+      "const": 2,
+      "title": "Version",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^(?!\\.{1,2}$)(?!.*\\.\\.)[a-zA-Z0-9_.-]{1,128}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "regions": {
+      "items": {
+        "$ref": "#/$defs/CampaignRegion"
+      },
+      "maxItems": 24,
+      "minItems": 1,
+      "title": "Regions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "id",
+    "title",
+    "regions"
+  ],
+  "title": "CampaignSpec",
+  "type": "object"
+}

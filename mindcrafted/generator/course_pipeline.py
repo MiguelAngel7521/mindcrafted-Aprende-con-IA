@@ -67,6 +67,7 @@ async def generate_course(
 
     game_results: list[dict] = []
     used_mechanics: set[str] = set()
+    world_packages: list[dict] = []
 
     for i, chunk in enumerate(chunks):
         chunk_id = chunk["id"]
@@ -79,6 +80,7 @@ async def generate_course(
         t0 = time.monotonic()
 
         try:
+            from .world_knowledge import learning_context
             html_path = await generate_game(
                 topic, game_dir, theme=theme, chunk_id=chunk_id,
                 exclude_mechanics=sorted(used_mechanics) if used_mechanics else None,
@@ -89,8 +91,10 @@ async def generate_course(
                 personal_profile=personal_profile,
                 fast_mode=fast_mode,
                 subject=course_meta.get("subject", ""), source_text=chunk.get("content", ""),
-                adventure=course_meta.get('gameplay', 'aventura') == 'aventura',
+                adventure=course_meta.get('gameplay', 'aventura') in ('aventura', 'world'),
                 world_override=chunk.get('world', ''), difficulty=course_meta.get('difficulty', 'normal'),
+                world_learning_context=learning_context(world_packages),
+                world_boss=i == len(chunks) - 1,
             )
 
             next_chunk_id = chunks[i + 1]["id"] if i + 1 < len(chunks) else None
@@ -104,7 +108,9 @@ async def generate_course(
             package_path = Path(game_dir) / "game.pkg.json"
             package = json.loads(package_path.read_text(encoding="utf-8")) if package_path.exists() else {}
             practice = package.get("config", {}).get("practice", {})
-            new_mechanics = {p["kind"] for p in practice["puzzles"]} if practice else _extract_mechanics_from_html(html_path)
+            world_spec = package.get("world", {})
+            new_mechanics = ({p["archetype"] for p in world_spec["puzzles"]} if world_spec else
+                             {p["kind"] for p in practice["puzzles"]} if practice else _extract_mechanics_from_html(html_path))
             if practice:
                 from .practice import THEMES
                 theme = THEMES[practice["world"]]
@@ -127,11 +133,13 @@ async def generate_course(
                 "cover_js_src": cover_js_src,
                 "learning_objectives": chunk.get("learning_objectives", []),
                 "mechanics": sorted(new_mechanics),
-                "world": practice.get("world"),
-                "puzzle_count": len(practice.get("puzzles", [])),
+                "world": world_spec.get("id") or practice.get("world"),
+                "puzzle_count": len(world_spec.get("puzzles", practice.get("puzzles", []))),
                 "status": "success",
             }
             game_results.append(game_result)
+            if world_spec:
+                world_packages.append(package)
             if after_each_chunk:
                 course_id_for_cb = output.name
                 try:
@@ -171,6 +179,12 @@ async def generate_course(
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
 
+    if world_packages and len(world_packages) == len(successful):
+        from .world_campaign import assemble_campaign, write_campaign
+        campaign = assemble_campaign(world_packages, output.name, course_meta["title"])
+        course_manifest["campaign"] = await asyncio.to_thread(write_campaign, campaign, output / "campaign")
+        course_manifest["boss_status"] = ("complete" if world_packages[-1]["world"]["puzzles"][-1].get("role") == "boss" else "partial")
+
     manifest_path = output / "course-manifest.json"
     manifest_path.write_text(
         json.dumps(course_manifest, ensure_ascii=False, indent=2),
@@ -178,7 +192,7 @@ async def generate_course(
     )
 
     from .adventure import finalize_course
-    boss_status = finalize_course(successful, output)
+    boss_status = finalize_course(successful, output) if not world_packages else None
     if boss_status:
         course_manifest['boss_status'] = boss_status
         manifest_path.write_text(json.dumps(course_manifest, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -235,6 +249,16 @@ def _patch_game_html(html_path: str, game_dir: str, output_dir: str, audio_base:
     if package_path.exists():
         package = json.loads(package_path.read_text(encoding="utf-8"))
         config = package.get("config", {})
+        if config.get("generationMode") == "world":
+            from .world_package import render_html
+            if course_id:
+                config["courseId"] = course_id
+            config.pop("nextGameUrl", None)
+            if next_game_url:
+                config["nextGameUrl"] = next_game_url
+            package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding="utf-8")
+            Path(html_path).write_text(render_html(package), encoding="utf-8")
+            return
         if config.get("generationMode") in ("practica", "aventura"):
             from .practice import render_html
             if course_id:

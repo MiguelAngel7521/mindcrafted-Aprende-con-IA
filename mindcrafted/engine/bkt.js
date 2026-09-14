@@ -60,6 +60,13 @@
       record.attempts=(Number(record.attempts)||0)+1;
       record.correct=(Number(record.correct)||0)+(correct?1:0);
       record.lastScore=clamp(metadata.score==null?0:metadata.score,0,100);
+      if(metadata.observations&&typeof metadata.observations==='object'){
+        record.lastObservations={};
+        ['correctRoutes','invalidRoutes','congestionEvents','correctActions','invalidActions','solutionSteps','hintsUsed','solutionTime','solutionTimeMs','restarts','attempts'].forEach(function(name){
+          var value=metadata.observations[name];
+          if(Number.isFinite(value)&&value>=0)record.lastObservations[name]=Math.min(value,1000000);
+        });
+      }
       record.lastObservedAt=new Date().toISOString();
       record.mastered=record.mastery>=model.masteryThreshold;
       state.skills[key(skillId)]=record;write(state);return record;
