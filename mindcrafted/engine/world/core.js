@@ -11,6 +11,10 @@
     : root.MindCraftedWorld;
   const {nodeConnectResult} = typeof module !== 'undefined' ? require('./node-connect.js') : root.MindCraftedWorld;
 
+  const {resourceBalance} = typeof module !== 'undefined' ? require('./resource-balance.js') : root.MindCraftedWorld;
+  const {machineConfiguration} = typeof module !== 'undefined' ? require('./machine-configuration.js') : root.MindCraftedWorld;
+  const configurationMechanics = {resource_balance: resourceBalance, machine_configuration: machineConfiguration};
+
   function options(m) {
     const result = Object.create(null);
     for (const edge of m.edges) (result[edge.source] ||= []).push(edge.target);
@@ -66,7 +70,8 @@
     return {sequence: [], routes: {}, blocks: (p.mechanics.blocks || []).map(b => ({x: b.x, y: b.y})),
       solved: false, attempts: 0, errors: 0, hintsUsed: 0, restarts: 0, correctRoutes: 0, invalidRoutes: 0,
       congestionEvents: 0, solutionTime: 0, elapsed: 0, correctActions: 0, invalidActions: 0, solutionSteps: 0, effect: null,
-      ...(p.archetype === 'node_connect' ? {connections: [], selectedNode: null} : {})};
+      ...(p.archetype === 'node_connect' ? {connections: [], selectedNode: null} : {}),
+      ...(configurationMechanics[p.archetype] ? {configuration: configurationMechanics[p.archetype].initial(p.mechanics)} : {})};
   }
 
   class WorldEngine {
@@ -159,7 +164,23 @@
       }
       if (s.solved) { this.message('Este distrito ya está restaurado.'); return false; }
       if (!this.active(p.id)) { this.message('Luna te espera junto a la consola. Habla con ella primero.'); return false; }
-      if (e.type === 'switch') {
+      if (e.type === 'machine_slot' || e.type === 'machine_parameter') {
+        s.configuration = machineConfiguration.transition(p.mechanics, s.configuration, {type: 'control', controlId: e.controlId});
+        s.solutionSteps++; s.effect = null;
+        const definition = e.type === 'machine_slot' ? p.mechanics.components : p.mechanics.parameters.find(v => v.id === e.controlId).values;
+        const option = definition.find(v => v.id === s.configuration[e.controlId]);
+        this.message(`${e.label}: ${option?.label || 'sin componente'}. Observa los módulos y activa en la consola.`);
+      } else if (e.type === 'resource_load') {
+        s.configuration = configurationMechanics[p.archetype].transition(p.mechanics, s.configuration, {type: 'control', controlId: e.controlId});
+        s.solutionSteps++; s.effect = null;
+        const target = p.mechanics.targets.find(t => t.id === s.configuration[e.controlId]);
+        this.message(`${e.label} → ${target?.label || 'sin asignar'}. Observa los medidores antes de activar.`);
+      } else if (e.type === 'resource_target') {
+        this.message(`${e.label}: ${p.mechanics.targets.find(t => t.id === e.controlId).kind}. Revisa la carga total y los requisitos en el cuaderno.`);
+      } else if (e.type === 'console' && configurationMechanics[p.archetype]) {
+        s.solutionSteps++;
+        this.assess(p, configurationMechanics[p.archetype].result(p.mechanics, s.configuration));
+      } else if (e.type === 'switch') {
         if (s.sequence.includes(e.controlId)) { this.message('Ese interruptor ya está activo. R reinicia la cadena.'); return false; }
         s.sequence.push(e.controlId);
         s.solutionSteps++;
@@ -228,9 +249,9 @@
         this.emit('puzzle.solved', {puzzleId: p.id, score: Math.max(.2, 1 - s.errors * .1 - s.hintsUsed * .05), observations: copy(s)});
         this.message('¡Energía restaurada! La compuerta se abrió.');
       } else {
-        this.message(p.archetype === 'node_connect' ? 'La infraestructura sigue desconectada. Observa los enlaces del último intento y las reglas incumplidas; puedes reconstruir con E o limpiar con R.' : result.congested?.length ? 'Los routers se saturaron: las luces del distrito se apagaron. Reparte la carga.' : 'La energía no llega a destino. Revisa las reglas y vuelve a intentarlo.');
+        this.message(configurationMechanics[p.archetype] ? 'El sistema no arranca. Los indicadores muestran las restricciones incumplidas. Cambia los módulos con E o reinicia con R.' : p.archetype === 'node_connect' ? 'La infraestructura sigue desconectada. Observa los enlaces del último intento y las reglas incumplidas; puedes reconstruir con E o limpiar con R.' : result.congested?.length ? 'Los routers se saturaron: las luces del distrito se apagaron. Reparte la carga.' : 'La energía no llega a destino. Revisa las reglas y vuelve a intentarlo.');
         this.emit('puzzle.failed', {puzzleId: p.id, worldEffect: p.failure.worldEffect});
-        this.reset(p.id, false);
+        if (p.failure.autoReset) this.reset(p.id, false);
         if (s.attempts >= 2) this.message(this.hintText(p, s.attempts - 1));
       }
     }
@@ -238,6 +259,7 @@
       const p = this.puzzles.get(puzzleId), s = this.state.puzzles[puzzleId];
       if (!p || s.solved || !this.active(puzzleId) || this.state.dialogue) return false;
       s.sequence = []; s.routes = {}; s.blocks = initialPuzzle(p).blocks;
+      if (configurationMechanics[p.archetype]) s.configuration = configurationMechanics[p.archetype].initial(p.mechanics);
       if (p.archetype === 'node_connect') { s.connections = []; s.selectedNode = null; }
       if (manual) { s.restarts++; s.effect = null; }
       if (p.archetype === 'push_blocks') this.state.player = {x: p.world.offset.x + p.mechanics.spawn.x, y: p.world.offset.y + p.mechanics.spawn.y, direction: 'down'};
@@ -252,6 +274,20 @@
       const s = this.state.puzzles[p.id], m = p.mechanics;
       if (level <= 0) return '';
       if (level >= Math.max(4, p.failure.hintAfterAttempts)) return p.hint;
+      if (p.archetype === 'machine_configuration') {
+        if (level === 1) return 'La función de un componente determina qué otros módulos y parámetros necesita. Una configuración debe cumplir todas las reglas a la vez.';
+        if (level === 2) return 'Parte del comportamiento que necesita la máquina. Sigue sus dependencias, comprueba incompatibilidades y reserva capacidad antes de activar.';
+        const rule = p.knowledge.requiredRules.find(r => s.effect?.rules?.[r.id] === false) || p.knowledge.requiredRules[0];
+        const control = s.effect?.failures?.find(f => f.ruleId === rule.id)?.controls[0];
+        const label = [...m.slots, ...m.parameters].find(c => c.id === control)?.label || m.slots[0].label;
+        return `Inspecciona ${label}; E cambia su configuración. Comprueba esta regla: ${rule.description}`;
+      }
+      if (p.archetype === 'resource_balance') {
+        if (level === 1) return 'Cada carga requiere un tipo de recurso. La capacidad de un receptor se comparte entre todas sus cargas.';
+        if (level === 2) return 'Identifica primero las cargas con destinos restringidos; después suma el consumo en cada receptor y reserva espacio para las demás.';
+        const rule = p.knowledge.requiredRules.find(r => s.effect?.rules?.[r.id] === false) || p.knowledge.requiredRules[0];
+        return `Revisa ${rule.description}. E en un módulo cambia su receptor; un ciclo completo lo retira.`;
+      }
       if (level === 1) {
         if (p.archetype === 'node_connect') return 'Un enlace representa una dependencia dirigida. Compara la función de sus dos componentes y sigue la cadena hasta el destino.';
         if (p.archetype === 'route_network') return 'Cada paquete necesita un camino completo. La carga acumulada no debe superar la capacidad de los routers.';
@@ -294,8 +330,15 @@
         }
         if (p.archetype === 'push_blocks' && Array.isArray(saved.blocks) && saved.blocks.length === p.mechanics.blocks.length &&
             saved.blocks.every(b => b && Number.isInteger(b.x) && Number.isInteger(b.y) && p.mechanics.board[b.y]?.[b.x] === '.') && new Set(saved.blocks.map(key)).size === saved.blocks.length) fresh.blocks = copy(saved.blocks);
-        const result = p.archetype === 'node_connect' ? nodeConnectResult(p.mechanics, fresh.connections) : p.archetype === 'route_network' ? networkResult(p.mechanics, fresh.routes) : p.archetype === 'switch_sequence' ? sequenceResult(p.mechanics, fresh.sequence) : blocksResult(p.mechanics, fresh.blocks);
-        fresh.solved = saved.solved === true && result.ok;
+        const mechanism = configurationMechanics[p.archetype];
+        let validConfiguration = false;
+        if (mechanism) {
+          try { mechanism.result(p.mechanics, saved.configuration); fresh.configuration = copy(saved.configuration); validConfiguration = true; }
+          catch (error) { if (!error.message.startsWith('STATE_ERROR:')) throw error; }
+        }
+        const result = mechanism ? mechanism.result(p.mechanics, fresh.configuration) : p.archetype === 'node_connect' ? nodeConnectResult(p.mechanics, fresh.connections) : p.archetype === 'route_network' ? networkResult(p.mechanics, fresh.routes) : p.archetype === 'switch_sequence' ? sequenceResult(p.mechanics, fresh.sequence) : blocksResult(p.mechanics, fresh.blocks);
+        fresh.solved = saved.solved === true && result.ok && (!mechanism || validConfiguration);
+        if (mechanism && validConfiguration && (fresh.solved || (fresh.attempts > 0 && saved.effect && !result.ok))) fresh.effect = result;
         if (p.archetype === 'node_connect') {
           if (fresh.solved) { fresh.effect = result; fresh.selectedNode = null; }
           else if (fresh.attempts > 0 && Array.isArray(saved.effect?.connections)) {
@@ -360,7 +403,7 @@
     load(engine) { try { const data = JSON.parse(this.storage?.getItem(this.key) || 'null'); return data?.version === 2 && data.hash === this.hash ? engine.restore(data.state) : false; } catch (_) { return false; } }
   }
 
-  const api = {WorldEngine, EventBus, FlagSystem, QuestSystem, DialogueSystem, SaveSystem, directions, sequenceResult, networkResult, blocksResult, nodeConnectResult};
+  const api = {WorldEngine, EventBus, FlagSystem, QuestSystem, DialogueSystem, SaveSystem, directions, sequenceResult, networkResult, blocksResult, nodeConnectResult, resourceBalance, machineConfiguration};
   root.MindCraftedWorld = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window === 'undefined' ? globalThis : window);

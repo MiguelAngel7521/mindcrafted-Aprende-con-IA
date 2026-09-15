@@ -161,7 +161,8 @@ def _evidence(source, index, metadata, text):
 def _mechanic_paths(puzzle, rule_id):
     mechanics = puzzle["mechanics"]
     groups = {"switch_sequence": ("constraints",), "route_network": ("nodes", "packets"),
-              "push_blocks": ("blocks", "goals"), "node_connect": ("connectionRules", "goals")}[mechanics["archetype"]]
+              "push_blocks": ("blocks", "goals"), "node_connect": ("connectionRules", "goals"), "resource_balance": ("allocationRules", "goals"),
+              "machine_configuration": ("configurationRules", "goals")}[mechanics["archetype"]]
     return [f"/mechanics/{group}/{i}" for group in groups for i, item in enumerate(mechanics[group])
             if item["ruleId"] == rule_id]
 
@@ -287,7 +288,7 @@ def validate_knowledge_graph(graph, source=None):
                 raise ValueError("Binding duplicado o puzzle inexistente")
             seen_bindings.add(key)
             _distinct(binding["mechanicPaths"], "mechanicPaths")
-            if any(not re.fullmatch(r"/mechanics/(constraints|nodes|packets|blocks|goals|connectionRules)/\d+", path)
+            if any(not re.fullmatch(r"/mechanics/(constraints|nodes|packets|blocks|goals|connectionRules|allocationRules|configurationRules)/\d+", path)
                    for path in binding["mechanicPaths"]):
                 raise ValueError("Ruta de mecánica inválida")
     covered_puzzles = set()

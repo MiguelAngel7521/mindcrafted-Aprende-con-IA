@@ -1,5 +1,71 @@
 # Auditoría de arquitectura — 13–14 de septiembre de 2026
 
+## Actualización de los tres pilares — 15 de septiembre de 2026
+
+La comprobación inicial de este checkout dio `main` limpio, sin stashes ni archivos
+sin seguimiento. HEAD, `origin/main` local y la referencia pública de GitHub
+coincidían en `f2565052081622e2d40f11ad61a2282d17f6b19a`. No había una
+implementación de `resource_balance` que recuperar: solo menciones de roadmap.
+`AGENTS.md` y `MINDCRAFTED_V2_ASTRA.md` ya estaban versionados y no se modificaron.
+
+Se instaló el entorno declarado en `requirements-dev.txt` y Chromium de Playwright.
+La suite se ejecutó fuera del sandbox con autorización porque la ejecución
+restringida se detenía al entrar en los E2E. No se añadieron dependencias al proyecto.
+
+| Verificación | Evidencia |
+| --- | --- |
+| Baseline limpio antes de implementar | **268 passed, 4 warnings**, 29,76 s |
+| `resource_balance` completo antes de iniciar machine | **298 passed, 4 warnings**, 38,60 s |
+| Suite final de los tres pilares | **366 passed, 4 warnings**, 50,81 s |
+| Comparación Python/JS de resource_balance | 256 estados y todas sus ablaciones |
+| Comparación Python/JS de machine_configuration | 243 estados y todas sus ablaciones |
+| Acciones aleatorias | 256 secuencias reproducibles por nuevo archetype |
+| Recuperación exhaustiva de machine_configuration | Los 243 estados recorridos con controles del WorldEngine |
+| Campaña mixta | Tres archetypes en una región + una segunda con ID de puzzle repetido; BKT, eventos, guardado y E2E |
+| Compilación Python | `python -m compileall mindcrafted`: PASS |
+| Sintaxis JavaScript | `node --check` en los 12 scripts JS/CJS de World V2: PASS |
+| Espacios de los cambios | `git diff --check`: PASS |
+| Demo local | `world_tools check --pillars`: todos los checks deterministas PASS, `judge: not_run` |
+
+Los cuatro warnings son los existentes de `FastAPI.on_event`. La revisión adicional
+reprodujo y corrigió un fallo del E2E al agrupar varias restricciones bajo una sola
+regla educativa. Ese caso ahora tiene una regresión obligatoria.
+
+La implementación nueva está guardada en el workspace; esta entrega no crea
+commit ni push. Por tanto GitHub sigue mostrando el commit inicial hasta que se
+publique el cambio. El escaneo de los archivos modificados/nuevos no encontró
+patrones de credenciales y no incluye `.env`, claves ni evidencia de estudiantes.
+Los artefactos de desarrollo están en `output/` (ignorado por Git).
+
+### Archivos de esta entrega
+
+Nuevos:
+
+- `generator/finite_puzzle.py`, `resource_balance.py`, `resource_balance_demo.py`,
+  `machine_configuration.py`, `machine_configuration_demo.py`, `pillar_demo.py`
+  bajo `mindcrafted/`.
+- `engine/world/finite-state.js`, `resource-balance.js`, `machine-configuration.js`,
+  `resource-balance.schema.json`, `machine-configuration.schema.json` bajo `mindcrafted/`.
+- `tests/test_resource_balance.py`, `test_machine_configuration.py`,
+  `test_machine_configuration_runtime.py`, `test_configuration_browser.py`,
+  `test_pillar_campaign.py`.
+- `docs/RESOURCE_BALANCE.md`, `docs/MACHINE_CONFIGURATION.md`.
+
+Actualizados:
+
+- `mindcrafted/generator/world_schema.py`, `world.py`, `world_solver.py`,
+  `world_knowledge.py`, `world_pipeline.py`, `world_package.py`, `world_tools.py`, `prompts.py`.
+- `mindcrafted/engine/world/core.js`, `runtime.js`, `player.html`,
+  `world-v2.schema.json`, `campaign-v2.schema.json`.
+- `docs/WORLD_V2.md`, `docs/WORLD_V2_AUDIT.md`, `docs/NODE_CONNECT.md`.
+
+La validación con LLM real y evaluación pedagógica siguen como Integration Gate
+pendiente. No se implementaron Mechanic Selector, bosses multifase, Agent API ni
+archetypes adicionales a los dos necesarios para cerrar esta tarea.
+
+---
+
+
 Contrato leído completo: `AGENTS.md` y `MINDCRAFTED_V2_ASTRA.md` de la raíz.
 Al iniciar esta auditoría había cambios en curso en el motor World V2 y su exportador,
 además de los documentos actualizados por el usuario. Se conservaron. La suite previa
@@ -55,7 +121,7 @@ No se eliminó legacy ni se modificaron sus tests existentes.
 | Acoplamiento educativo | Cada regla debe cambiar soluciones al eliminarla; citas verificadas. La corrección semántica sigue dependiendo de revisión educativa/juez, no queda demostrada por esa ablación. |
 | Dificultad aleatoria | Ratio exacto de configuraciones completas válidas; falta cobertura de estrategias aleatorias de interacción con seeds. No es una medida universal de dificultad. |
 | Pistas y spoilers | Introducción sin solución solicitada por prompt; ayudas progresivas existentes, pero tres niveles efectivos y sin detector general de spoilers. |
-| `node_connect`, `resource_balance`, `machine_configuration` | Pendientes en schema, runtime, solver, generación y pruebas. No declararlos implementados. |
+| Pilares V2.1 | Estado histórico de esta auditoría: pendientes. Estado actual: `node_connect`, `resource_balance` y `machine_configuration` implementados; consultar [WORLD_V2.md](WORLD_V2.md). |
 | Boss multifase | Pendiente. El actual `role=boss` reutiliza un arquetipo y combina habilidades previas; no cumple aún el contrato multifase de 2–4 mecánicas. El boss legacy no satisface V2. |
 | Agent API / Structured Outputs | Pendientes. Hay pipeline restringido y schema local, pero llamadas de texto, sin JSON Schema en el protocolo ni tool calling. |
 | NPC dinámicos, BKT adaptativo | Pendientes; no hay llamadas IA por frame. |
@@ -128,7 +194,7 @@ Nodeterm respondió `Agent messaging refused` y `Sticky write refused`, respecti
 incluso con acceso local autorizado fuera del sandbox. No se entregó esa delegación
 ni se creó la nota; el resultado anterior corresponde a verificación local.
 
-Siguiente bloque recomendado: contrato de `node_connect` y un slice con schema,
+Recomendación histórica de esa auditoría (superada por los tres pilares descritos en WORLD_V2.md): contrato de `node_connect` y un slice con schema,
 compilador, solver, simulación, recuperación, persistencia, acoplamiento educativo,
 generación y QualityGate/E2E. Los bosses multifase y Agent API siguen después de
 consolidar los tres arquetipos prioritarios. No se adelantaron esas fases aquí.

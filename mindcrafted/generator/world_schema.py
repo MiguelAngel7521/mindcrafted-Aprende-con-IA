@@ -127,6 +127,122 @@ class NodeConnect(Data):
     goals: Annotated[list[ConnectionGoal], Field(min_length=1, max_length=8)]
 
 
+class ResourceLoad(ConnectionNode):
+    amount: Annotated[int, Field(ge=1, le=100)]
+
+
+class ResourceCapacity(Data):
+    target: Id
+    min: Annotated[int, Field(ge=0, le=600)]
+    max: Annotated[int, Field(ge=1, le=600)]
+
+
+class ResourceLimits(Data):
+    kind: Literal["capacity"]
+    limits: Annotated[list[ResourceCapacity], Field(min_length=1, max_length=4)]
+    ruleId: Id
+
+
+class ResourceComplete(Data):
+    kind: Literal["all_assigned"]
+    ruleId: Id
+
+
+class ResourceBalance(Data):
+    archetype: Literal["resource_balance"]
+    schemaVersion: Literal[1]
+    loads: Annotated[list[ResourceLoad], Field(min_length=2, max_length=6)]
+    targets: Annotated[list[ConnectionNode], Field(min_length=2, max_length=4)]
+    allocationRules: Annotated[list[Annotated[Union[CompatibleConnections, ResourceLimits], Field(discriminator="kind")]], Field(min_length=2, max_length=8)]
+    goals: Annotated[list[ResourceComplete], Field(min_length=1, max_length=1)]
+
+
+class MachineSlot(Switch):
+    components: Annotated[list[Id], Field(min_length=2, max_length=4)]
+
+
+class ParameterValue(Switch):
+    quantity: Annotated[int, Field(ge=0, le=100)] | None
+
+
+class MachineParameter(Switch):
+    values: Annotated[list[ParameterValue], Field(min_length=2, max_length=5)]
+    initial: Id
+
+
+class ConfigurationCondition(Data):
+    control: Id
+    values: Annotated[list[Id | None], Field(min_length=1, max_length=5)]
+
+
+class ConfigurationRequired(Data):
+    kind: Literal["required"]
+    condition: ConfigurationCondition
+    ruleId: Id
+
+
+class ConfigurationDependency(Data):
+    kind: Literal["dependency"]
+    when: ConfigurationCondition
+    then: ConfigurationCondition
+    ruleId: Id
+
+
+class ConfigurationExclusion(Data):
+    kind: Literal["exclusion"]
+    left: ConfigurationCondition
+    right: ConfigurationCondition
+    ruleId: Id
+
+
+class ConfigurationRange(Data):
+    kind: Literal["range"]
+    control: Id
+    min: Annotated[int, Field(ge=0, le=100)]
+    max: Annotated[int, Field(ge=0, le=100)]
+    ruleId: Id
+
+
+class ConfigurationCost(Data):
+    value: Id
+    amount: Annotated[int, Field(ge=0, le=100)]
+
+
+class ConfigurationTerm(Data):
+    control: Id
+    costs: Annotated[list[ConfigurationCost], Field(min_length=2, max_length=5)]
+
+
+class ConfigurationCapacity(Data):
+    kind: Literal["capacity"]
+    terms: Annotated[list[ConfigurationTerm], Field(min_length=1, max_length=8)]
+    max: Annotated[int, Field(ge=0, le=800)]
+    unit: Text
+    ruleId: Id
+
+
+ConfigurationRule = Annotated[Union[ConfigurationRequired, ConfigurationDependency, ConfigurationExclusion,
+                                   ConfigurationRange, ConfigurationCapacity], Field(discriminator="kind")]
+
+
+class ConfigurationTradeoff(Data):
+    control: Id
+    preferredValues: Annotated[list[Id], Field(min_length=1, max_length=4)]
+    reason: Text
+
+
+class MachineConfiguration(Data):
+    archetype: Literal["machine_configuration"]
+    schemaVersion: Literal[1]
+    machine: Switch
+    components: Annotated[list[Switch], Field(min_length=2, max_length=8)]
+    slots: Annotated[list[MachineSlot], Field(min_length=1, max_length=4)]
+    parameters: Annotated[list[MachineParameter], Field(min_length=1, max_length=4)]
+    configurationRules: Annotated[list[ConfigurationRule], Field(min_length=1, max_length=12)]
+    goals: Annotated[list[ConfigurationRequired], Field(min_length=1, max_length=8)]
+    tradeoffs: Annotated[list[ConfigurationTradeoff], Field(max_length=4)] = []
+
+
 class Block(Point):
     id: Id
     kind: Id
@@ -148,7 +264,7 @@ class Blocks(Data):
     goals: Annotated[list[Goal], Field(min_length=2, max_length=6)]
 
 
-Mechanics = Annotated[Union[Sequence, Network, Blocks, NodeConnect], Field(discriminator="archetype")]
+Mechanics = Annotated[Union[Sequence, Network, Blocks, NodeConnect, ResourceBalance, MachineConfiguration], Field(discriminator="archetype")]
 
 
 class BlueprintPuzzle(Data):
@@ -176,7 +292,7 @@ class Player(Point):
 
 class Entity(Point):
     id: Id
-    type: Literal["npc", "console", "switch", "router", "connection_node", "door", "exit", "goal"]
+    type: Literal["npc", "console", "switch", "router", "connection_node", "resource_load", "resource_target", "machine_slot", "machine_parameter", "door", "exit", "goal"]
     label: Text
     puzzleId: Id | None = None
     controlId: Id | None = None
@@ -238,7 +354,7 @@ class Success(Data):
 
 
 class Failure(Data):
-    autoReset: Literal[True]
+    autoReset: bool
     hintAfterAttempts: Annotated[int, Field(ge=1, le=10)]
     worldEffect: Literal["power_loss"]
 
@@ -252,7 +368,7 @@ class Difficulty(Data):
 
 class Puzzle(BlueprintPuzzle):
     runtime: Literal["world"]
-    archetype: Literal["switch_sequence", "route_network", "push_blocks", "node_connect"]
+    archetype: Literal["switch_sequence", "route_network", "push_blocks", "node_connect", "resource_balance", "machine_configuration"]
     mandatory: Literal[True]
     resettable: Literal[True]
     world: Anchor

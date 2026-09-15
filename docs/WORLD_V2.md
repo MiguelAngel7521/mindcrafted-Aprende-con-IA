@@ -17,7 +17,9 @@ La conversación se muestra debajo del mapa; no transporta al jugador a una aren
 .venv/bin/python -m mindcrafted.generator.world_tools demo --output output/world-demo
 # Nuevo grafo de dependencias: solver, recuperación y E2E reales:
 .venv/bin/python -m mindcrafted.generator.world_tools check --archetype node_connect --output output/node-connect
-# Campaña de tres regiones, los tres arquetipos y boss de transferencia:
+# Tres pilares V2.1 dentro de una región, sin bosses ni selector:
+.venv/bin/python -m mindcrafted.generator.world_tools check --pillars --output output/three-pillars
+# Campaña histórica de tres regiones y boss de transferencia:
 .venv/bin/python -m mindcrafted.generator.world_tools check --campaign --output output/campaign-demo
 ```
 
@@ -56,20 +58,25 @@ en distintas lecciones permanecen aislados.
 | `switch_sequence` | Caminar hasta interruptores y energizar etapas | Restricciones de precedencia entre etapas |
 | `route_network` | Cambiar cables en routers y enviar paquetes | Destino, ausencia de ciclos de entrega y capacidad acumulada |
 | `push_blocks` | Empujar módulos hasta puestos con necesidades distintas | Movimiento, colisión y compatibilidad módulo→puesto |
+| `machine_configuration` | Instalar componentes y ajustar parámetros en ranuras y selectores del mapa | Requisitos, dependencias, exclusiones, rangos y capacidad compartida |
+| `resource_balance` | Reasignar cargas entre receptores físicos y activar el reparto | Compatibilidad conceptual, capacidad agregada y disponibilidad |
 | `node_connect` | Seleccionar un componente, caminar al destino y alternar un enlace dirigido | Compatibilidad conceptual, grados, ciclos y caminos obligatorios |
 
-El contrato completo de `node_connect`, sus pruebas y límites están en
-[NODE_CONNECT.md](NODE_CONNECT.md). Reutiliza WorldEngine, guardado, misiones,
+Los contratos, pruebas y límites de los tres pilares están en
+[NODE_CONNECT.md](NODE_CONNECT.md), [RESOURCE_BALANCE.md](RESOURCE_BALANCE.md) y
+[MACHINE_CONFIGURATION.md](MACHINE_CONFIGURATION.md). Reutiliza WorldEngine, guardado, misiones,
 flags, diálogos y BKT; no abre un encuentro independiente.
 
 El compilador coloca cada puzzle en un distrito de la región. La compuerta física
 se abre al resolverlo; no se abre desde el diálogo ni por aprobación del LLM.
-Un fallo reinicia los controles y conserva los intentos; R permite recuperar cajas
+En resource_balance y machine_configuration un fallo conserva la configuración editable; en los archetypes anteriores
+reinicia los controles y conserva los intentos; R permite recuperar cajas
 atascadas sin borrar misiones anteriores. Las pistas y la información de capacidad
 están disponibles sin requerir llamadas de red.
 
 Los solvers están acotados: hasta 7 interruptores, 4096 configuraciones completas de
-rutas, 4096 grafos de conexiones y 180000 estados de bloques. Un puzzle que excede
+rutas, 4096 grafos de conexiones, 4096 repartos/configuraciones de cada nuevo
+archetype y 180000 estados de bloques. Un puzzle que excede
 el presupuesto se rechaza.
 La prueba educativa elimina restricciones por `ruleId` y exige que cambie el conjunto
 de soluciones. La evidencia debe aparecer literalmente en el material, normalizando
@@ -80,7 +87,9 @@ equiprobables (permutaciones de interruptores, elecciones de rutas o asignacione
 bloques a metas, o subconjuntos de enlaces de `node_connect`). Este último también
 reporta `randomSuccessRate` con 256 ensayos reproducibles. No pretende demostrar
 una probabilidad universal sobre cualquier
-estrategia de clics. La evaluación semántica del juez sigue siendo necesaria: una
+estrategia de clics. Los nuevos archetypes calculan además el ratio de
+configuraciones completas y toman el máximo, para no diluirlo con opciones vacías.
+La evaluación semántica del juez sigue siendo necesaria: una
 restricción causal por sí sola no demuestra calidad pedagógica ni diversión.
 
 ## Generación y publicación
@@ -206,7 +215,7 @@ configuraciones aleatorias reproducibles de red, comparadas con el solver Python
 Cada fallo aleatorio se reinicia, resuelve y carga en el motor JS. La tasa se refiere
 a esas configuraciones, no a todas las estrategias posibles de un jugador.
 
-Los tres arquetipos tienen regresiones de fallo y recuperación
+Los arquetipos iniciales y los nuevos pilares tienen regresiones de fallo y recuperación
 contra el motor real. Las siete reproducciones de la revisión inicial ya son tests
 obligatorios, sin `xfail`. Se corrigió además la limpieza de PDF de dos páginas y
 se recuperaron contratos V1 en nuevos archivos, preservando los borrados anteriores.
@@ -225,9 +234,10 @@ esto no equivale a recuperar toda la cobertura histórica borrada.
 ## Límites y siguientes fases
 
 - La auditoría completa y la separación legacy/canónico están en `WORLD_V2_AUDIT.md`.
-- `node_connect` incorpora solver, recuperación, generación y E2E. Las siguientes
-  mecánicas previstas son `resource_balance` y `machine_configuration`; no se
-  implementaron en este bloque.
+- Los tres pilares `node_connect`, `resource_balance` y `machine_configuration`
+  incorporan contratos, solver, simulación, recuperación, persistencia, BKT,
+  generación con mocks y E2E. La campaña mixta verifica aislamiento y transiciones.
+  La generación con LLM real sigue como Integration Gate pendiente.
 - El boss actual combina habilidades en un arquetipo; todavía falta el sistema
   multifase de 2–4 mecánicas exigido por el contrato actualizado.
 - Structured Outputs en el protocolo y la separación retry/repair están

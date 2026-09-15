@@ -18,7 +18,7 @@
     $('xp').textContent = (session ? session.xp : s.xp) + ' XP';
     $('quest-title').textContent = p.title; $('objective').textContent = state.solved ? 'Compuerta abierta. Avanza hacia el este para continuar.' : p.objective;
     const nearby = engine.nearby()[0];
-    $('interaction').textContent = s.dialogue ? 'Luna está conversando contigo. El mundo sigue aquí.' : nearby ? `${nearby.label} · E para ${nearby.type === 'npc' ? 'conversar' : nearby.type === 'router' ? 'cambiar la ruta' : nearby.type === 'connection_node' ? state.selectedNode ? 'conectar/desconectar con el origen seleccionado' : 'seleccionar como origen' : nearby.type === 'exit' ? 'continuar' : nearby.type === 'switch' ? 'activar' : 'usar la consola'}.` : state.selectedNode ? 'Origen seleccionado. Camina a otro componente y pulsa E. R reinicia.' : 'Explora el distrito. Acércate a un objeto para interactuar.';
+    $('interaction').textContent = s.dialogue ? 'Luna está conversando contigo. El mundo sigue aquí.' : nearby ? `${nearby.label} · E para ${nearby.type === 'npc' ? 'conversar' : nearby.type === 'router' ? 'cambiar la ruta' : nearby.type === 'connection_node' ? state.selectedNode ? 'conectar/desconectar con el origen seleccionado' : 'seleccionar como origen' : nearby.type === 'machine_slot' ? 'instalar o retirar un componente' : nearby.type === 'machine_parameter' ? 'ajustar el parámetro' : nearby.type === 'resource_load' ? 'reasignar la carga' : nearby.type === 'resource_target' ? 'inspeccionar capacidad' : nearby.type === 'exit' ? 'continuar' : nearby.type === 'switch' ? 'activar' : 'usar la consola'}.` : state.selectedNode ? 'Origen seleccionado. Camina a otro componente y pulsa E. R reinicia.' : 'Explora el distrito. Acércate a un objeto para interactuar.';
     $('interact').disabled = !nearby && !s.dialogue;
     $('dialogue').hidden = !s.dialogue;
     const line = engine.dialogueLine();
@@ -70,6 +70,38 @@
       }
     }
   }
+  function drawResource(p) {
+    const state = engine.state.puzzles[p.id], result = core.resourceBalance.result(p.mechanics, state.configuration);
+    const controls = new Map([...engine.entities.values()].filter(e => e.puzzleId === p.id && e.controlId).map(e => [e.controlId, e]));
+    for (const load of p.mechanics.loads) {
+      const target = state.configuration[load.id];
+      if (!target) continue;
+      const a = controls.get(load.id), b = controls.get(target), [ax, ay] = screen(a.x + .5, a.y + .5), [bx, by] = screen(b.x + .5, b.y + .5);
+      ctx.strokeStyle = state.solved ? '#96efbe' : result.incompatible.includes(load.id) || result.overloaded.includes(target) ? '#ee977a' : '#73babc';
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      const phase = state.solved && !reduced.matches ? time / 2 % 1 : .5;
+      for (let i = 0; i < Math.min(load.amount, 6); i++) rect(ax + (bx - ax) * phase - 3 + i * 5, ay + (by - ay) * phase - 3, 4, 6, ctx.strokeStyle);
+    }
+  }
+  function drawMachine(p) {
+    const s = engine.state.puzzles[p.id], m = p.mechanics, result = core.machineConfiguration.result(m, s.configuration);
+    const anchor = engine.entities.get(p.world.anchorEntity), [ax, ay] = screen(anchor.x + .5, anchor.y + .5);
+    for (const e of engine.entities.values()) {
+      if (e.puzzleId !== p.id || !['machine_slot', 'machine_parameter'].includes(e.type)) continue;
+      const [bx, by] = screen(e.x + .5, e.y + .5);
+      ctx.strokeStyle = s.solved ? '#96efbe' : s.effect && result.affectedControls.includes(e.controlId) ? '#ee977a' : '#315058';
+      ctx.lineWidth = s.solved ? 3 : 1; ctx.setLineDash(s.solved ? [] : [5, 4]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax, by); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      if (s.solved) {
+        const phase = reduced.matches ? .5 : time / 2 % 1;
+        rect(ax + (bx - ax) * phase - 3, by - 3, 6, 6, '#e8ffd1');
+      }
+    }
+    for (const [i, capacity] of result.capacities.entries()) {
+      label(`${capacity.load}/${capacity.max} ${capacity.unit}`, ax, ay + 76 + i * 18,
+        capacity.load > capacity.max ? '#ee977a' : '#c5e1d9', 185);
+    }
+  }
   function draw() {
     const {player} = engine.state, region = engine.region;
     const columns = canvas.width / cell;
@@ -88,6 +120,8 @@
     }
     for (const p of engine.puzzles.values()) {
       const s = engine.state.puzzles[p.id];
+      if (p.archetype === 'machine_configuration') { drawMachine(p); continue; }
+      if (p.archetype === 'resource_balance') { drawResource(p); continue; }
       if (p.archetype === 'node_connect') { drawConnections(p); continue; }
       if (p.archetype !== 'route_network') continue;
       // Automatic recovery clears controls, but leaves the failed traffic visible.
@@ -133,6 +167,43 @@
         } else { rect(x + 14, y + 7, 20, 29, e.type === 'npc' ? '#bcaada' : '#6cd3aa'); rect(x + 14, y - 3, 20, 17, '#edcc9d'); rect(x + 12, y - 6, 24, 8, '#3f596c'); rect(x + 16, y + 35, 6, 7, '#172129'); rect(x + 27, y + 35, 6, 7, '#172129'); }
         if (e.type === 'npc') label(s.solved ? 'Luna · ✓' : 'Luna · !', x + 24, y - 24, '#d5c2e9');
       } else if (e.type === 'block') { rect(x + 7, y + 6, 34, 34, '#b88e58'); rect(x + 11, y + 10, 26, 24, '#665b46'); label(e.label, x + 24, y + 24, '#fff0c1', 42); }
+      else if (e.type === 'machine_slot' || e.type === 'machine_parameter') {
+        const m = engine.puzzles.get(e.puzzleId).mechanics, isSlot = e.type === 'machine_slot';
+        const result = core.machineConfiguration.result(m, s.configuration);
+        const definition = (isSlot ? m.slots : m.parameters).find(c => c.id === e.controlId);
+        const value = (isSlot ? m.components : definition.values).find(c => c.id === s.configuration[e.controlId]);
+        const failed = s.effect && result.affectedControls.includes(e.controlId);
+        const color = s.solved ? '#86d9ab' : failed ? '#ee977a' : value ? '#73babc' : '#30494f';
+        rect(x + 6, y + 3, 36, 38, '#4a686c'); rect(x + 14, y + 8, 20, 14, color);
+        if (isSlot) {
+          rect(x + 11, y + 25, 26, 12, '#0a1d25');
+          if (value) { rect(x + 14, y + 27, 20, 8, color); for (let i = 0; i < 3; i++) rect(x + 16 + i * 6, y + 36, 3, 5, '#e0bf7e'); }
+        } else {
+          const index = definition.values.findIndex(v => v.id === value?.id);
+          for (let i = 0; i < definition.values.length; i++) rect(x + 10 + i * 6, y + 29, 4, 7, i === index ? color : '#0a1d25');
+        }
+        label(e.label, x + 24, y - 10, '#c5e1d9', 140);
+        label(value?.label || 'Sin componente', x + 24, y + 56, color, 140);
+        if (failed) label('REVISAR', x + 24, y + 74, '#ee977a', 100);
+      }
+      else if (e.type === 'resource_load' || e.type === 'resource_target') {
+        const m = engine.puzzles.get(e.puzzleId).mechanics, result = core.resourceBalance.result(m, s.configuration);
+        const isLoad = e.type === 'resource_load', definition = (isLoad ? m.loads : m.targets).find(c => c.id === e.controlId);
+        const bad = isLoad ? result.incompatible.includes(e.controlId) : result.overloaded.includes(e.controlId);
+        const color = s.solved ? '#86d9ab' : bad ? '#ee977a' : isLoad && s.configuration[e.controlId] ? '#73babc' : '#30494f';
+        rect(x + 8, y + 4, 32, 35, '#4a686c'); rect(x + 14, y + 8, 20, 14, color);
+        label(e.label, x + 24, y - 9, '#c5e1d9', 130);
+        label(definition.kind.replaceAll('_', ' '), x + 24, y + 51, '#c5e1d9', 125);
+        if (isLoad) {
+          label(`${definition.amount} u → ${s.configuration[e.controlId] || 'libre'}`, x + 24, y + 70, color, 125);
+          for (let i = 0; i < Math.min(definition.amount, 6); i++) rect(x + 9 + i * 5, y + 28, 4, 7, color);
+        } else {
+          const limits = m.allocationRules.filter(r => r.kind === 'capacity').flatMap(r => r.limits).filter(l => l.target === e.controlId);
+          const maximum = Math.min(...limits.map(l => l.max)), load = result.loads[e.controlId];
+          rect(x + 8, y + 28, 32, 8, '#0a1d25'); rect(x + 8, y + 28, Math.min(32, 32 * load / maximum), 8, bad ? '#ee977a' : '#73babc');
+          label(`${load}/${maximum} u`, x + 24, y + 70, bad ? '#ee977a' : '#c5e1d9', 90);
+        }
+      }
       else if (e.type === 'connection_node') {
         const m = engine.puzzles.get(e.puzzleId).mechanics, selected = s.selectedNode === e.controlId;
         const failed = s.effect && (s.effect.degreeErrors.includes(e.controlId) || s.effect.cycleNodes.includes(e.controlId) ||
@@ -147,14 +218,14 @@
         if (failed) label('REVISAR RELACIÓN', x + 24, y + 72, '#ee977a', 120);
       }
       else {
-        const network = ['route_network', 'node_connect'].includes(engine.puzzles.get(e.puzzleId)?.archetype);
+        const network = ['route_network', 'node_connect', 'resource_balance', 'machine_configuration'].includes(engine.puzzles.get(e.puzzleId)?.archetype);
         const routes = s?.effect?.routes || s?.routes;
         const active = s?.solved || (e.type === 'switch' ? s?.sequence.includes(e.controlId) : !!routes?.[e.controlId]);
         const congested = s?.effect?.congested?.includes(e.controlId);
         const power = network && (e.type === 'console' || congested) && s?.effect && !s.effect.ok ? '#ee977a' : active ? '#86d9ab' : '#30494f';
         rect(x + 8, y + 8, 32, 33, '#0a1d25'); rect(x + 10, y + 4, 28, 28, '#4a686c'); rect(x + 14, y + 8, 20, 14, power);
         rect(x + 14, y + 26, 7, 3, s?.effect && !s.effect.ok ? '#ee977a' : '#d7bd7c');
-        const text = e.type === 'router' ? `${e.controlId}${routes?.[e.controlId] ? ' → ' + routes[e.controlId] : ''}` : e.type === 'console' ? network && s.solved ? 'RED RESTAURADA' : 'ENVIAR / CONTROL' : e.label;
+        const text = e.type === 'router' ? `${e.controlId}${routes?.[e.controlId] ? ' → ' + routes[e.controlId] : ''}` : e.type === 'console' ? network && s.solved ? 'SISTEMA ACTIVO' : 'ACTIVAR / CONTROL' : e.label;
         label(text, x + 24, y - 6, active ? '#b2edc2' : '#b4ccd0', 120);
         if (e.type === 'router') {
           const n = engine.puzzles.get(e.puzzleId).mechanics.nodes.find(n => n.id === e.controlId);
@@ -163,7 +234,7 @@
         }
         if (network && e.type === 'console') {
           for (let i = 0; i < 3; i++) rect(x + 5 + i * 14, y + 37, 10, 5, s.solved ? '#96efbe' : '#30494f');
-          label(s.solved ? 'DISTRITO CON ENERGÍA' : s.effect ? 'RED CAÍDA · R reinicia' : 'DISTRITO SIN ENERGÍA', x + 24, y + 56, s.solved ? '#96efbe' : '#e0bf7e', 150);
+          label(s.solved ? 'DISTRITO CON ENERGÍA' : s.effect ? 'SISTEMA BLOQUEADO' : 'DISTRITO SIN ENERGÍA', x + 24, y + 56, s.solved ? '#96efbe' : '#e0bf7e', 150);
         }
       }
     }

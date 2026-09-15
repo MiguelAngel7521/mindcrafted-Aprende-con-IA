@@ -24,6 +24,11 @@ def unique(items, label):
     return {item["id"]: item for item in items}
 
 
+def configuration_controls(mechanics):
+    groups = (("loads", "resource_load"), ("targets", "resource_target")) if mechanics["archetype"] == "resource_balance" else (("slots", "machine_slot"), ("parameters", "machine_parameter"))
+    return [(control, kind) for group, kind in groups for control in mechanics[group]]
+
+
 def compile_puzzle_spec(blueprint, region_id, index, difficulty="normal", prerequisites=()):
     puzzle = deepcopy(blueprint)
     pid = puzzle["id"]
@@ -32,7 +37,7 @@ def compile_puzzle_spec(blueprint, region_id, index, difficulty="normal", prereq
                   role=puzzle.get("role", "challenge"), prerequisites=list(prerequisites),
                   world={"region": region_id, "anchorEntity": f"{pid}_console", "offset": {"x": index * 22 + 10, "y": 4}},
                   success={"setFlags": [f"{pid}_restored"], "xp": 200 if puzzle.get("role") == "boss" else 75, "openEntity": f"{pid}_gate", "dialogue": f"{pid}_after"},
-                  failure={"autoReset": True, "hintAfterAttempts": 3, "worldEffect": "power_loss"},
+                  failure={"autoReset": puzzle["mechanics"]["archetype"] not in ("resource_balance", "machine_configuration"), "hintAfterAttempts": 3, "worldEffect": "power_loss"},
                   difficulty={"level": difficulty, "minSolutionSteps": max(6 if difficulty == "hard" or puzzle.get("role") == "boss" else 1, solution["steps"]), "maxSolutionSteps": max(12, solution["steps"] * 2),
                               "randomSuccessProbabilityMax": 0.1})
     return puzzle
@@ -70,6 +75,13 @@ def compile_world(blueprint, source, world_id="learning_world", *, difficulty="n
             for goal in m["goals"]:
                 entities.append({"id": f"{pid}_{goal['id']}", "type": "goal", "label": goal["label"],
                                  "x": ox + goal["x"], "y": oy + goal["y"], "puzzleId": pid, "controlId": goal["id"]})
+        elif puzzle["archetype"] in ("resource_balance", "machine_configuration"):
+            if puzzle["archetype"] == "machine_configuration":
+                next(e for e in entities if e["id"] == f"{pid}_console")["label"] = m["machine"]["label"]
+            for j, (control, kind) in enumerate(configuration_controls(m)):
+                entities.append({"id": f"{pid}_{control['id']}", "type": kind,
+                                 "label": control["label"], "x": base + 10 + j % 3 * 3, "y": 3 + j // 3 * 3,
+                                 "puzzleId": pid, "controlId": control["id"]})
         else:
             controls = m["switches"] if puzzle["archetype"] == "switch_sequence" else m["nodes"]
             control_type = {"switch_sequence": "switch", "route_network": "router", "node_connect": "connection_node"}[puzzle["archetype"]]
@@ -124,6 +136,20 @@ def validate_mechanics(puzzle, source):
             if edge["source"] not in nodes or edge["target"] not in nodes or edge["source"] == edge["target"]:
                 raise ValueError("Red con referencia inválida")
         references = [n["ruleId"] for n in m["nodes"] + m["packets"]]
+    elif m["archetype"] == "machine_configuration":
+        from .machine_configuration import validate, eligibility
+        source_report = eligibility(source)
+        if source_report["status"] != "PASS":
+            raise ValueError(source_report["status"])
+        validate(m, set(rules))
+        references = [r["ruleId"] for r in m["configurationRules"] + m["goals"]]
+    elif m["archetype"] == "resource_balance":
+        from .resource_balance import validate, eligibility
+        source_report = eligibility(source)
+        if source_report["status"] != "PASS":
+            raise ValueError(source_report["status"])
+        validate(m, set(rules))
+        references = [r["ruleId"] for r in m["allocationRules"] + m["goals"]]
     elif m["archetype"] == "node_connect":
         from .node_connect import validate
         validate(m, set(rules))
@@ -175,9 +201,11 @@ def validate_world(world, source):
                     raise ValueError("Entidad interactiva sin puzzle")
                 if entity["type"] == "npc" and entity.get("dialogueId") not in dialogues:
                     raise ValueError("NPC sin diálogo")
-                if entity["type"] in ("switch", "router", "connection_node", "goal"):
+                if entity["type"] in ("switch", "router", "connection_node", "resource_load", "resource_target", "machine_slot", "machine_parameter", "goal"):
                     expected_type = {"switch_sequence": "switch", "route_network": "router", "push_blocks": "goal", "node_connect": "connection_node"}
-                    if entity["type"] != expected_type[puzzles[entity["puzzleId"]]["archetype"]]:
+                    archetype = puzzles[entity["puzzleId"]]["archetype"]
+                    allowed = {"resource_load", "resource_target"} if archetype == "resource_balance" else {"machine_slot", "machine_parameter"} if archetype == "machine_configuration" else {expected_type[archetype]}
+                    if entity["type"] not in allowed:
                         raise ValueError("Tipo de control incompatible con el puzzle")
         if world["player"]["spawnRegion"] not in regions:
             raise ValueError("Región de aparición inexistente")
@@ -212,9 +240,20 @@ def validate_world(world, source):
                 raise ValueError("Diálogo de consecuencia inválido")
             if len([q for q in quests.values() if q["puzzleId"] == pid]) != 1:
                 raise ValueError("Cada puzzle necesita una misión")
-            controls = [e.get("controlId") for e in region["entities"] if e.get("puzzleId") == pid and e["type"] in ("switch", "router", "connection_node", "goal")]
+            controls = [e.get("controlId") for e in region["entities"] if e.get("puzzleId") == pid and e["type"] in ("switch", "router", "connection_node", "resource_load", "resource_target", "machine_slot", "machine_parameter", "goal")]
             m = puzzle["mechanics"]
-            expected = [s["id"] for s in m.get("switches", m.get("nodes", m.get("goals", [])))]
+            automatic_reset = puzzle["archetype"] not in ("resource_balance", "machine_configuration")
+            if puzzle["failure"]["autoReset"] != automatic_reset:
+                raise ValueError("WORLD_INTEGRATION_ERROR: recuperación incompatible con el archetype")
+            if puzzle["archetype"] in ("resource_balance", "machine_configuration"):
+                expected_types = {c["id"]: kind for c, kind in configuration_controls(m)}
+                expected = list(expected_types)
+                for entity in region["entities"]:
+                    if entity.get("puzzleId") == pid and entity.get("controlId"):
+                        if entity["type"] != expected_types.get(entity["controlId"]):
+                            raise ValueError("WORLD_INTEGRATION_ERROR: tipo de control incorrecto")
+            else:
+                expected = [s["id"] for s in m.get("switches", m.get("nodes", m.get("goals", [])))]
             if sorted(controls) != sorted(expected):
                 raise ValueError("Controles físicos incompletos")
             if puzzle["archetype"] == "push_blocks":
@@ -326,6 +365,10 @@ def build_walkthrough(world, solutions):
             raise ValueError("La conversación no activa la misión")
         interact(giver)
         trace.extend({"type": "dialogue"} for _ in intro["lines"])
+        if p["archetype"] in ("resource_balance", "machine_configuration"):
+            for control in (e for e in entities.values() if e.get("puzzleId") == p["id"] and e.get("controlId")):
+                find_path(region, player, {(control["x"] + dx, control["y"] + dy) for dx, dy in DIRECTIONS.values()},
+                          obstacles | {b for group in blocks.values() for b in group})
         if p["archetype"] == "push_blocks":
             offset, m = p["world"]["offset"], p["mechanics"]
             walk({(m["spawn"]["x"] + offset["x"], m["spawn"]["y"] + offset["y"])})

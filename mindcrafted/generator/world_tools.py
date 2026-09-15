@@ -14,10 +14,11 @@ def main():
     parser.add_argument("command", choices=["demo", "check"])
     parser.add_argument("--output", type=Path, default=Path("output/world-demo"))
     parser.add_argument("--campaign", action="store_true", help="Recorrido continuo de tres regiones con boss de transferencia")
-    parser.add_argument("--archetype", choices=["node_connect", "route_network", "switch_sequence", "push_blocks"], help="Validar o exportar un único arquetipo")
+    parser.add_argument("--archetype", choices=["machine_configuration", "resource_balance", "node_connect", "route_network", "switch_sequence", "push_blocks"], help="Validar o exportar un único arquetipo")
+    parser.add_argument("--pillars", action="store_true", help="Demo integrada de node_connect, resource_balance y machine_configuration")
     args = parser.parse_args()
-    if args.campaign and args.archetype:
-        parser.error("--archetype y --campaign son alternativas")
+    if sum((bool(args.archetype), args.campaign, args.pillars)) > 1:
+        parser.error("--archetype, --campaign y --pillars son alternativas")
     if args.campaign:
         from .world_campaign import assemble_campaign, write_campaign
         packages = []
@@ -31,13 +32,22 @@ def main():
         manifest = write_campaign(campaign, args.output, screenshot=args.output / "world.png" if args.command == "check" else None)
         print(json.dumps({"developmentDemo": True, "regions": len(manifest["regions"]), "judge": "not_run", "html": str(args.output / "index.html")}, ensure_ascii=False))
         return
-    if args.archetype == "node_connect":
+    if args.pillars:
+        from .pillar_demo import SOURCE as source, blueprint
+        design = blueprint()
+    elif args.archetype == "machine_configuration":
+        from .machine_configuration_demo import SOURCE as source, blueprint
+        design = blueprint()
+    elif args.archetype == "resource_balance":
+        from .resource_balance_demo import SOURCE as source, blueprint
+        design = blueprint()
+    elif args.archetype == "node_connect":
         from .node_connect_demo import SOURCE as source, blueprint
         design = blueprint()
     else:
         source = SOURCE
         design = demo_blueprint((args.archetype,) if args.archetype else ("route_network", "switch_sequence", "push_blocks"))
-    world = compile_world(design, source, difficulty="hard" if args.archetype == "node_connect" else "normal")
+    world = compile_world(design, source, difficulty="hard" if args.pillars or args.archetype in ("node_connect", "resource_balance", "machine_configuration") else "normal")
     package = make_package(world, source, "demo")
     package["developmentDemo"] = True
     package["subtitle"] = "Demo prehecha de desarrollo; sin aprobación de juez IA"

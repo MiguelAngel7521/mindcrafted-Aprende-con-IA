@@ -98,6 +98,12 @@ def solve_puzzle(puzzle):
     if m["archetype"] == "node_connect":
         from .node_connect import solve
         return solve(puzzle)
+    if m["archetype"] == "resource_balance":
+        from .resource_balance import solve
+        return solve(puzzle)
+    if m["archetype"] == "machine_configuration":
+        from .machine_configuration import solve
+        return solve(puzzle)
     rules = {r["id"] for r in puzzle["knowledge"]["requiredRules"]}
     kind = m["archetype"]
     if kind == "switch_sequence":

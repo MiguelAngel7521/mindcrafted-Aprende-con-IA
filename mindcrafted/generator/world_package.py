@@ -47,7 +47,7 @@ def render_html(package):
         css = css.replace("/assets/fonts/PixelifySans.ttf", "data:font/ttf;base64," + base64.b64encode(font.read_bytes()).decode())
     html = html.replace('<link rel="stylesheet" href="/engine/world/style.css">', '<style>' + css + '</style>')
     for script in ("bkt.js", "world/event-bus.js", "world/flag-system.js", "world/quest-system.js",
-                   "world/dialogue-system.js", "world/node-connect.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
+                   "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
         code = '<script>' + (ENGINE / script).read_text(encoding="utf-8") + '</script>'
         if script == "world/runtime.js":
             code = '<script id="world-data" type="application/json">' + data + '</script>' + code
@@ -135,6 +135,10 @@ def browser_probe(package, walkthrough, screenshot=None):
                     current_world = package["campaign"]["regions"][region_index]["world"] if package.get("campaign") else package["world"]
                     for puzzle in current_world["puzzles"]:
                         key = (region_index, puzzle["id"])
+                        if puzzle["archetype"] in ("resource_balance", "machine_configuration") and key not in recovered_connections and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", puzzle["id"]):
+                            _probe_configuration_recovery(page, current_world, puzzle, keys)
+                            recovered_connections.add(key)
+                            recovery = True
                         if puzzle["archetype"] == "node_connect" and key not in recovered_connections and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", puzzle["id"]):
                             _probe_connection_recovery(page, current_world, puzzle, keys, screenshot)
                             recovered_connections.add(key)
@@ -218,6 +222,76 @@ def _probe_connection_recovery(page, world, puzzle, keys, screenshot=None):
     page.keyboard.press("r")
     assert page.evaluate("id => worldEngine.state.puzzles[id].restarts", puzzle["id"]) == 1
     walk({(origin["x"], origin["y"])})
+
+
+def _probe_configuration_recovery(page, world, puzzle, keys):
+    """Exercise editable failures and partial/failed reload using real keyboard input."""
+    from . import resource_balance, machine_configuration
+    mechanism = resource_balance if puzzle["archetype"] == "resource_balance" else machine_configuration
+    m, pid = puzzle["mechanics"], puzzle["id"]
+    domains, initial = mechanism.domains(m), mechanism.initial(m)
+    # A rule may group many constraints, with its first ablation witness equal
+    # to the initial state. Recovery needs an actual edited, failing state.
+    bad = next((state for values in product(*domains.values())
+                if all(value is not None for value in values)
+                and (state := dict(zip(domains, values))) != initial and not mechanism.simulate(m, state)["ok"]), None)
+    if bad is None:
+        raise ValueError(f"E2E_ERROR {pid}: no hay una configuración fallida editable para probar recuperación")
+    original = page.evaluate("worldEngine.snapshot()")
+    region = world["regions"][0]
+    entities = {e["id"]: e for e in region["entities"]}
+    obstacles = {(e["x"], e["y"]) for e in entities.values() if e["type"] not in ("goal", "exit")
+                 and not (e["type"] == "door" and original["flags"].get(e["requiresFlag"]))}
+    for other in world["puzzles"]:
+        for block in original["puzzles"][other["id"]].get("blocks", []):
+            obstacles.add((block["x"] + other["world"]["offset"]["x"], block["y"] + other["world"]["offset"]["y"]))
+
+    def walk(targets):
+        start = page.evaluate("worldEngine.state.player")
+        _, path = find_path(region, (start["x"], start["y"]), targets, obstacles)
+        for action in path:
+            page.keyboard.press(keys[action["direction"]])
+            assert_world_continuity(page, same_engine=True)
+
+    def touch(entity, count=1):
+        walk({(entity["x"] + dx, entity["y"] + dy) for dx, dy in DIRECTIONS.values()})
+        assert page.evaluate("worldEngine.nearby()[0].id") == entity["id"]
+        for _ in range(count):
+            page.keyboard.press("e")
+            assert_world_continuity(page, same_engine=True)
+
+    def reload():
+        state = page.evaluate("id => worldEngine.state.puzzles[id]", pid)
+        bkt = page.evaluate("__MINDCRAFTED_TEST__.getBKT()")
+        assert_world_continuity(page, same_engine=True)
+        page.reload()
+        page.wait_for_function("window.worldEngine && document.getElementById('loading').hidden")
+        install_continuity_guard(page)
+        restored = page.evaluate("id => worldEngine.state.puzzles[id]", pid)
+        for field in ("configuration", "effect", "attempts", "errors"):
+            assert restored[field] == state[field], "PERSISTENCE_ERROR: " + field
+        assert page.evaluate("__MINDCRAFTED_TEST__.getBKT()") == bkt
+
+    partial = False
+    for control, target in bad.items():
+        count = domains[control].index(target)
+        if count:
+            touch(next(e for e in entities.values() if e.get("puzzleId") == pid and e.get("controlId") == control), count)
+            if not partial:
+                reload()
+                partial = True
+    touch(entities[puzzle["world"]["anchorEntity"]])
+    state = page.evaluate("id => worldEngine.state.puzzles[id]", pid)
+    assert not state["solved"] and state["attempts"] == state["errors"] == 1
+    assert state["configuration"] == bad and state["effect"]["ok"] is False
+    assert page.evaluate("id => !worldEngine.isOpen(worldEngine.entities.get(id))", puzzle["success"]["openEntity"])
+    reload()
+    page.keyboard.press("h")
+    assert page.locator("#feedback").inner_text() != puzzle["hint"]
+    page.keyboard.press("r")
+    assert page.evaluate("id => worldEngine.state.puzzles[id].configuration", pid) == mechanism.initial(m)
+    assert page.evaluate("id => worldEngine.state.puzzles[id].restarts", pid) == 1
+    walk({(original["player"]["x"], original["player"]["y"])})
 
 
 def _probe_route_recovery(page, world, puzzle, keys):

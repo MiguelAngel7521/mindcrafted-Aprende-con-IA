@@ -19,7 +19,8 @@ def content_error_category(error, stage):
     if isinstance(error, GenerationError):
         return error.category
     for category in ("UNSOLVABLE", "REFERENCE_ERROR", "EDUCATIONAL_COUPLING_ERROR", "RANDOM_SUCCESS_ERROR",
-                     "DIFFICULTY_ERROR", "WORLD_INTEGRATION_ERROR", "PERSISTENCE_ERROR"):
+                     "DIFFICULTY_ERROR", "WORLD_INTEGRATION_ERROR", "PERSISTENCE_ERROR", "SOLUTION_BOUNDS_ERROR",
+                     "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE", "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION"):
         if category in str(error):
             return category
     return {"schema": "LLM_SCHEMA_ERROR", "semantic": "SEMANTIC_VALIDATION_ERROR",
@@ -32,6 +33,14 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
     """Generate one source-grounded region; course orchestration connects regions."""
     if not isinstance(source, str) or not 60 <= len(source.strip()) <= 60000:
         raise ValueError("El mundo necesita entre 60 y 60000 caracteres de material educativo")
+    if archetype == "machine_configuration":
+        from .machine_configuration import eligibility
+        if eligibility(source)["status"] != "PASS":
+            raise ValueError("SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION")
+    if archetype == "resource_balance":
+        from .resource_balance import eligibility
+        if eligibility(source)["status"] != "PASS":
+            raise ValueError("SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE")
     previous_context = deepcopy(previous_context or {"skills": [], "rules": []})
     original_hash = hashlib.sha256(source.encode()).hexdigest()
     retained = []
@@ -47,7 +56,7 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
     previous_context["skills"] = list(dict.fromkeys(r["skill"] for r in retained))
     generation_id = generation_id or str(uuid4())
     response_schema = blueprint_response_schema(archetype)
-    schema_version = "world-blueprint-2" + ("/node-connect-1" if archetype == "node_connect" else "")
+    schema_version = "world-blueprint-2" + ("/" + archetype.replace("_", "-") + "-1" if archetype in ("node_connect", "resource_balance", "machine_configuration") else "")
 
     def record(stage, status, attempt, **details):
         event = {"generation_id": generation_id, "stage": stage, "status": status,

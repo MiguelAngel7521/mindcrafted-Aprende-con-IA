@@ -188,4 +188,6 @@ estadística no demuestra resistencia a cualquier estrategia de ensayo y error.
 
 Siguiente paso recomendado: evaluar una campaña producida por un proveedor real
 con material académico y su juez, antes de ampliar los archetypes. No se adelantó
-`resource_balance`, bosses nuevos, NPC dinámicos ni otras capas de generación.
+`resource_balance` en aquel bloque, bosses nuevos, NPC dinámicos ni otras capas de generación.
+Actualización: `resource_balance` y `machine_configuration` ya están implementados;
+ver [WORLD_V2.md](WORLD_V2.md) para el estado de los tres pilares.
