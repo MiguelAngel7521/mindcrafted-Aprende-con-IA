@@ -13,11 +13,19 @@ import tempfile
 from .world import DIRECTIONS, find_path, validate_world, world_hash
 from .world_knowledge import build_knowledge_graph
 from .world_solver import network_result, route_options
+from .world_continuity import assert_world_continuity, install_continuity_guard
 
 ENGINE = Path(__file__).resolve().parents[1] / "engine"
 ROOT = ENGINE.parent.parent
 CHECKS = ("schema", "worldGraph", "solver", "educational", "runtime", "e2e")
 RUBRIC = ("embodiedLearning", "worldIntegration", "interactionQuality", "technicalSolvability")
+JUDGE_SCHEMA = {"type": "object", "additionalProperties": False,
+                "properties": {"approved": {"type": "boolean"},
+                    "scores": {"type": "object", "additionalProperties": False,
+                               "properties": {key: {"type": "integer", "minimum": 0, "maximum": 25} for key in RUBRIC},
+                               "required": list(RUBRIC)},
+                    "issues": {"type": "array", "items": {"type": "string"}}},
+                "required": ["approved", "scores", "issues"]}
 
 
 def make_package(world, source, chunk_id="", title=None):
@@ -38,7 +46,8 @@ def render_html(package):
     if font.exists():
         css = css.replace("/assets/fonts/PixelifySans.ttf", "data:font/ttf;base64," + base64.b64encode(font.read_bytes()).decode())
     html = html.replace('<link rel="stylesheet" href="/engine/world/style.css">', '<style>' + css + '</style>')
-    for script in ("bkt.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
+    for script in ("bkt.js", "world/event-bus.js", "world/flag-system.js", "world/quest-system.js",
+                   "world/dialogue-system.js", "world/node-connect.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
         code = '<script>' + (ENGINE / script).read_text(encoding="utf-8") + '</script>'
         if script == "world/runtime.js":
             code = '<script id="world-data" type="application/json">' + data + '</script>' + code
@@ -88,6 +97,7 @@ def browser_probe(package, walkthrough, screenshot=None):
             page.route("**/*", serve)
             page.goto("http://mindcrafted.test/")
             page.wait_for_function("window.worldEngine && document.getElementById('loading').hidden")
+            install_continuity_guard(page)
             if screenshot:
                 page.screenshot(path=str(screenshot), full_page=True)
             first = page.evaluate("worldEngine.snapshot().player")
@@ -97,10 +107,13 @@ def browser_probe(package, walkthrough, screenshot=None):
             page.keyboard.press("ArrowRight")
             assert page.evaluate("worldEngine.state.player.x") == first["x"]
             recovery = False
+            recovered_connections = set()
             for i, action in enumerate(walkthrough):
+                assert_world_continuity(page)
                 if action["type"] == "region":
                     assert page.evaluate("__MINDCRAFTED_TEST__.getCampaign().currentRegion") == action["index"], "Region transition failed"
                     assert page.locator("canvas").count() == 1
+                    page.evaluate("__WORLD_CONTINUITY__.enterRegion()")
                     if screenshot:
                         path = Path(screenshot)
                         page.screenshot(path=str(path.with_stem(path.stem + f"-region-{action['index'] + 1}")), full_page=True)
@@ -117,7 +130,17 @@ def browser_probe(package, walkthrough, screenshot=None):
                 if not recovery and first_puzzle["archetype"] == "route_network" and action["type"] == "dialogue" and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", first_puzzle["id"]):
                     _probe_route_recovery(page, package["world"], first_puzzle, keys)
                     recovery = True
+                if action["type"] == "dialogue":
+                    region_index = page.evaluate("__MINDCRAFTED_TEST__.getCampaign()?.currentRegion || 0")
+                    current_world = package["campaign"]["regions"][region_index]["world"] if package.get("campaign") else package["world"]
+                    for puzzle in current_world["puzzles"]:
+                        key = (region_index, puzzle["id"])
+                        if puzzle["archetype"] == "node_connect" and key not in recovered_connections and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", puzzle["id"]):
+                            _probe_connection_recovery(page, current_world, puzzle, keys, screenshot)
+                            recovered_connections.add(key)
+                            recovery = True
             assert page.evaluate("worldEngine.state.completed"), "E2E did not reach the exit"
+            assert_world_continuity(page)
             assert page.locator("#completion").is_visible()
             assert page.locator("canvas").count() == 1
             assert page.locator("#mini-game-overlay, iframe").count() == 0
@@ -135,6 +158,66 @@ def browser_probe(package, walkthrough, screenshot=None):
                     "regions": len(package.get("campaign", {}).get("regions", [])) or 1, "recovery": recovery}
         finally:
             browser.close()
+
+
+def _probe_connection_recovery(page, world, puzzle, keys, screenshot=None):
+    """Exercise partial persistence and failure/recovery for every node_connect."""
+    from .node_connect import simulate
+
+    region = world["regions"][0]
+    original = page.evaluate("worldEngine.snapshot()")
+    origin = original["player"]
+    entities = {entity["id"]: entity for entity in region["entities"]}
+    obstacles = {(e["x"], e["y"]) for e in entities.values() if e["type"] not in ("goal", "exit")
+                 and not (e["type"] == "door" and original["flags"].get(e["requiresFlag"]))}
+    for other in world["puzzles"]:
+        for block in original["puzzles"][other["id"]].get("blocks", []):
+            obstacles.add((block["x"] + other["world"]["offset"]["x"], block["y"] + other["world"]["offset"]["y"]))
+
+    def walk(targets):
+        start = page.evaluate("worldEngine.state.player")
+        _, path = find_path(region, (start["x"], start["y"]), targets, obstacles)
+        for action in path:
+            page.keyboard.press(keys[action["direction"]])
+            assert_world_continuity(page, same_engine=True)
+
+    def interact(entity):
+        walk({(entity["x"] + dx, entity["y"] + dy) for dx, dy in DIRECTIONS.values()})
+        assert page.evaluate("worldEngine.nearby()[0].id") == entity["id"]
+        page.keyboard.press("e")
+        assert_world_continuity(page, same_engine=True)
+
+    def reload():
+        assert_world_continuity(page, same_engine=True)
+        page.reload()
+        page.wait_for_function("window.worldEngine && document.getElementById('loading').hidden")
+        install_continuity_guard(page)
+
+    edge = next(e for e in puzzle["mechanics"]["edges"] if simulate(puzzle["mechanics"], [e["id"]])["invalidEdges"])
+    for node in (edge["source"], edge["target"]):
+        interact(next(e for e in entities.values() if e.get("puzzleId") == puzzle["id"] and e.get("controlId") == node))
+    partial = page.evaluate("id => worldEngine.state.puzzles[id].connections", puzzle["id"])
+    assert partial == [edge["id"]]
+    bkt = page.evaluate("__MINDCRAFTED_TEST__.getBKT()")
+    reload()
+    assert page.evaluate("id => worldEngine.state.puzzles[id].connections", puzzle["id"]) == partial
+    assert page.evaluate("__MINDCRAFTED_TEST__.getBKT()") == bkt
+    interact(entities[puzzle["world"]["anchorEntity"]])
+    state = page.evaluate("id => worldEngine.state.puzzles[id]", puzzle["id"])
+    assert not state["solved"] and state["attempts"] == state["errors"] == 1
+    assert state["connections"] == [] and edge["id"] in state["effect"]["invalidEdges"]
+    assert page.evaluate("id => !worldEngine.isOpen(worldEngine.entities.get(id))", puzzle["success"]["openEntity"])
+    if screenshot:
+        page.screenshot(path=str(Path(screenshot).with_stem(Path(screenshot).stem + "-" + puzzle["id"] + "-failure")), full_page=True)
+    bkt = page.evaluate("__MINDCRAFTED_TEST__.getBKT()")
+    reload()
+    assert page.evaluate("__MINDCRAFTED_TEST__.getBKT()") == bkt
+    assert page.evaluate("id => worldEngine.state.puzzles[id].effect", puzzle["id"]) == state["effect"]
+    page.keyboard.press("h")
+    assert page.locator("#feedback").inner_text() != puzzle["hint"]
+    page.keyboard.press("r")
+    assert page.evaluate("id => worldEngine.state.puzzles[id].restarts", puzzle["id"]) == 1
+    walk({(origin["x"], origin["y"])})
 
 
 def _probe_route_recovery(page, world, puzzle, keys):
@@ -172,8 +255,10 @@ def _probe_route_recovery(page, world, puzzle, keys):
     page.keyboard.press("r")
     observations = page.evaluate("__MINDCRAFTED_TEST__.getBKT()")
     assert observations["records"] and any(r["correct"] == 0 for r in observations["records"])
+    assert_world_continuity(page, same_engine=True)
     page.reload()
     page.wait_for_function("window.worldEngine && document.getElementById('loading').hidden")
+    install_continuity_guard(page)
     state = page.evaluate("id => worldEngine.state.puzzles[id]", puzzle["id"])
     assert state["attempts"] == 1 and state["hintsUsed"] == 1 and state["restarts"] == 1
     assert page.evaluate("__MINDCRAFTED_TEST__.getBKT()") == observations, "Reload must not duplicate BKT"

@@ -72,8 +72,9 @@ def compile_world(blueprint, source, world_id="learning_world", *, difficulty="n
                                  "x": ox + goal["x"], "y": oy + goal["y"], "puzzleId": pid, "controlId": goal["id"]})
         else:
             controls = m["switches"] if puzzle["archetype"] == "switch_sequence" else m["nodes"]
+            control_type = {"switch_sequence": "switch", "route_network": "router", "node_connect": "connection_node"}[puzzle["archetype"]]
             for j, control in enumerate(controls):
-                entities.append({"id": f"{pid}_{control['id']}", "type": "switch" if puzzle["archetype"] == "switch_sequence" else "router",
+                entities.append({"id": f"{pid}_{control['id']}", "type": control_type,
                                  "label": control["label"], "x": base + 10 + j % 3 * 3, "y": 3 + j // 3 * 3,
                                  "puzzleId": pid, "controlId": control["id"]})
         quests.append({"id": f"{pid}_quest", "title": puzzle["objective"], "puzzleId": pid, "giver": f"{pid}_mentor"})
@@ -123,6 +124,10 @@ def validate_mechanics(puzzle, source):
             if edge["source"] not in nodes or edge["target"] not in nodes or edge["source"] == edge["target"]:
                 raise ValueError("Red con referencia inválida")
         references = [n["ruleId"] for n in m["nodes"] + m["packets"]]
+    elif m["archetype"] == "node_connect":
+        from .node_connect import validate
+        validate(m, set(rules))
+        references = [r["ruleId"] for r in m["connectionRules"] + m["goals"]]
     else:
         unique(m["blocks"], "blocks")
         unique(m["goals"], "goals")
@@ -170,8 +175,8 @@ def validate_world(world, source):
                     raise ValueError("Entidad interactiva sin puzzle")
                 if entity["type"] == "npc" and entity.get("dialogueId") not in dialogues:
                     raise ValueError("NPC sin diálogo")
-                if entity["type"] in ("switch", "router", "goal"):
-                    expected_type = {"switch_sequence": "switch", "route_network": "router", "push_blocks": "goal"}
+                if entity["type"] in ("switch", "router", "connection_node", "goal"):
+                    expected_type = {"switch_sequence": "switch", "route_network": "router", "push_blocks": "goal", "node_connect": "connection_node"}
                     if entity["type"] != expected_type[puzzles[entity["puzzleId"]]["archetype"]]:
                         raise ValueError("Tipo de control incompatible con el puzzle")
         if world["player"]["spawnRegion"] not in regions:
@@ -207,7 +212,7 @@ def validate_world(world, source):
                 raise ValueError("Diálogo de consecuencia inválido")
             if len([q for q in quests.values() if q["puzzleId"] == pid]) != 1:
                 raise ValueError("Cada puzzle necesita una misión")
-            controls = [e.get("controlId") for e in region["entities"] if e.get("puzzleId") == pid and e["type"] in ("switch", "router", "goal")]
+            controls = [e.get("controlId") for e in region["entities"] if e.get("puzzleId") == pid and e["type"] in ("switch", "router", "connection_node", "goal")]
             m = puzzle["mechanics"]
             expected = [s["id"] for s in m.get("switches", m.get("nodes", m.get("goals", [])))]
             if sorted(controls) != sorted(expected):

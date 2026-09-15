@@ -6,15 +6,10 @@
   const key = p => `${p.x},${p.y}`;
   const distance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-  class EventBus {
-    constructor() { this.listeners = new Map(); }
-    on(name, callback) {
-      const group = this.listeners.get(name) || new Set();
-      group.add(callback); this.listeners.set(name, group);
-      return () => group.delete(callback);
-    }
-    emit(name, data) { for (const fn of this.listeners.get(name) || []) fn(data); }
-  }
+  const {EventBus, FlagSystem, QuestSystem, DialogueSystem} = typeof module !== 'undefined'
+    ? {...require('./event-bus.js'), ...require('./flag-system.js'), ...require('./quest-system.js'), ...require('./dialogue-system.js')}
+    : root.MindCraftedWorld;
+  const {nodeConnectResult} = typeof module !== 'undefined' ? require('./node-connect.js') : root.MindCraftedWorld;
 
   function options(m) {
     const result = Object.create(null);
@@ -50,7 +45,9 @@
     }
     const congested = m.nodes.filter(n => loads[n.id] > n.capacity);
     for (const n of congested) rules[n.ruleId] = false;
-    return {ok: Object.values(rules).every(Boolean), rules, loads, delivered, paths, congested: congested.map(n => n.id)};
+    const congestion = new Set(congested.map(n => n.id));
+    const successfulRoutes = paths.filter((path, i) => path.at(-1) === m.packets[i].target && !path.some(id => congestion.has(id))).length;
+    return {ok: Object.values(rules).every(Boolean), rules, loads, delivered, successfulRoutes, paths, congested: [...congestion]};
   }
 
   function blocksResult(m, positions) {
@@ -68,7 +65,8 @@
   function initialPuzzle(p) {
     return {sequence: [], routes: {}, blocks: (p.mechanics.blocks || []).map(b => ({x: b.x, y: b.y})),
       solved: false, attempts: 0, errors: 0, hintsUsed: 0, restarts: 0, correctRoutes: 0, invalidRoutes: 0,
-      congestionEvents: 0, solutionTime: 0, elapsed: 0, correctActions: 0, invalidActions: 0, solutionSteps: 0, effect: null};
+      congestionEvents: 0, solutionTime: 0, elapsed: 0, correctActions: 0, invalidActions: 0, solutionSteps: 0, effect: null,
+      ...(p.archetype === 'node_connect' ? {connections: [], selectedNode: null} : {})};
   }
 
   class WorldEngine {
@@ -83,11 +81,19 @@
         quests: {}, puzzles: Object.fromEntries(spec.puzzles.map(p => [p.id, initialPuzzle(p)])),
         dialogue: null, completedDialogues: [], activePuzzle: spec.puzzles[0].id, xp: 0, completed: false};
       this.initialState = copy(this.state);
+      // Campaign observers share events; systems belong to exactly one world.
+      this.systemEvents = new EventBus();
+      const dependencies = {state: () => this.state, events: this.systemEvents, emit: (name, data) => this.emit(name, data)};
+      this.flagSystem = new FlagSystem(dependencies);
+      this.questSystem = new QuestSystem({...dependencies, quests: this.spec.quests});
+      this.dialogueSystem = new DialogueSystem({...dependencies, dialogues: this.dialogues, entities: this.entities,
+        puzzles: this.puzzles, changed: () => this.changed()});
     }
-    changed() { this.events.emit('world.changed', this.snapshot()); }
-    message(text) { this.events.emit('world.message', {text}); }
-    quest(puzzleId) { return this.spec.quests.find(q => q.puzzleId === puzzleId); }
-    active(puzzleId) { return this.state.quests[this.quest(puzzleId)?.id] === 'active'; }
+    emit(name, data) { this.systemEvents.emit(name, data); this.events.emit(name, data); }
+    changed() { this.emit('world.changed', this.snapshot()); }
+    message(text) { this.emit('world.message', {text}); }
+    quest(puzzleId) { return this.questSystem.forPuzzle(puzzleId); }
+    active(puzzleId) { return this.questSystem.active(puzzleId); }
     currentPuzzle() {
       return [...this.puzzles.values()].reduce((best, p) => distance(this.state.player, this.entities.get(p.world.anchorEntity)) < distance(this.state.player, this.entities.get(best.world.anchorEntity)) ? p : best);
     }
@@ -97,7 +103,7 @@
         if (this.active(p.id) && !s.solved) s.elapsed += Math.max(0, Math.min(seconds, .1));
       }
     }
-    isOpen(entity) { return entity.type === 'door' && this.state.flags[entity.requiresFlag] === true; }
+    isOpen(entity) { return entity.type === 'door' && this.flagSystem.has(entity.requiresFlag); }
     tileFree(x, y) {
       return Number.isInteger(x) && Number.isInteger(y) && this.region.tiles[y]?.[x] === '.' &&
         ![...this.entities.values()].some(e => e.x === x && e.y === y && !['goal', 'exit'].includes(e.type) && !this.isOpen(e));
@@ -128,7 +134,7 @@
         const result = blocksResult(p.mechanics, s.blocks);
         if (result.complete) this.assess(p, result);
       } else { player.x = x; player.y = y; }
-      this.events.emit('player.moved', {...this.state.player}); this.changed(); return true;
+      this.emit('player.moved', {...this.state.player}); this.changed(); return true;
     }
     nearby() {
       return [...this.entities.values()].filter(e => distance(e, this.state.player) <= 1 && !['door', 'goal'].includes(e.type))
@@ -141,15 +147,15 @@
       if (!e || distance(e, this.state.player) > 1) return false;
       if (e.type === 'exit') {
         if (![...this.puzzles.keys()].every(id => this.state.puzzles[id].solved)) { this.message('Falta restaurar un distrito.'); return false; }
-        this.state.completed = true; this.events.emit('region.completed', {regionId: this.region.id}); this.changed(); return true;
+        this.state.completed = true; this.emit('region.completed', {regionId: this.region.id}); this.changed(); return true;
       }
       const p = this.puzzles.get(e.puzzleId);
       if (!p) return false;
       const s = this.state.puzzles[p.id]; this.state.activePuzzle = p.id;
       if ((p.prerequisites || []).some(id => !this.state.puzzles[id]?.solved)) { this.message('Primero restaura los distritos anteriores.'); return false; }
       if (e.type === 'npc') {
-        this.events.emit('entity.interacted', {entityId: e.id});
-        this.openDialogue(s.solved ? p.success.dialogue : e.dialogueId); return true;
+        this.emit('entity.interacted', {entityId: e.id});
+        return true;
       }
       if (s.solved) { this.message('Este distrito ya está restaurado.'); return false; }
       if (!this.active(p.id)) { this.message('Luna te espera junto a la consola. Habla con ella primero.'); return false; }
@@ -167,6 +173,26 @@
         s.solutionSteps++;
         s.effect = null;
         this.message(`${e.label} → ${s.routes[e.controlId]}. E cambia el cable. Envía los paquetes desde la consola.`);
+      } else if (e.type === 'connection_node') {
+        s.solutionSteps++; s.effect = null;
+        if (!s.selectedNode) {
+          s.selectedNode = e.controlId;
+          this.message(`${e.label}: origen seleccionado. Camina al destino y pulsa E para conectar o desconectar. E aquí cancela.`);
+        } else if (s.selectedNode === e.controlId) {
+          s.selectedNode = null; this.message('Selección cancelada. Las conexiones se conservan.');
+        } else {
+          const edge = p.mechanics.edges.find(edge => edge.source === s.selectedNode && edge.target === e.controlId);
+          if (!edge) { s.invalidActions++; this.message('No hay un enlace físico posible en esa dirección. Elige otro destino o cancela en el origen.'); }
+          else {
+            const index = s.connections.indexOf(edge.id), removed = index >= 0;
+            if (removed) s.connections.splice(index, 1); else s.connections.push(edge.id);
+            this.message(`${s.selectedNode} → ${e.controlId}: ${removed ? 'desconectado' : 'conectado'}. Comprueba las relaciones en la consola.`);
+            s.selectedNode = null;
+          }
+        }
+      } else if (e.type === 'console' && p.archetype === 'node_connect') {
+        s.solutionSteps++; s.selectedNode = null;
+        this.assess(p, nodeConnectResult(p.mechanics, s.connections));
       } else if (e.type === 'console' && p.archetype === 'route_network') {
         s.solutionSteps++;
         this.assess(p, networkResult(p.mechanics, s.routes));
@@ -174,62 +200,36 @@
       else return false;
       this.changed(); return true;
     }
-    openDialogue(id) {
-      if (!this.dialogues.has(id)) throw new Error('Diálogo inexistente');
-      this.state.dialogue = {id, line: 0}; this.changed();
-    }
-    dialogueLine() {
-      const active = this.state.dialogue;
-      if (!active) return null;
-      return this.dialogues.get(active.id).lines[active.line];
-    }
-    advanceDialogue() {
-      const active = this.state.dialogue;
-      if (!active) return;
-      const d = this.dialogues.get(active.id);
-      active.line++;
-      if (active.line >= d.lines.length) {
-        this.state.dialogue = null;
-        if (!this.state.completedDialogues.includes(d.id)) this.state.completedDialogues.push(d.id);
-        for (const effect of d.onComplete) {
-          if (effect.type === 'startQuest' && this.state.quests[effect.target] !== 'complete') {
-            const started = this.state.quests[effect.target] === 'active';
-            this.state.quests[effect.target] = 'active'; this.events.emit('quest.started', {questId: effect.target});
-            if (!started) this.events.emit('puzzle.started', {puzzleId: this.spec.quests.find(q => q.id === effect.target).puzzleId});
-          } else if (effect.type === 'setFlag') this.setFlag(effect.target);
-        }
-        this.events.emit('npc.dialogue.completed', {npcId: d.speaker, dialogueId: d.id});
-      }
-      this.changed();
-    }
-    setFlag(flag) { this.state.flags[flag] = true; this.events.emit('world.flag.set', {flag, value: true}); }
+    openDialogue(id) { this.dialogueSystem.open(id); }
+    dialogueLine() { return this.dialogueSystem.line(); }
+    advanceDialogue() { this.dialogueSystem.advance(); }
+    setFlag(flag) { return this.flagSystem.set(flag); }
     assess(p, result) {
       const s = this.state.puzzles[p.id];
       if (s.solved) return;
-      s.attempts++; s.effect = result;
-      s.correctRoutes += result.delivered || 0;
-      s.invalidRoutes += p.archetype === 'route_network' ? p.mechanics.packets.length - result.delivered : 0;
+      s.attempts++;
+      s.effect = p.archetype === 'route_network' ? {...result, routes: {...s.routes}} : result;
+      s.correctRoutes += result.successfulRoutes || 0;
+      s.invalidRoutes += p.archetype === 'route_network' ? p.mechanics.packets.length - result.successfulRoutes : 0;
       s.congestionEvents += result.congested?.length || 0;
       s.correctActions += Object.values(result.rules).filter(Boolean).length;
       s.invalidActions += Object.values(result.rules).filter(value => !value).length;
       if (!result.ok) s.errors++;
       for (const r of p.knowledge.requiredRules) {
-        this.events.emit('learning.observation', {puzzleId: p.id, skill: r.skill, label: r.description, correct: result.rules[r.id] === true,
+        this.emit('learning.observation', {puzzleId: p.id, skill: r.skill, label: r.description, correct: result.rules[r.id] === true,
           observations: {correctRoutes: s.correctRoutes, invalidRoutes: s.invalidRoutes, congestionEvents: s.congestionEvents,
             correctActions: s.correctActions, invalidActions: s.invalidActions, solutionSteps: s.solutionSteps,
             hintsUsed: s.hintsUsed, solutionTime: Math.round(s.elapsed), solutionTimeMs: Math.round(s.elapsed * 1000), restarts: s.restarts, attempts: s.attempts}});
       }
       if (result.ok) {
         s.solved = true; s.solutionTime = Math.round(s.elapsed);
-        this.state.quests[this.quest(p.id).id] = 'complete';
         this.state.xp += p.success.xp; this.state.inventory.push(p.id + '_energy');
         for (const flag of p.success.setFlags) this.setFlag(flag);
-        this.events.emit('puzzle.solved', {puzzleId: p.id, score: Math.max(.2, 1 - s.errors * .1 - s.hintsUsed * .05), observations: copy(s)});
-        this.openDialogue(p.success.dialogue);
+        this.emit('puzzle.solved', {puzzleId: p.id, score: Math.max(.2, 1 - s.errors * .1 - s.hintsUsed * .05), observations: copy(s)});
         this.message('¡Energía restaurada! La compuerta se abrió.');
       } else {
-        this.message(result.congested?.length ? 'Los routers se saturaron: las luces del distrito se apagaron. Reparte la carga.' : 'La energía no llega a destino. Revisa las reglas y vuelve a intentarlo.');
-        this.events.emit('puzzle.failed', {puzzleId: p.id, worldEffect: p.failure.worldEffect});
+        this.message(p.archetype === 'node_connect' ? 'La infraestructura sigue desconectada. Observa los enlaces del último intento y las reglas incumplidas; puedes reconstruir con E o limpiar con R.' : result.congested?.length ? 'Los routers se saturaron: las luces del distrito se apagaron. Reparte la carga.' : 'La energía no llega a destino. Revisa las reglas y vuelve a intentarlo.');
+        this.emit('puzzle.failed', {puzzleId: p.id, worldEffect: p.failure.worldEffect});
         this.reset(p.id, false);
         if (s.attempts >= 2) this.message(this.hintText(p, s.attempts - 1));
       }
@@ -238,22 +238,36 @@
       const p = this.puzzles.get(puzzleId), s = this.state.puzzles[puzzleId];
       if (!p || s.solved || !this.active(puzzleId) || this.state.dialogue) return false;
       s.sequence = []; s.routes = {}; s.blocks = initialPuzzle(p).blocks;
+      if (p.archetype === 'node_connect') { s.connections = []; s.selectedNode = null; }
       if (manual) { s.restarts++; s.effect = null; }
       if (p.archetype === 'push_blocks') this.state.player = {x: p.world.offset.x + p.mechanics.spawn.x, y: p.world.offset.y + p.mechanics.spawn.y, direction: 'down'};
-      this.events.emit('puzzle.reset', {puzzleId, manual}); this.changed(); return true;
+      this.emit('puzzle.reset', {puzzleId, manual}); this.changed(); return true;
     }
     hint() {
       const p = this.currentPuzzle(), s = this.state.puzzles[p.id];
       if (s.solved || !this.active(p.id) || this.state.dialogue || this.state.completed) return;
-      s.hintsUsed++; this.message(this.hintText(p, s.hintsUsed)); this.events.emit('puzzle.hint', {puzzleId: p.id}); this.changed();
+      s.hintsUsed++; this.message(this.hintText(p, s.hintsUsed)); this.emit('puzzle.hint', {puzzleId: p.id}); this.changed();
     }
     hintText(p, level) {
       const s = this.state.puzzles[p.id], m = p.mechanics;
-      if (level >= p.failure.hintAfterAttempts) return p.hint;
-      if (level >= 2) {
-        const rule = p.knowledge.requiredRules.find(r => s.effect?.rules?.[r.id] === false) || p.knowledge.requiredRules[0];
-        return 'Observa esta regla: ' + rule.description + '. ' + rule.evidence;
+      if (level <= 0) return '';
+      if (level >= Math.max(4, p.failure.hintAfterAttempts)) return p.hint;
+      if (level === 1) {
+        if (p.archetype === 'node_connect') return 'Un enlace representa una dependencia dirigida. Compara la función de sus dos componentes y sigue la cadena hasta el destino.';
+        if (p.archetype === 'route_network') return 'Cada paquete necesita un camino completo. La carga acumulada no debe superar la capacidad de los routers.';
+        if (p.archetype === 'switch_sequence') return 'Una etapa solo puede funcionar después de sus requisitos. Busca qué necesita cada etapa.';
+        return 'Cada puesto necesita una función. Compara esa necesidad con la función de los módulos antes de empujarlos.';
       }
+      if (level >= 3) {
+        const rule = p.knowledge.requiredRules.find(r => s.effect?.rules?.[r.id] === false) || p.knowledge.requiredRules[0];
+        if (p.archetype === 'node_connect') return `Revisa el componente ${m.nodes.find(n => n.id === m.goals[0].source).label}. E lo selecciona como origen; camina al destino y pulsa E. Repetir el par desconecta. Regla a comprobar: ${rule.description}.`;
+        if (p.archetype === 'route_network') {
+          const branching = Object.entries(options(m)).find(([, targets]) => targets.length > 1)?.[0];
+          return `Acércate al router ${branching || m.packets[0].source}: E cambia su salida. Prueba un camino alternativo y envía desde la consola. Regla a comprobar: ${rule.description}.`;
+        }
+        return 'Comprueba esta restricción al mover o activar el siguiente objeto: ' + rule.description + '. ' + rule.evidence;
+      }
+      if (p.archetype === 'node_connect') return s.effect?.invalidEdges?.length ? `Hay ${s.effect.invalidEdges.length} enlaces entre tipos incompatibles. Reconstruye las dependencias sin saltarte las funciones intermedias.` : `${s.connections.length} enlaces construidos. Sigue las flechas, verifica los límites de entrada/salida y busca cadenas incompletas.`;
       if (p.archetype === 'route_network') return s.effect?.congested?.length ? `Sobrecarga observada en ${s.effect.congested.join(', ')}. Compara su carga con la capacidad y busca otro camino.` : `${Object.keys(s.routes).length} salidas conectadas. Sigue cada cable hasta el destino antes de enviar los paquetes.`;
       if (p.archetype === 'switch_sequence') return `${s.sequence.length} de ${m.switches.length} etapas activadas. Observa qué necesita cada etapa antes de empezar; R permite probar otro orden.`;
       return `${s.blocks.filter(b => m.goals.some(g => g.x === b.x && g.y === b.y)).length} módulos sobre puestos. Compara la función de cada módulo con la necesidad del puesto; R recupera módulos atascados.`;
@@ -273,10 +287,32 @@
         if (saved.routes && typeof saved.routes === 'object' && p.archetype === 'route_network') {
           for (const [node, target] of Object.entries(saved.routes)) if (options(p.mechanics)[node]?.includes(target)) fresh.routes[node] = target;
         }
+        if (p.archetype === 'node_connect') {
+          const allowed = new Set(p.mechanics.edges.map(edge => edge.id));
+          fresh.connections = Array.isArray(saved.connections) ? [...new Set(saved.connections.filter(id => allowed.has(id)))] : [];
+          fresh.selectedNode = p.mechanics.nodes.some(node => node.id === saved.selectedNode) ? saved.selectedNode : null;
+        }
         if (p.archetype === 'push_blocks' && Array.isArray(saved.blocks) && saved.blocks.length === p.mechanics.blocks.length &&
             saved.blocks.every(b => b && Number.isInteger(b.x) && Number.isInteger(b.y) && p.mechanics.board[b.y]?.[b.x] === '.') && new Set(saved.blocks.map(key)).size === saved.blocks.length) fresh.blocks = copy(saved.blocks);
-        const result = p.archetype === 'route_network' ? networkResult(p.mechanics, fresh.routes) : p.archetype === 'switch_sequence' ? sequenceResult(p.mechanics, fresh.sequence) : blocksResult(p.mechanics, fresh.blocks);
+        const result = p.archetype === 'node_connect' ? nodeConnectResult(p.mechanics, fresh.connections) : p.archetype === 'route_network' ? networkResult(p.mechanics, fresh.routes) : p.archetype === 'switch_sequence' ? sequenceResult(p.mechanics, fresh.sequence) : blocksResult(p.mechanics, fresh.blocks);
         fresh.solved = saved.solved === true && result.ok;
+        if (p.archetype === 'node_connect') {
+          if (fresh.solved) { fresh.effect = result; fresh.selectedNode = null; }
+          else if (fresh.attempts > 0 && Array.isArray(saved.effect?.connections)) {
+            const allowed = new Set(p.mechanics.edges.map(edge => edge.id));
+            const connections = [...new Set(saved.effect.connections.filter(id => allowed.has(id)))];
+            const failure = nodeConnectResult(p.mechanics, connections);
+            if (!failure.ok) fresh.effect = failure;
+          }
+        }
+        if (p.archetype === 'route_network') {
+          if (fresh.solved) fresh.effect = {...result, routes: {...fresh.routes}};
+          else if (fresh.attempts > 0 && saved.effect?.routes && typeof saved.effect.routes === 'object') {
+            const routes = Object.fromEntries(Object.entries(saved.effect.routes).filter(([node, target]) => options(p.mechanics)[node]?.includes(target)));
+            const failure = networkResult(p.mechanics, routes);
+            if (!failure.ok) fresh.effect = {...failure, routes};
+          }
+        }
         this.state.puzzles[p.id] = fresh;
         const q = this.quest(p.id);
         if (raw.quests?.[q.id] === 'active' || fresh.solved) this.state.quests[q.id] = fresh.solved ? 'complete' : 'active';
@@ -324,7 +360,7 @@
     load(engine) { try { const data = JSON.parse(this.storage?.getItem(this.key) || 'null'); return data?.version === 2 && data.hash === this.hash ? engine.restore(data.state) : false; } catch (_) { return false; } }
   }
 
-  const api = {WorldEngine, EventBus, SaveSystem, directions, sequenceResult, networkResult, blocksResult};
+  const api = {WorldEngine, EventBus, FlagSystem, QuestSystem, DialogueSystem, SaveSystem, directions, sequenceResult, networkResult, blocksResult, nodeConnectResult};
   root.MindCraftedWorld = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window === 'undefined' ? globalThis : window);

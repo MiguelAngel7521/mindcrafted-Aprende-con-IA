@@ -95,6 +95,9 @@ def solve_blocks(mechanics, budget=180000):
 
 def solve_puzzle(puzzle):
     m = puzzle["mechanics"]
+    if m["archetype"] == "node_connect":
+        from .node_connect import solve
+        return solve(puzzle)
     rules = {r["id"] for r in puzzle["knowledge"]["requiredRules"]}
     kind = m["archetype"]
     if kind == "switch_sequence":

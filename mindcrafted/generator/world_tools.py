@@ -14,7 +14,10 @@ def main():
     parser.add_argument("command", choices=["demo", "check"])
     parser.add_argument("--output", type=Path, default=Path("output/world-demo"))
     parser.add_argument("--campaign", action="store_true", help="Recorrido continuo de tres regiones con boss de transferencia")
+    parser.add_argument("--archetype", choices=["node_connect", "route_network", "switch_sequence", "push_blocks"], help="Validar o exportar un único arquetipo")
     args = parser.parse_args()
+    if args.campaign and args.archetype:
+        parser.error("--archetype y --campaign son alternativas")
     if args.campaign:
         from .world_campaign import assemble_campaign, write_campaign
         packages = []
@@ -28,13 +31,19 @@ def main():
         manifest = write_campaign(campaign, args.output, screenshot=args.output / "world.png" if args.command == "check" else None)
         print(json.dumps({"developmentDemo": True, "regions": len(manifest["regions"]), "judge": "not_run", "html": str(args.output / "index.html")}, ensure_ascii=False))
         return
-    world = compile_world(demo_blueprint(("route_network", "switch_sequence", "push_blocks")), SOURCE)
-    package = make_package(world, SOURCE, "demo")
+    if args.archetype == "node_connect":
+        from .node_connect_demo import SOURCE as source, blueprint
+        design = blueprint()
+    else:
+        source = SOURCE
+        design = demo_blueprint((args.archetype,) if args.archetype else ("route_network", "switch_sequence", "push_blocks"))
+    world = compile_world(design, source, difficulty="hard" if args.archetype == "node_connect" else "normal")
+    package = make_package(world, source, "demo")
     package["developmentDemo"] = True
     package["subtitle"] = "Demo prehecha de desarrollo; sin aprobación de juez IA"
     args.output.mkdir(parents=True, exist_ok=True)
     if args.command == "check":
-        report = quality_gate(world, SOURCE, screenshot=args.output / "world.png")
+        report = quality_gate(world, source, screenshot=args.output / "world.png")
         (args.output / "validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps({"checks": report["checks"], "errors": report["errors"], "approved": report["approved"], "judge": "not_run"}, ensure_ascii=False))
         if not all(report["checks"].values()):

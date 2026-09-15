@@ -4,12 +4,18 @@
 import asyncio
 import contextvars
 import hashlib
+import json
 import os
 import sys
 import time
+from uuid import uuid4
+from urllib.parse import urlsplit
 
 import httpx
-from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIStatusError
+from openai import AsyncOpenAI, APIConnectionError, APIStatusError, APITimeoutError
+
+from .provider_response import GenerationError, ProviderError, field, normalize_response, token_usage
+from .structured_schema import schema_hash, strict_response_schema, validate_response_text
 
 # Default to OpenRouter; API_BASE_URL / MODEL (.env) are aliases of STUDIO_* (see server._unify_ai_env_aliases).
 _OPENROUTER_BASE = (
@@ -45,6 +51,23 @@ _api_semaphore: asyncio.Semaphore | None = None
 # Supports concurrent jobs: each task sets its own list via context.
 _studio_usage_collector: list[dict] | None = None  # legacy; prefer _studio_usage_collector_ctx
 _studio_usage_collector_ctx: contextvars.ContextVar[list[dict] | None] = contextvars.ContextVar("studio_usage_collector", default=None)
+_provider_events_ctx: contextvars.ContextVar[list[dict] | None] = contextvars.ContextVar("provider_events", default=None)
+
+PROVIDER_URLS = {"groq": "https://api.groq.com/openai/v1", "openrouter": "https://openrouter.ai/api/v1",
+                 "openai": "https://api.openai.com/v1"}
+
+
+def provider_config(provider=None, base_url=None):
+    name = provider or os.environ.get("STUDIO_AI_PROVIDER")
+    url = (base_url or PROVIDER_URLS.get(name) or os.environ.get("STUDIO_AI_BASE_URL")
+           or os.environ.get("API_BASE_URL") or PROVIDER_URLS["openrouter"]).strip().rstrip("/")
+    parsed = urlsplit(url)
+    if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ProviderError("PROVIDER_CONFIG_ERROR", "Base URL must not contain credentials, query or fragment")
+    inferred = {"api.groq.com": "groq", "openrouter.ai": "openrouter", "api.openai.com": "openai"}.get(parsed.hostname, "openai_compatible")
+    if name in PROVIDER_URLS and inferred != "openai_compatible" and name != inferred:
+        raise ProviderError("PROVIDER_CONFIG_ERROR", "Provider and base URL disagree")
+    return name or inferred, url
 
 
 def _get_semaphore() -> asyncio.Semaphore:
@@ -61,36 +84,39 @@ def _make_client(api_key: str, base_url: str) -> AsyncOpenAI:
     return AsyncOpenAI(
         api_key=key,
         base_url=url,
-        timeout=httpx.Timeout(600, connect=60),  # 10min for thinking models (Kimi K2.5, etc.)
+        timeout=httpx.Timeout(float(os.environ.get("STUDIO_AI_TIMEOUT", "600")), connect=30),
         max_retries=0,
     )
 
 
 def _get_base_url() -> str:
     """Read base URL at runtime so env changes take effect without restart."""
-    return (
-        os.environ.get("STUDIO_AI_BASE_URL")
-        or os.environ.get("API_BASE_URL")
-        or "https://openrouter.ai/api/v1"
-    ).strip().rstrip("/")
+    return provider_config()[1]
 
 
-def _get_client(api_key: str | None = None, base_url: str | None = None) -> tuple[AsyncOpenAI, str]:
+def _get_client(api_key: str | None = None, base_url: str | None = None, *, provider=None) -> tuple[AsyncOpenAI, str]:
     """Returns (client, cache_key) so caller can invalidate on error."""
+    provider, resolved_url = provider_config(provider, base_url)
     resolved_key = (api_key or "").strip()
     if not resolved_key:
-        resolved_key = (
+        if provider in ("groq", "openai"):
+            variable = "GROQ_API_KEY" if provider == "groq" else "OPENAI_API_KEY"
+            resolved_key = (os.environ.get(variable) or "").strip()
+            # Do not send the configured OpenRouter key to a different provider.
+            if not resolved_key and provider_config()[0] == provider:
+                resolved_key = (os.environ.get("API_KEY") or "").strip()
+        else:
+            resolved_key = (
             (os.environ.get("OPENROUTER_API_KEY_studio") or "").strip()
             or (os.environ.get("OPENROUTER_API_KEY") or "").strip()
             or (os.environ.get("API_KEY") or "").strip()
-        )
+            )
         if not resolved_key:
-            raise RuntimeError(
-                "No API key in environment. Set API_KEY in .env (or OPENROUTER_API_KEY / "
-                "OPENROUTER_API_KEY_studio), or pass api_key from the Studio / CLI."
+            raise ProviderError(
+                "PROVIDER_CONFIG_ERROR", "No API key for selected provider. Set GROQ_API_KEY, OPENAI_API_KEY, "
+                "OPENROUTER_API_KEY or API_KEY for the configured base URL."
             )
 
-    resolved_url = (base_url or "").strip().rstrip("/") or _get_base_url()
     identity = f"{resolved_key}\0{resolved_url}".encode("utf-8")
     cache_key = hashlib.sha256(identity).hexdigest()
     if cache_key not in _clients:
@@ -111,167 +137,126 @@ def _estimate_tokens(text: str) -> int:
 
 
 
-async def generate(
-    prompt: str,
-    system_prompt: str,
-    *,
-    max_tokens: int = 4096,
-    model: str | None = None,
-    step: str | None = None,
-    max_retries: int = 5,
-    api_key: str | None = None,
-    base_url: str | None = None,
-) -> str:
-    """Call the AI API with streaming, concurrency control, retry logic.
-    A non-empty step override takes priority over the explicit and global models."""
-    if step:
-        model = get_model_for_step(step, model)
-    else:
-        model = (model or "").strip() or _get_default_model()
-    last_error: Exception | None = None
-    sem = _get_semaphore()
+def _classify_error(error):
+    if isinstance(error, (ProviderError, GenerationError)):
+        return error
+    if isinstance(error, (APITimeoutError, httpx.TimeoutException, TimeoutError)):
+        return ProviderError("PROVIDER_TIMEOUT", "Request timed out", retryable=True)
+    if isinstance(error, (APIConnectionError, httpx.NetworkError)):
+        return ProviderError("PROVIDER_CONNECTION_ERROR", "Provider connection failed", retryable=True)
+    if isinstance(error, (APIStatusError, httpx.HTTPStatusError)):
+        code = error.status_code if isinstance(error, APIStatusError) else error.response.status_code
+        body = field(error, "body", {})
+        provider_code = field(field(body, "error", body), "code", "")
+        if code == 400 and provider_code in ("json_validate_failed", "json_validation_failed"):
+            return GenerationError("LLM_SCHEMA_ERROR", "Provider rejected generated JSON against the response schema")
+        category = ("PROVIDER_RATE_LIMIT" if code == 429 else "PROVIDER_TIMEOUT" if code == 408
+                    else "PROVIDER_UPSTREAM_ERROR" if code >= 500 else "PROVIDER_HTTP_ERROR")
+        return ProviderError(category, f"HTTP {code}", retryable=code in (408, 429) or code >= 500, status_code=code)
+    return None
 
-    prompt_est = _estimate_tokens(system_prompt) + _estimate_tokens(prompt)
-    sys_len = len(system_prompt)
-    usr_len = len(prompt)
-    model_short = model.split("/")[-1] if "/" in model else model
 
-    async with sem:
-        client, cache_key = _get_client(api_key=api_key, base_url=base_url)
-        base_used = base_url or _get_base_url()
-        base_host = base_used.split("/")[2] if len(base_used.split("/")) > 2 else base_used
+def _record(event):
+    collector = _provider_events_ctx.get()
+    if collector is not None:
+        collector.append(dict(event))
+    # Allowlisted metadata only: never raw response/error/header/key or prompt preview.
+    print("  [provider] " + json.dumps(event, ensure_ascii=False), file=sys.stderr)
 
-        print(
-            f"  [api] → {model_short} @ {base_host}  prompt≈{prompt_est}tok "
-            f"(sys={sys_len:,}ch usr={usr_len:,}ch)  max_out={max_tokens}",
-            file=sys.stderr,
-        )
+
+async def generate_response(
+    prompt: str, system_prompt: str, *, max_tokens=4096, model=None, step=None,
+    max_retries=5, api_key=None, base_url=None, provider=None, response_schema=None,
+    schema_name="model_response", schema_version=None, structured_mode=None,
+    fixed_model=False, generation_id=None, repair_count=0, reasoning_effort=None,
+    temperature=None, top_p=None,
+):
+    """Normalized response; retry transport failures, never repair content here.
+
+    max_retries retains its historical meaning: total provider attempts.
+    Fixed validation pins the explicit model ahead of per-step environment overrides.
+    """
+    if max_retries < 1:
+        raise ValueError("At least one provider attempt is required")
+    model = (model or "").strip() if fixed_model else get_model_for_step(step, model) if step else (model or "").strip() or _get_default_model()
+    if fixed_model and (not model or model in ("openrouter/free", "openrouter/auto", "auto", "free")):
+        raise ProviderError("PROVIDER_CONFIG_ERROR", "Reproducible validation requires an explicit fixed model")
+    provider, resolved_url = provider_config(provider, base_url)
+    mode = (structured_mode or os.environ.get("STUDIO_STRUCTURED_OUTPUT", "strict")) if response_schema is not None else "none"
+    if mode not in ("none", "strict", "best_effort", "json_mode"):
+        raise ProviderError("PROVIDER_CONFIG_ERROR", "Unknown structured output mode")
+    wire_schema = strict_response_schema(response_schema) if mode == "strict" else response_schema
+    request = {"model": model, "max_tokens": max_tokens, "messages": [
+        {"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}], "stream": False}
+    if temperature is not None:
+        request["temperature"] = temperature
+    if top_p is not None:
+        request["top_p"] = top_p
+    if mode in ("strict", "best_effort"):
+        request["response_format"] = {"type": "json_schema", "json_schema": {
+            "name": schema_name, "strict": mode == "strict", "schema": wire_schema}}
+        if provider == "openrouter":
+            request["extra_body"] = {"provider": {"require_parameters": True}}
+    elif mode == "json_mode":
+        request["response_format"] = {"type": "json_object"}
+    effort = reasoning_effort or os.environ.get("STUDIO_REASONING_EFFORT")
+    if effort and effort not in ("none", "minimal", "low", "medium", "high"):
+        raise ProviderError("PROVIDER_CONFIG_ERROR", "Unsupported reasoning effort")
+    if provider == "openrouter" and (response_schema is not None or effort):
+        reasoning = {"exclude": True}
+        if effort == "none":
+            reasoning["enabled"] = False
+        elif effort:
+            reasoning["effort"] = effort
+        request.setdefault("extra_body", {})["reasoning"] = reasoning
+    elif effort:
+        request["reasoning_effort"] = effort
+    common = {"generation_id": generation_id or str(uuid4()), "provider": provider, "model": model,
+              "step": step, "schema_version": schema_version,
+              "canonical_schema_hash": schema_hash(response_schema) if response_schema else None,
+              "wire_schema_hash": schema_hash(wire_schema) if wire_schema else None,
+              "structured_output": mode in ("strict", "best_effort"), "structured_mode": mode,
+              "repair_count": repair_count, "reasoning_effort": effort,
+              "temperature": temperature, "top_p": top_p}
+    async with _get_semaphore():
         for attempt in range(1, max_retries + 1):
-            if attempt > 1:
-                await asyncio.sleep(0.5)
-
-            t0 = time.monotonic()
-
+            client, cache_key = _get_client(api_key, resolved_url, provider=provider)
+            start = time.monotonic()
+            usage, actual, raw = {}, None, None
             try:
-                # OpenAI-compatible: /v1/chat/completions
-                response = await client.chat.completions.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt},
-                    ],
-                    stream=False,
-                )
-                content = (response.choices[0].message.content or "")
-                u = getattr(response, "usage", None)
-                if u:
-                    collector = _studio_usage_collector_ctx.get()
-                    if collector is not None:
-                        collector.append({
-                            "prompt_tokens": getattr(u, "prompt_tokens", 0) or 0,
-                            "completion_tokens": getattr(u, "completion_tokens", 0) or 0,
-                            "total_tokens": getattr(u, "total_tokens", 0) or 0,
-                        })
-                    elif _studio_usage_collector is not None:
-                        _studio_usage_collector.append({
-                            "prompt_tokens": getattr(u, "prompt_tokens", 0) or 0,
-                            "completion_tokens": getattr(u, "completion_tokens", 0) or 0,
-                            "total_tokens": getattr(u, "total_tokens", 0) or 0,
-                        })
+                raw = await client.chat.completions.create(**request)
+                usage, actual = token_usage(raw), field(raw, "model")
+                collector = _studio_usage_collector_ctx.get()
+                if collector is None:
+                    collector = _studio_usage_collector
+                if collector is not None:
+                    collector.append(usage)
+                result = normalize_response(raw, provider=provider, model=model, fixed_model=fixed_model)
+                if response_schema is not None:
+                    validate_response_text(result.text, wire_schema)
+            except Exception as error:
+                classified = _classify_error(error)
+                if classified is None:
+                    raise  # Programming errors must not be hidden as transport failures.
+                _record(dict(common, attempt=attempt, response_status="error", response_model=actual,
+                             latency_ms=round((time.monotonic()-start)*1000), error_category=classified.category,
+                             http_status=getattr(classified, "status_code", None) or (200 if raw is not None else None), usage=usage))
+                if isinstance(classified, GenerationError):
+                    raise classified from None
+                classified.attempts = attempt
+                if not classified.retryable or attempt == max_retries:
+                    raise classified from None
+                if classified.category == "PROVIDER_CONNECTION_ERROR":
+                    _invalidate_client(cache_key)
+                await asyncio.sleep(min(30, (10 if classified.category == "PROVIDER_RATE_LIMIT" else 2) * attempt))
+            else:
+                _record(dict(common, attempt=attempt, response_status="ok", response_model=actual,
+                             latency_ms=round((time.monotonic()-start)*1000), error_category=None,
+                             http_status=200, usage=usage, finish_reason=result.finish_reason))
+                return result
 
-                elapsed = time.monotonic() - t0
-                resp_len = len(content)
-                out_tok_est = _estimate_tokens(content)
-                tps = int(out_tok_est / elapsed) if elapsed > 0 else "?"
-                truncation_risk = out_tok_est >= max_tokens * 0.88
-                status_icon = "⚠️ TRUNC?" if truncation_risk else "✓"
-                print(
-                    f"  [api] {status_icon} {elapsed:.1f}s  ~{out_tok_est}tok/{max_tokens}  "
-                    f"{tps} tok/s  resp={resp_len:,}ch",
-                    file=sys.stderr,
-                )
-                if truncation_risk:
-                    print(
-                        f"  [api] ⚠️  output ~{out_tok_est} tok ≥ 88% of max_tokens={max_tokens} — "
-                        f"code may be TRUNCATED. Consider increasing max_tokens or prompting for shorter output.",
-                        file=sys.stderr,
-                    )
-                preview = content[:300].replace('\n', ' ') if content else "(empty)"
-                print(f"  [api] preview: {preview}{'...' if resp_len > 300 else ''}", file=sys.stderr)
 
-                if not content.strip():
-                    wait = 5 * attempt
-                    print(
-                        f"  [api] ✗ empty response (attempt {attempt}/{max_retries}) "
-                        f"— retrying in {wait}s",
-                        file=sys.stderr,
-                    )
-                    last_error = RuntimeError("API returned empty content")
-                    await asyncio.sleep(wait)
-                    continue
-
-                return content
-
-            except RateLimitError as exc:
-                last_error = exc
-                wait = 15 * attempt
-                print(
-                    f"  [api] ⏳ rate limited attempt {attempt}/{max_retries} "
-                    f"— waiting {wait}s",
-                    file=sys.stderr,
-                )
-                await asyncio.sleep(wait)
-
-            except APIConnectionError as exc:
-                last_error = exc
-                elapsed = time.monotonic() - t0
-                _invalidate_client(cache_key)
-                wait = 5 * attempt
-                err_msg = str(exc).strip() or type(exc).__name__
-                cause = getattr(exc, "__cause__", None)
-                cause_msg = repr(cause) if cause else ""
-                print(
-                    f"  [api] ✗ connection error after {elapsed:.1f}s "
-                    f"attempt {attempt}/{max_retries} — retrying in {wait}s",
-                    file=sys.stderr,
-                )
-                print(f"  [api]   reason: {err_msg}", file=sys.stderr)
-                if cause_msg:
-                    print(f"  [api]   cause: {cause_msg}", file=sys.stderr)
-                print(f"  [api]   base_url={base_used!r}", file=sys.stderr)
-                await asyncio.sleep(wait)
-
-            except APIStatusError as exc:
-                last_error = exc
-                elapsed = time.monotonic() - t0
-                if exc.status_code >= 500:
-                    wait = 5 * attempt
-                    print(
-                        f"  [api] ✗ server {exc.status_code} after {elapsed:.1f}s "
-                        f"attempt {attempt}/{max_retries} — retrying in {wait}s",
-                        file=sys.stderr,
-                    )
-                    await asyncio.sleep(wait)
-                else:
-                    raise
-
-            except httpx.HTTPStatusError as exc:
-                # httpx path; retry on 5xx/429
-                last_error = exc
-                elapsed = time.monotonic() - t0
-                code = exc.response.status_code
-                if code >= 500 or code == 429:
-                    wait = 15 * attempt if code == 429 else 5 * attempt
-                    print(
-                        f"  [api] ✗ HTTP {code} after {elapsed:.1f}s "
-                        f"attempt {attempt}/{max_retries} — retrying in {wait}s",
-                        file=sys.stderr,
-                    )
-                    await asyncio.sleep(wait)
-                else:
-                    raise
-
-    raise RuntimeError(
-        f"API call failed after {max_retries} attempts: {last_error!r}"
-    )
+async def generate(prompt: str, system_prompt: str, **kwargs) -> str:
+    """Keep the shared V1/V2 string API; protocol details stop at this adapter."""
+    response = await generate_response(prompt, system_prompt, **kwargs)
+    return response.text

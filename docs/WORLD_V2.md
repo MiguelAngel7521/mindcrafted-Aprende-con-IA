@@ -15,6 +15,8 @@ La conversación se muestra debajo del mapa; no transporta al jugador a una aren
 .venv/bin/python -m playwright install chromium
 .venv/bin/python -m pytest -q
 .venv/bin/python -m mindcrafted.generator.world_tools demo --output output/world-demo
+# Nuevo grafo de dependencias: solver, recuperación y E2E reales:
+.venv/bin/python -m mindcrafted.generator.world_tools check --archetype node_connect --output output/node-connect
 # Campaña de tres regiones, los tres arquetipos y boss de transferencia:
 .venv/bin/python -m mindcrafted.generator.world_tools check --campaign --output output/campaign-demo
 ```
@@ -54,6 +56,11 @@ en distintas lecciones permanecen aislados.
 | `switch_sequence` | Caminar hasta interruptores y energizar etapas | Restricciones de precedencia entre etapas |
 | `route_network` | Cambiar cables en routers y enviar paquetes | Destino, ausencia de ciclos de entrega y capacidad acumulada |
 | `push_blocks` | Empujar módulos hasta puestos con necesidades distintas | Movimiento, colisión y compatibilidad módulo→puesto |
+| `node_connect` | Seleccionar un componente, caminar al destino y alternar un enlace dirigido | Compatibilidad conceptual, grados, ciclos y caminos obligatorios |
+
+El contrato completo de `node_connect`, sus pruebas y límites están en
+[NODE_CONNECT.md](NODE_CONNECT.md). Reutiliza WorldEngine, guardado, misiones,
+flags, diálogos y BKT; no abre un encuentro independiente.
 
 El compilador coloca cada puzzle en un distrito de la región. La compuerta física
 se abre al resolverlo; no se abre desde el diálogo ni por aprobación del LLM.
@@ -62,14 +69,17 @@ atascadas sin borrar misiones anteriores. Las pistas y la información de capaci
 están disponibles sin requerir llamadas de red.
 
 Los solvers están acotados: hasta 7 interruptores, 4096 configuraciones completas de
-rutas y 180000 estados de bloques. Un puzzle que excede el presupuesto se rechaza.
+rutas, 4096 grafos de conexiones y 180000 estados de bloques. Un puzzle que excede
+el presupuesto se rechaza.
 La prueba educativa elimina restricciones por `ruleId` y exige que cambie el conjunto
 de soluciones. La evidencia debe aparecer literalmente en el material, normalizando
 espacios y mayúsculas.
 
 `randomSuccessProbability` mide soluciones válidas entre configuraciones completas
 equiprobables (permutaciones de interruptores, elecciones de rutas o asignaciones de
-bloques a metas). No pretende demostrar una probabilidad universal sobre cualquier
+bloques a metas, o subconjuntos de enlaces de `node_connect`). Este último también
+reporta `randomSuccessRate` con 256 ensayos reproducibles. No pretende demostrar
+una probabilidad universal sobre cualquier
 estrategia de clics. La evaluación semántica del juez sigue siendo necesaria: una
 restricción causal por sí sola no demuestra calidad pedagógica ni diversión.
 
@@ -149,10 +159,15 @@ también reanudan la campaña cuando la región corresponde al paquete publicado
 
 ## Motor, progreso y pruebas
 
-`world/core.js` contiene WorldEngine, EventBus y SaveSystem, y árbitros puros compartidos
-entre el navegador y las pruebas Node. La capa DOM/canvas está en `world/runtime.js`.
+`world/core.js` contiene WorldEngine, SaveSystem y árbitros puros compartidos
+entre el navegador y las pruebas Node. EventBus, FlagSystem, QuestSystem y DialogueSystem
+están extraídos en archivos propios dentro de `engine/world/`. Conservan las interfaces
+del motor y acceden a su estado autoritativo, también después de cargar una partida.
+Cada mundo tiene un bus interno para sus sistemas; el bus público compartido de campaña
+recibe observaciones sin activar misiones o diálogos de otra región con los mismos IDs.
+La capa DOM/canvas está en `world/runtime.js`.
 El motor emite `entity.interacted`, `npc.dialogue.completed`, `puzzle.solved`,
-`puzzle.failed`, `puzzle.reset`, `world.flag.set`, `quest.started`,
+`puzzle.failed`, `puzzle.reset`, `world.flag.set`, `quest.started`, `quest.completed`,
 `learning.observation` y `region.completed`.
 
 El guardado está separado por curso, lección y hash del mundo, o por hash de campaña.
@@ -164,12 +179,34 @@ cerrada se descarta. Un puzzle terminado no vuelve a producir observaciones BKT.
 La telemetría conserva rutas correctas/incorrectas, congestión, pistas, tiempo,
 reinicios e intentos por habilidad, además de acciones correctas/incorrectas,
 pasos y tiempo en milisegundos. Los diálogos completados conservan sus flags.
-Las pistas progresan desde observación del estado hasta orientación conceptual
-y ayuda explícita. Las utilidades que exponen el motor solo se activan en paquetes
+Las pistas tienen nivel 0 (ninguna), 1 (conceptual), 2 (estrategia según el estado),
+3 (acción concreta) y 4 (ayuda explícita). El nivel inicial no muestra la pista
+escrita por el diseñador. Las utilidades que exponen el motor solo se activan en paquetes
 de prueba; la publicación normal no expone `window.worldEngine`.
 
-Los E2E prueban una red mal conectada con teclado, fallo, pistas, reinicio, recarga
-y posterior solución. Los tres arquetipos tienen regresiones de fallo y recuperación
+La red conserva los cables y cargas del último envío fallido hasta reiniciar o
+cambiar una conexión. La sobrecarga aparece en el router y la consola; resolver
+enciende sus luces y abre la compuerta física. Al cargar, ese feedback se recalcula
+desde las rutas, sin confiar en cargas o éxitos almacenados. La telemetría de rutas
+correctas exige llegar al destino sin atravesar nodos congestionados; las observaciones
+BKT de entrega y capacidad siguen evaluándose por separado.
+
+El E2E `tests/test_world_native_routing.py` usa el reproductor servido por la API real
+con transporte ASGI aislado: NPC → misión → cableado → congestión → recarga → pista →
+reset → solución → energía/puerta → reacción del NPC → cruzar la puerta → recarga.
+Solo utiliza teclado para jugar; comprueba píxeles de consola/puerta/mapa y conserva
+la identidad de WorldEngine y del canvas durante cada recorrido. Pruebas negativas
+inyectan y retiran iframe, overlay y otro canvas, o esconden/repintan el mapa, y exigen
+que el detector falle. El E2E del QualityGate utiliza el mismo observador de continuidad
+para detectar UI separada incluso si desaparece antes del final.
+
+`tests/test_world_systems.py` cubre aislamiento de eventos, rehidratación, feedback
+manipulado, niveles de pista, veto de un solver fallido ante juez perfecto y 256
+configuraciones aleatorias reproducibles de red, comparadas con el solver Python.
+Cada fallo aleatorio se reinicia, resuelve y carga en el motor JS. La tasa se refiere
+a esas configuraciones, no a todas las estrategias posibles de un jugador.
+
+Los tres arquetipos tienen regresiones de fallo y recuperación
 contra el motor real. Las siete reproducciones de la revisión inicial ya son tests
 obligatorios, sin `xfail`. Se corrigió además la limpieza de PDF de dos páginas y
 se recuperaron contratos V1 en nuevos archivos, preservando los borrados anteriores.
@@ -187,6 +224,16 @@ esto no equivale a recuperar toda la cobertura histórica borrada.
 
 ## Límites y siguientes fases
 
+- La auditoría completa y la separación legacy/canónico están en `WORLD_V2_AUDIT.md`.
+- `node_connect` incorpora solver, recuperación, generación y E2E. Las siguientes
+  mecánicas previstas son `resource_balance` y `machine_configuration`; no se
+  implementaron en este bloque.
+- El boss actual combina habilidades en un arquetipo; todavía falta el sistema
+  multifase de 2–4 mecánicas exigido por el contrato actualizado.
+- Structured Outputs en el protocolo y la separación retry/repair están
+  implementados en [V2.1.1](RELIABLE_AI_GENERATION.md); la aprobación de generación
+  real depende de la evidencia enlazada allí. Agent API restringida, detección
+  semántica de spoilers y pruebas estadísticas de diversidad siguen pendientes.
 - Planificación espacial libre, campañas ramificadas y misiones con dependencias
   entre regiones. La campaña actual avanza por regiones en orden.
 - Adaptación del siguiente puzzle a partir de BKT, narrativa contextual generada

@@ -1,1260 +1,2549 @@
-# AGENTS.md — MindCrafted 2.0
+# AGENTS.md — MINDCRAFTED 2.0
 
-> Dirección obligatoria para Codex y agentes que modifiquen este repositorio.
+## 0. INSTRUCCIÓN PRINCIPAL
 
-## 1. Antes de tocar código
+Antes de modificar cualquier parte importante de MindCrafted, debes leer completamente:
 
-Lee primero:
+```text
+MINDCRAFTED_V2_ASTRA.md
+```
 
-- `DOCUMENTACION_PROYECTO.md`
-- `mindcrafted/server.py`
-- `mindcrafted/generator/course_pipeline.py`
-- `mindcrafted/generator/pipeline.py`
-- `mindcrafted/generator/api.py`
-- `mindcrafted/generator/prompts.py`
-- `mindcrafted/generator/assembler.py`
-- `mindcrafted/generator/sandbox.py`
-- `mindcrafted/engine/player.html`
-- `mindcrafted/engine/engine.js`
-- `mindcrafted/engine/bkt.js`
+Ese documento define:
 
-`DOCUMENTACION_PROYECTO.md` describe V1. Este archivo define la dirección de **MindCrafted 2.0**.
+- la visión del producto;
+- la arquitectura objetivo;
+- las responsabilidades de la IA;
+- las responsabilidades del runtime;
+- las reglas de generación;
+- los Quality Gates;
+- los requisitos de puzzles;
+- los requisitos de World V2;
+- los criterios de aceptación.
 
-No reescribas todo. Migra incrementalmente, preserva lo que funciona y añade tests.
+Este `AGENTS.md` define cómo debes trabajar sobre el repositorio.
+
+Si existe una contradicción conceptual entre código antiguo y:
+
+```text
+MINDCRAFTED_V2_ASTRA.md
+```
+
+la arquitectura V2 tiene prioridad para todo desarrollo nuevo.
+
+No debes destruir código antiguo automáticamente.
+
+Primero identifica si pertenece a:
+
+```text
+V1 / LEGACY
+```
+
+o:
+
+```text
+V2 / CANONICAL
+```
 
 ---
 
-# 2. North Star
+# 1. TU ROL
 
-MindCrafted 2.0 NO es:
-
-```text
-material → diálogo → minijuego externo → diálogo → fin
-```
-
-Debe ser:
+Actúas como:
 
 ```text
-material educativo
-      ↓
-aventura jugable
-      ↓
-personaje explora el mundo
-      ↓
-NPC / objeto / problema
-      ↓
-puzzle integrado físicamente al mapa
-      ↓
-el jugador aplica conocimiento
-      ↓
-el mundo cambia
-      ↓
-nueva ruta / diálogo / quest / consecuencia
-      ↓
-BKT registra aprendizaje
+Senior Game Systems Engineer
++
+AI Agent Architect
++
+Procedural Generation Engineer
++
+QA Engineer
++
+Educational Game Designer
 ```
 
-Objetivo: un RPG educativo desafiante con exploración, diálogo, puzzles y consecuencias integradas. Puede inspirarse en la sensación de progresión de juegos narrativos como Undertale, pero no copiar personajes, arte, historia, mapas, música ni contenido protegido.
+Tu responsabilidad NO es simplemente producir código que compile.
 
-De `edgameclaw`, aprovechar principalmente la filosofía:
+Tu responsabilidad es ayudar a convertir MindCrafted en:
 
-```text
-analizar → diseñar interacción → generar → juzgar → reparar
-```
-
-No copiar el patrón de minijuegos aislados en overlays.
+> un RPG educativo generado parcialmente mediante IA donde los puzzles existen físicamente dentro del mundo, requieren comprender conceptos académicos y pueden ser verificados automáticamente.
 
 ---
 
-# 3. Regla principal
+# 2. OBJETIVO DEL PROYECTO
 
-## PUZZLES LIVE IN THE WORLD
-
-Por defecto está prohibido:
+MindCrafted debe permitir que un estudiante cargue material educativo y se genere una experiencia como:
 
 ```text
-mundo
-→ launchMiniGame()
-→ modal/overlay/iframe/pantalla aparte
-→ minijuego
-→ volver al mundo
+Material
+   ↓
+Knowledge Graph
+   ↓
+World Blueprint
+   ↓
+Regions
+   ↓
+NPC
+   ↓
+Quests
+   ↓
+Puzzle Blueprints
+   ↓
+Deterministic Compilation
+   ↓
+Playable World
+   ↓
+Quality Gate
 ```
 
-Para puzzles V2 no usar como arquitectura principal:
-
-- `mini-game-overlay`
-- modal de quiz
-- iframe de minijuego
-- segunda pantalla desconectada
-- canvas independiente que sustituye el mundo
-- opción múltiple como puzzle obligatorio
-
-Un puzzle válido debe estar anclado a una entidad o región:
+El resultado debe sentirse como:
 
 ```text
-jugador → consola → puzzle dentro del mapa
-                    ↓
-            cambia el estado del mundo
-                    ↓
-          puerta/ruta/NPC se modifica
+un pequeño RPG diseñado específicamente para ese contenido
 ```
 
-Puede bloquearse temporalmente el movimiento durante una interacción, pero el jugador debe seguir visual y conceptualmente dentro del mismo mundo.
-
----
-
-# 4. El jugador es parte central
-
-La vertical slice V2 debe tener un personaje realmente controlable.
-
-Mínimo:
-
-- WASD y flechas
-- dirección/facing
-- colisiones
-- interacción con `E`, `Enter` o equivalente
-- cámara
-- spawn
-- NPC
-- puertas/objetos
-- recuperación del control tras diálogo
-- posición serializable
-- recarga conservando progreso seguro
-
-El gameplay principal no debe depender únicamente del mouse.
-
----
-
-# 5. La IA diseña; el código decide
-
-Regla no negociable:
-
-> El LLM NO decide en tiempo real si el jugador ganó.
-
-La IA puede generar:
-
-- `KnowledgeGraph`
-- regiones
-- quests
-- NPC
-- diálogos
-- `PuzzleBlueprint`
-- hints
-- dificultad
-- narrativa
-- consecuencias
-- criterios declarativos de éxito
-
-El runtime determinista evalúa:
-
-- movimiento
-- colisiones
-- secuencias
-- conexiones
-- recursos
-- reglas
-- condiciones de éxito
-- fallos
-- flags
-- progreso
-- BKT
-
-Una campaña generada debe poder jugarse y terminarse sin conexión a una IA.
-
----
-
-# 6. Evitar JavaScript arbitrario generado
-
-V2 debe migrar hacia:
+y NO como:
 
 ```text
-IA
+un cuestionario con un personaje caminando alrededor.
+```
+
+---
+
+# 3. PRINCIPIO FUNDAMENTAL
+
+Siempre aplicar:
+
+```text
+AI DESIGNS
+CODE DECIDES
+```
+
+La IA propone.
+
+El código valida.
+
+El código ejecuta.
+
+La IA NO tiene autoridad directa sobre estados críticos del juego.
+
+---
+
+# 4. QUÉ PUEDE HACER LA IA
+
+La IA puede diseñar:
+
+```text
+Knowledge Graph
+World Blueprint
+Region Blueprint
+Quest Blueprint
+Puzzle Blueprint
+Boss Blueprint
+NPC
+Dialogue
+Hints
+Narrative
+Difficulty
+Educational progression
+World consequences
+Repair suggestions
+```
+
+---
+
+# 5. QUÉ NO PUEDE HACER LA IA DIRECTAMENTE
+
+No permitir que una respuesta del modelo ejecute directamente:
+
+```text
+openDoor()
+completeQuest()
+completePuzzle()
+giveXP()
+unlockRegion()
+setSolved()
+setBKT()
+modifyInventory()
+teleportPlayer()
+spawnCriticalEntity()
+```
+
+La IA debe devolver estructuras declarativas.
+
+Ejemplo:
+
+```json
+{
+  "success": {
+    "setFlags": ["generator_restored"],
+    "openEntity": ["north_gate"]
+  }
+}
+```
+
+Después el runtime valida y aplica las acciones permitidas.
+
+---
+
+# 6. NO GENERAR CÓDIGO ARBITRARIO COMO CONTENIDO
+
+La IA NO debe generar JavaScript, Python o HTML arbitrario para ejecutar directamente como puzzle.
+
+Evitar completamente:
+
+```text
+eval()
+exec()
+new Function()
+script injection
+runtime JS generated by LLM
+```
+
+Pipeline correcto:
+
+```text
+LLM
  ↓
-PuzzleBlueprint JSON
+JSON
  ↓
 JSON Schema
  ↓
-PuzzleCompiler
+Semantic Validation
  ↓
-PuzzleSpec
+Compiler
  ↓
-PuzzleRuntime determinista
+Safe Runtime
 ```
 
-No:
+---
+
+# 7. WORLD V2
+
+World V2 debe considerarse:
 
 ```text
-IA → string JavaScript → eval/inyección
+CANONICAL PATH
 ```
 
-Los puzzles normales deben usar especificaciones declarativas y componentes confiables.
+Todo desarrollo nuevo importante debe orientarse a World V2.
 
-Un futuro modo `custom_world_puzzle` puede existir solo si tiene:
+No ampliar sistemas V1 salvo que sea necesario para:
 
-- feature flag
-- contrato
-- sandbox
-- timeout
-- QualityGate
-- tests
-- fallback
-- acceso restringido a DOM/red/storage
-
-No es prioridad para la primera vertical slice.
+- compatibilidad;
+- migración;
+- corrección crítica;
+- tests;
+- eliminación gradual de dependencia.
 
 ---
 
-# 7. Arquitectura objetivo
+# 8. IDENTIFICAR LEGACY ANTES DE MODIFICAR
+
+Antes de modificar código relacionado con minijuegos, buscar:
 
 ```text
-SOURCE
-  ↓
-KnowledgeExtractor
-  ↓
-KnowledgeGraph
-  ↓
-WorldPlanner
-  ↓
-QuestPlanner
-  ↓
-PuzzleDesigner
-  ↓
-PuzzleCompiler
-  ↓
-DeterministicValidators
-  ↓
-AIJudge
-  ↓
-RepairLoop
-  ↓
-CampaignAssembler
-  ↓
-WorldPackage
-  ↓
-WorldEngine
+mini-game-overlay
+iframe
+launchMiniGame
+legacy generator
+generated standalone HTML
+secondary canvas
+old minigame runtime
 ```
 
-Separación sugerida:
+Clasificar los usos encontrados.
+
+NO borrar automáticamente.
+
+Determinar:
+
+1. quién lo utiliza;
+2. si pertenece a V1;
+3. si World V2 depende todavía de él;
+4. qué tests existen;
+5. cómo migrarlo sin romper funcionalidades.
+
+---
+
+# 9. REGLA WORLD-NATIVE
+
+Todos los puzzles obligatorios de World V2 deben ejecutarse dentro del mundo.
+
+Arquitectura incorrecta:
 
 ```text
-mindcrafted/generator/v2/
-├── knowledge.py
-├── world_planner.py
-├── quest_planner.py
-├── puzzle_designer.py
-├── puzzle_compiler.py
-├── dialogue_generator.py
-├── quality_gate.py
-├── ai_judge.py
-├── repair.py
-└── campaign_pipeline.py
-
-mindcrafted/contracts/
-├── world.schema.json
-├── region.schema.json
-├── quest.schema.json
-├── dialogue.schema.json
-└── puzzle.schema.json
-
-mindcrafted/engine/world/
-├── world-engine.js
-├── player-controller.js
-├── collision-system.js
-├── camera-system.js
-├── entity-system.js
-├── dialogue-system.js
-├── puzzle-runtime.js
-├── quest-system.js
-├── flag-system.js
-├── inventory-system.js
-├── event-bus.js
-└── save-system.js
+World
+ ↓
+Interact
+ ↓
+Overlay
+ ↓
+Minigame
+ ↓
+Return to World
 ```
 
-Los nombres pueden adaptarse al código existente. La separación de responsabilidades sí debe preservarse.
+Arquitectura correcta:
 
----
-
-# 8. Sistemas del runtime
-
-`WorldEngine` debe coordinar:
-
-- game loop
-- render/update
-- player
-- input
-- mapa
-- cámara
-- colisiones
-- entidades
-- triggers
-- puzzles
-- diálogos
-- quests
-- transición de regiones
-
-No convertir `engine.js` en un archivo monolítico cada vez mayor.
-
-Usar un `EventBus` o equivalente:
-
-```javascript
-events.emit("puzzle.started", { puzzleId: "router-01" });
-events.emit("puzzle.failed", { puzzleId: "router-01" });
-events.emit("puzzle.solved", { puzzleId: "router-01", attempts: 2 });
-events.emit("world.flag.set", { flag: "north_gate_open", value: true });
+```text
+World
+ ↓
+Player encounters mechanism
+ ↓
+Player observes
+ ↓
+Player interacts
+ ↓
+World entities react
+ ↓
+Puzzle state changes
+ ↓
+Success
+ ↓
+World changes
 ```
 
-Evitar acoplamientos directos entre sistemas si pueden comunicarse por eventos.
+---
+
+# 10. RESTRICCIONES DE UI
+
+Para puzzles obligatorios de World V2:
+
+```text
+iframe == forbidden
+mandatory overlay minigame == forbidden
+second game canvas == forbidden
+external standalone minigame == forbidden
+```
+
+Debe existir idealmente:
+
+```text
+ONE PLAYER
+ONE MAIN WORLD
+ONE MAIN CANVAS
+ONE AUTHORITATIVE WORLD STATE
+```
+
+Un panel de inventario, conversación o información puede existir.
+
+Un minijuego obligatorio separado del mundo no.
 
 ---
 
-# 9. Consecuencias obligatorias
+# 11. PUZZLE BLUEPRINT
 
-Todo puzzle obligatorio debe cambiar el mundo de forma observable.
+Toda nueva mecánica generativa debe intentar expresarse mediante un Blueprint declarativo.
 
-Ejemplos:
+Ejemplo conceptual:
 
-- abrir puerta
-- activar ascensor
-- encender energía
-- cambiar iluminación
-- mover plataforma
-- reparar máquina
-- cambiar diálogo de NPC
-- abrir ruta
-- retirar obstáculo
-- entregar objeto
-- revelar región
-- activar una quest
+```json
+{
+  "id": "routing_lab_01",
+  "archetype": "route_network",
+  "runtime": "world",
+  "mandatory": true,
 
-`+100 XP` puede existir, pero NO puede ser la única consecuencia.
+  "learning": {
+    "concepts": ["routing", "congestion"],
+    "objective": "Encontrar una ruta válida evitando saturación."
+  },
+
+  "world": {
+    "region": "network_center",
+    "anchorEntity": "routing_console"
+  },
+
+  "difficulty": {
+    "level": "hard",
+    "minSolutionSteps": 7
+  },
+
+  "rules": {},
+
+  "success": {
+    "setFlags": ["network_online"],
+    "openEntity": ["elevator_gate"]
+  },
+
+  "failure": {
+    "resettable": true
+  }
+}
+```
 
 ---
 
-# 10. Diálogos world-native
+# 12. NO CREAR UN ARCHETYPE SIN CONTRATO
 
-Los diálogos deben activarse por eventos del mundo:
+Cada nuevo puzzle archetype debe tener, como mínimo:
 
-- proximidad
-- interacción
-- flag
-- quest
-- puzzle iniciado
-- puzzle fallido
-- puzzle resuelto
-- objeto obtenido
-- región descubierta
+```text
+schema
+validator
+compiler
+runtime
+solver
+reset/recovery
+serialization
+tests
+```
+
+Idealmente:
+
+```text
+validate()
+compile()
+solve()
+simulate()
+reset()
+serialize()
+deserialize()
+```
+
+---
+
+# 13. ARCHETYPES PRIORITARIOS
+
+Los existentes pueden incluir:
+
+```text
+switch_sequence
+route_network
+push_blocks
+```
+
+Prioridad inmediata:
+
+```text
+node_connect
+resource_balance
+machine_configuration
+```
+
+Después:
+
+```text
+classification_zones
+collect_assemble
+spatial_order
+timeline_path
+hazard_pattern
+npc_deduction
+logic_circuit
+dependency_graph
+resource_routing
+flow_control
+```
+
+No implementar diez mecánicas superficialmente.
 
 Preferir:
 
 ```text
-contexto → observación → reto → experimento → consecuencia → reflexión
+3 mecánicas excelentes
 ```
 
-No revelar la solución antes de que el jugador experimente el problema.
+sobre:
 
-Ejemplo declarativo:
+```text
+15 mecánicas incompletas
+```
+
+---
+
+# 14. REUTILIZAR MECÁNICAS CON DIFERENTES CONCEPTOS
+
+La IA debe generar instancias.
+
+El runtime implementa la mecánica una vez.
+
+Ejemplo:
+
+```text
+resource_balance
+```
+
+puede representar:
+
+```text
+routing traffic
+CPU scheduling
+electrical load
+warehouse logistics
+database load
+memory allocation
+```
+
+No crear un motor completamente distinto para cada asignatura.
+
+---
+
+# 15. LEARNING-MECHANIC COUPLING
+
+Regla obligatoria.
+
+El concepto académico debe afectar cómo se resuelve el puzzle.
+
+Pregunta de control:
+
+> Si quitamos el concepto educativo, ¿el puzzle se resolvería prácticamente igual?
+
+Si:
+
+```text
+YES
+```
+
+entonces el diseño debe considerarse débil y posiblemente rechazarse.
+
+---
+
+# 16. EJEMPLO DE DISEÑO INCORRECTO
+
+```text
+Mover cajas.
+
+Después:
+
+¿Qué significa SQL?
+
+A
+B
+C
+D
+```
+
+Esto no integra aprendizaje y mecánica.
+
+---
+
+# 17. EJEMPLO CORRECTO
+
+Para bases de datos:
+
+```text
+Existen entidades físicas.
+
+El jugador debe establecer relaciones.
+
+Dependencias inválidas generan inconsistencias.
+
+Solo una estructura correcta permite restaurar el sistema.
+```
+
+El conocimiento forma parte de la solución.
+
+---
+
+# 18. DIFICULTAD
+
+MindCrafted debe poder ser difícil.
+
+Pero:
+
+```text
+DIFFICULT != UNFAIR
+```
+
+La dificultad debe provenir de:
+
+```text
+reasoning
+planning
+deduction
+observation
+resource management
+concept combination
+optimization
+experimentation
+```
+
+No de:
+
+```text
+bad controls
+ambiguous questions
+random guessing
+hidden information
+unavoidable punishment
+```
+
+---
+
+# 19. NIVELES DE DIFICULTAD
+
+Utilizar cuando sea apropiado:
+
+```text
+INTRO
+NORMAL
+HARD
+EXPERT
+BOSS
+```
+
+Un puzzle HARD debe tener profundidad real.
+
+No cambiar únicamente:
+
+```text
+3 switches → 8 switches
+```
+
+Puede aumentar:
+
+- restricciones;
+- conceptos simultáneos;
+- planificación;
+- rutas;
+- recursos limitados;
+- estados intermedios;
+- consecuencias.
+
+---
+
+# 20. BOSS PUZZLES
+
+Un boss debe ser una experiencia multiphase.
+
+No simplemente:
+
+```text
+normal puzzle with more steps
+```
+
+Debe combinar aproximadamente:
+
+```text
+2-4 conceptos anteriores
+```
+
+Ejemplo:
+
+```text
+PHASE 1
+node_connect
+
+PHASE 2
+route_network
+
+PHASE 3
+resource_balance
+
+FINAL PHASE
+maintain network under changing load
+```
+
+---
+
+# 21. BOSS REQUIREMENTS
+
+Un boss debe tener:
+
+```text
+multiple phases
+recoverable failures
+clear visual feedback
+progress feedback
+verified solution
+progressive hints
+world consequence
+educational integration
+```
+
+Cuando sea posible, las fases anteriores deben influir en las siguientes.
+
+---
+
+# 22. NPC
+
+Los NPC deben existir dentro del mundo.
+
+Tipos posibles:
+
+```text
+Quest NPC
+Tutor NPC
+Hint NPC
+Story NPC
+Challenge NPC
+Companion NPC
+Boss NPC
+```
+
+No convertir todos los NPC en interfaces de chatbot.
+
+La mayoría deben tener propósito jugable o narrativo.
+
+---
+
+# 23. DIÁLOGOS
+
+Existen dos tipos principales.
+
+## STATIC GENERATED DIALOGUE
+
+Generado durante la construcción de la campaña.
+
+Útil para:
+
+```text
+story
+quests
+tutorials
+bosses
+important NPCs
+```
+
+## DYNAMIC DIALOGUE
+
+Generado durante gameplay.
+
+Útil para:
+
+```text
+optional NPC
+adaptive hints
+contextual commentary
+knowledge reinforcement
+```
+
+---
+
+# 24. DYNAMIC DIALOGUE LIMITS
+
+La IA puede devolver:
 
 ```json
 {
-  "id": "mentor_after_router",
-  "trigger": {
-    "event": "puzzle.solved",
-    "puzzleId": "router-balance"
-  },
-  "speaker": "mentor",
-  "lines": [
-    {
-      "speaker": "mentor",
-      "text": "No hiciste los paquetes más rápidos. Evitaste que todos compitieran por la misma ruta."
-    }
-  ]
+  "emotion": "concerned",
+  "dialogue": "Parece que demasiados paquetes atraviesan el mismo nodo.",
+  "suggestedHintLevel": 2
 }
 ```
 
----
-
-# 11. PuzzleBlueprint y PuzzleSpec
-
-La IA primero genera intención pedagógica:
-
-```json
-{
-  "id": "router-balance",
-  "concept": "congestión y balance de rutas",
-  "learningAction": "distribuir tráfico entre rutas limitadas",
-  "archetype": "route_network",
-  "mandatory": true,
-  "worldAnchor": "router_console",
-  "difficulty": "hard",
-  "requiredRules": [
-    "cada enlace tiene capacidad limitada",
-    "una ruta saturada pierde paquetes"
-  ]
-}
-```
-
-`PuzzleCompiler` lo transforma a un `PuzzleSpec` ejecutable:
-
-```json
-{
-  "id": "router-balance",
-  "runtime": "world",
-  "archetype": "route_network",
-  "mandatory": true,
-  "knowledge": {
-    "concept": "congestión de red",
-    "learningAction": "balancear tráfico",
-    "requiredRules": []
-  },
-  "world": {
-    "region": "network_city",
-    "anchorEntity": "router_console"
-  },
-  "success": {
-    "setFlags": ["district_network_online"],
-    "openEntity": "north_gate",
-    "xp": 75
-  },
-  "failure": {
-    "autoReset": true,
-    "hintAfterAttempts": 3
-  },
-  "difficulty": {
-    "level": "hard",
-    "minSolutionSteps": 6,
-    "maxSolutionSteps": 20,
-    "randomSuccessProbabilityMax": 0.15
-  }
-}
-```
-
-Todo spec generado debe validar antes de llegar al navegador.
-
----
-
-# 12. Archetypes
-
-Primera biblioteca estable:
-
-1. `switch_sequence`
-2. `route_network`
-3. `push_blocks`
-
-Luego:
-
-- `node_connect`
-- `classification_zones`
-- `resource_balance`
-- `collect_assemble`
-- `spatial_order`
-- `timeline_path`
-- `machine_configuration`
-- `hazard_pattern`
-- `npc_deduction`
-
-Un archetype es genérico. No incrustar una materia específica en su runtime.
-
-Ejemplo: `route_network` puede representar redes, circulación, logística, electricidad o transporte.
-
-Cada archetype estable debe tener equivalente a:
-
-```python
-validate(spec)
-solve(spec)
-simulate(spec)
-```
-
-`solve()` debe demostrar que existe solución cuando el tipo de puzzle lo permita.
-
-`simulate()` debe buscar estados límite y softlocks.
-
----
-
-# 13. Regla pedagógica crítica
-
-RECHAZAR un puzzle cuando:
-
-> el concepto educativo podría eliminarse sin cambiar significativamente cómo se resuelve.
-
-MAL:
+No puede devolver y ejecutar directamente:
 
 ```text
-Pregunta: ¿qué es TCP?
-Respuesta correcta → abre puerta
+open door
+complete puzzle
+give reward
 ```
-
-BIEN:
-
-```text
-El jugador manipula un sistema donde confiabilidad,
-orden y confirmación cambian el comportamiento de los paquetes.
-```
-
-El conocimiento debe conducir la mecánica.
 
 ---
 
-# 14. Evitar quizification
+# 25. HINT SYSTEM
 
-No usar como núcleo de una región:
+Los hints deben escalar.
 
-- multiple choice
-- true/false
-- definiciones escritas
-- flashcards
-- matching puramente textual
-- preguntas usadas como contraseña
+## LEVEL 0
 
-Pueden aparecer como actividad secundaria ocasional.
+Nada.
 
-Los puzzles obligatorios deben exigir interacción con sistemas.
+## LEVEL 1
 
----
+Conceptual.
 
-# 15. Dificultad
+## LEVEL 2
 
-MindCrafted debe poder generar un juego difícil, pero justo.
+Estratégico.
 
-Dificultad significa:
+## LEVEL 3
 
-- más pasos
-- combinar reglas
-- observar consecuencias
-- transferir conocimiento
-- administrar restricciones
-- reconocer patrones
-- recuperar conceptos previos
+Concreto.
 
-No significa:
+## LEVEL 4
 
-- texto confuso
-- ambigüedad
-- trampas
-- memorización arbitraria
+Casi solución.
 
-Progresión:
-
-```text
-INTRO: 1 regla
- ↓
-APLICACIÓN: regla + distracción
- ↓
-COMBINACIÓN: 2 reglas
- ↓
-TRANSFERENCIA: misma idea en nuevo contexto
- ↓
-BOSS: 2-4 conceptos anteriores juntos
-```
-
-Para puzzles `hard`, como objetivo orientativo:
-
-```text
-minSolutionSteps >= 6
-randomSuccessProbability <= 0.15
-requiredRules >= 1
-```
-
-No aplicar métricas que no tengan sentido para un archetype.
+Nunca revelar inmediatamente la respuesta de un puzzle difícil.
 
 ---
 
-# 16. Boss puzzles
+# 26. AGENT ARCHITECTURE
 
-Los mejores puzzles deben ser “boss puzzles”.
+El agente debe evolucionar hacia tool calling restringido.
 
-Deben:
-
-- integrar conceptos previos
-- requerir múltiples acciones
-- tener feedback visual
-- permitir fallar
-- permitir recuperarse
-- tener solución verificable
-- no resolverse fácilmente por azar
-- tener pistas graduales
-- cambiar significativamente el mundo
-- producir reflexión narrativa posterior
-
-Objetivo:
-
-> demostrar comprensión, no reconocer una definición.
-
----
-
-# 17. Fallo y anti-softlock
-
-El jugador debe poder equivocarse.
-
-Consecuencias válidas:
-
-- congestión
-- sobrecarga
-- pérdida temporal de recursos
-- máquina detenida
-- ruta bloqueada temporalmente
-- NPC reacciona
-- pérdida de bonus
-
-Pero ningún error normal puede dejar un puzzle obligatorio permanentemente irresoluble.
-
-Todo puzzle obligatorio debe:
-
-- reiniciarse;
-- recuperarse;
-- o garantizar retorno a un estado solucionable.
-
----
-
-# 18. BKT
-
-Conservar Bayesian Knowledge Tracing y hacerlo más granular.
-
-No registrar solo:
-
-```text
-score = 70
-```
-
-Registrar observaciones:
-
-```json
-{
-  "skill": "network.routing",
-  "observations": {
-    "correctActions": 8,
-    "invalidActions": 3,
-    "hintsUsed": 1,
-    "attempts": 2,
-    "solutionSteps": 10,
-    "solutionTimeMs": 82000
-  }
-}
-```
-
-BKT debe poder representar concepto/regla/puzzle y no quedar acoplado a una UI concreta.
-
----
-
-# 19. Agent API / orquestación
-
-El agente debe operar desde backend.
-
-Herramientas conceptuales:
+Herramientas objetivo:
 
 ```text
 analyze_material
 build_knowledge_graph
+
+design_world
 design_region
 design_quest
-design_puzzle_blueprint
-compile_puzzle_spec
+design_puzzle
+design_boss
+
 validate_world
+validate_puzzle
+
+compile_world
+compile_puzzle
+
 solve_puzzle
+simulate_puzzle
+
+run_quality_gate
+run_e2e_tests
+
+judge_world
 judge_puzzle
+
+repair_world
 repair_puzzle
+
 generate_dialogue
+generate_hint
+
 package_campaign
 ```
 
-La implementación puede usar tool calling o equivalente.
+---
 
-No acoplar WorldEngine a un proveedor concreto.
+# 27. AGENT LOOP
 
-No enviar API keys al runtime del juego.
+Flujo oficial:
+
+```text
+GENERATE
+   ↓
+SCHEMA VALIDATE
+   ↓
+SEMANTIC VALIDATE
+   ↓
+COMPILE
+   ↓
+SOLVE
+   ↓
+SIMULATE
+   ↓
+TEST
+   ↓
+AI JUDGE
+   ↓
+
+PASS → PUBLISH
+
+FAIL
+ ↓
+REPAIR
+ ↓
+RETEST
+```
 
 ---
 
-# 20. QualityGate
+# 28. AI JUDGE NO TIENE AUTORIDAD ABSOLUTA
 
-Ningún puzzle generado por IA se publica directamente.
+El AI Judge evalúa calidad.
 
-```text
-candidate
- ↓
-JSON Schema
- ↓
-Reference Validation
- ↓
-World Validation
- ↓
-Solver
- ↓
-Anti-softlock
- ↓
-Educational Checks
- ↓
-AI Judge
- ↓
-Runtime Test
- ↓
-APPROVED
-```
+NO reemplaza pruebas deterministas.
 
-Si falla:
+Si:
 
 ```text
-report → RepairAgent → candidate nuevo → QualityGate
+AI Judge = PASS
 ```
 
-Máximo recomendado:
+pero:
 
 ```text
-3 reparaciones
+solver = FAIL
 ```
 
-Después usar un fallback prehecho seguro.
+resultado:
 
-Tests deterministas SIEMPRE tienen autoridad sobre el AI Judge.
+```text
+REJECT
+```
+
+Si:
+
+```text
+E2E = FAIL
+```
+
+resultado:
+
+```text
+REJECT
+```
+
+Si:
+
+```text
+schema = FAIL
+```
+
+resultado:
+
+```text
+REJECT
+```
 
 ---
 
-# 21. AI Judge
+# 29. QUALITY GATE
 
-Puntuación sugerida:
+Mantener dos capas.
 
-| Criterio | Puntos |
-|---|---:|
-| aprendizaje integrado en la mecánica | 25 |
-| integración con el mundo | 25 |
-| calidad/diversión de interacción | 25 |
-| completabilidad/calidad técnica | 25 |
+## DETERMINISTIC GATE
 
-Aprobar sugerido:
+Debe comprobar:
 
 ```text
->= 85/100
+schema
+references
+reachability
+solvability
+collision
+softlocks
+persistence
+world-native requirements
+runtime integrity
+E2E
 ```
 
-RECHAZAR si:
+## AI QUALITY REVIEW
 
-1. el concepto puede quitarse sin afectar solución;
-2. es esencialmente un quiz;
-3. ocurre fuera del mundo;
-4. no cambia el mundo;
-5. puede ganarse fácilmente al azar;
-6. no hay solución demostrable;
-7. hay softlock;
-8. falta feedback;
-9. contradice material educativo;
-10. el LLM decide arbitrariamente si se ganó;
-11. la instrucción regala la solución;
-12. parece complejo pero tiene poca profundidad.
+Debe evaluar:
+
+```text
+educational quality
+mechanic-concept coupling
+narrative coherence
+difficulty quality
+hint quality
+repetition
+world integration
+```
 
 ---
 
-# 22. CampaignPackage V2
+# 30. SOLVER
 
-No destruir V1.
+Todo puzzle obligatorio debe tener estrategia de resolución verificable.
 
-Agregar formato versionado, por ejemplo:
+No es aceptable:
 
 ```text
-campaign/
-├── campaign.json
-├── world.json
-├── knowledge.json
-├── quests.json
-├── dialogues.json
-├── puzzles/
-├── regions/
-└── assets/
+"parece solucionable"
 ```
 
-Debe declarar algo equivalente a:
+Debe existir evidencia computable.
+
+Para puzzles pequeños puede ser:
+
+```text
+BFS
+DFS
+A*
+constraint solving
+state-space search
+simulation
+```
+
+Elegir según la mecánica.
+
+---
+
+# 31. ANTI-SOFTLOCK
+
+Analizar estados que puedan hacer imposible continuar.
+
+Después de un error razonable, debe existir:
+
+```text
+reset
+retry
+alternate solution
+automatic recovery
+checkpoint
+```
+
+No permitir que el jugador destruya permanentemente una campaña por una acción común.
+
+---
+
+# 32. RANDOM SUCCESS TEST
+
+Para puzzles de lógica/dificultad:
+
+ejecutar estrategias aleatorias.
+
+Idealmente:
+
+```text
+N >= 100
+```
+
+con seeds reproducibles cuando sea práctico.
+
+Calcular:
+
+```text
+randomSuccessRate
+```
+
+Si un puzzle HARD se gana frecuentemente al azar:
+
+```text
+REJECT OR REPAIR
+```
+
+---
+
+# 33. WORLD CONSEQUENCE
+
+Todo puzzle obligatorio debe producir al menos una consecuencia significativa.
+
+Ejemplos:
+
+```text
+open door
+restore power
+unlock region
+activate NPC
+change environment
+repair machine
+spawn bridge
+change quest state
+reveal route
+remove obstacle
+```
+
+Únicamente:
+
+```text
++XP
+```
+
+no es suficiente.
+
+---
+
+# 34. PERSISTENCE
+
+Probar:
+
+```text
+play
+ ↓
+change state
+ ↓
+save
+ ↓
+reload
+ ↓
+continue
+```
+
+Verificar:
+
+```text
+player state
+quest state
+puzzle state
+NPC state
+inventory
+flags
+regions
+BKT
+rewards
+```
+
+No permitir recompensas duplicadas después de reload.
+
+---
+
+# 35. BKT
+
+BKT no debe limitarse a:
+
+```text
+completed = true
+```
+
+Debe registrar evidencia educativa.
+
+Ejemplo:
 
 ```json
 {
-  "format": "mindcrafted-campaign",
-  "version": 2
+  "concept": "routing",
+  "attempts": 3,
+  "hintsUsed": 1,
+  "success": true,
+  "solutionQuality": 0.84
 }
 ```
 
-El player debe distinguir V1/V2 mientras dure la migración.
-
 ---
 
-# 23. API
+# 36. ADAPTIVE LEARNING
 
-Preservar inicialmente:
-
-```http
-POST /api/generate
-GET /api/jobs/{job_id}
-GET /api/courses/{course_id}/manifest
-GET /play
-```
-
-Se pueden añadir rutas V2:
-
-```http
-POST /api/v2/generate
-GET /api/v2/campaigns/{course_id}
-GET /api/v2/campaigns/{course_id}/package
-```
-
-No romper contratos públicos existentes sin tests de compatibilidad.
-
----
-
-# 24. Vertical Slice obligatoria
-
-ANTES de generar mundos grandes, completar de extremo a extremo:
+En versiones posteriores BKT puede influir sobre:
 
 ```text
-1. jugador aparece
-2. camina
-3. colisiona
-4. cámara funciona
-5. encuentra NPC
-6. dialoga
-7. diálogo activa quest
-8. recupera control
-9. encuentra puzzle
-10. puzzle ocurre EN EL MISMO MUNDO
-11. puede fallar
-12. puede reiniciar
-13. puede resolver
-14. resolver cambia el mundo
-15. NPC cambia diálogo
-16. BKT registra resultado
-17. puerta/ruta se desbloquea
-18. jugador atraviesa nueva ruta
-19. progreso se guarda
-20. recargar conserva estado
+future difficulty
+hint timing
+optional challenge availability
+boss composition
+NPC assistance
 ```
 
-No pasar a generación masiva hasta que esto tenga E2E.
-
-Primer puzzle recomendado: `switch_sequence`.
-
-Primero probar runtime con contenido prehecho.
-Después conectar generación por IA.
-
----
-
-# 25. Orden de implementación
-
-Salvo tarea explícita distinta:
+Preferir adaptación:
 
 ```text
-P0  WorldSpec/PuzzleSpec + schemas
-P1  WorldEngine mínimo
-P2  PlayerController
-P3  colisiones + cámara
-P4  NPC + diálogo world-native
-P5  quests + flags
-P6  switch_sequence dentro del mapa
-P7  consequences + reset
-P8  save/load
-P9  BKT por acciones
-P10 tests E2E
-P11 PuzzleCompiler
-P12 IA genera PuzzleBlueprint
-P13 QualityGate + RepairLoop
-P14 route_network
-P15 push_blocks
-P16 boss puzzle
+BETWEEN PUZZLES
 ```
 
-No saltar a generación avanzada sin P0-P10 confiables.
+sobre cambiar reglas ocultamente durante un puzzle.
 
 ---
 
-# 26. Tests obligatorios
+# 37. SOURCE GROUNDING
 
-Debe existir un equivalente funcional a:
-
-```python
-def test_world_has_controllable_player(world):
-    assert world["player"]["controllable"] is True
-    assert world["player"]["spawnRegion"]
-
-
-def test_every_puzzle_runs_inside_world(world):
-    for puzzle in world["puzzles"]:
-        assert puzzle["runtime"] == "world"
-
-
-def test_every_puzzle_has_world_anchor(world):
-    entities = collect_entities(world)
-    for puzzle in world["puzzles"]:
-        assert puzzle["world"]["anchorEntity"] in entities
-
-
-def test_puzzle_changes_world_state(world):
-    for puzzle in mandatory_puzzles(world):
-        success = puzzle["success"]
-        assert any([
-            success.get("setFlags"),
-            success.get("openEntity"),
-            success.get("spawnEntity"),
-            success.get("removeEntity"),
-            success.get("unlockRegion"),
-        ])
-
-
-def test_mandatory_puzzle_is_recoverable(world):
-    for puzzle in mandatory_puzzles(world):
-        assert (
-            puzzle.get("resettable") is True
-            or puzzle.get("failure", {}).get("autoReset") is True
-        )
-```
-
-Añadir además tests de:
-
-- referencias inexistentes
-- IDs
-- schema
-- solver
-- random success
-- anti-softlock
-- diálogo
-- flags
-- quests
-- save/load
-- BKT
-- compatibilidad V1
-
----
-
-# 27. E2E
-
-Cuando exista vertical slice suficiente, añadir Playwright.
-
-Casos mínimos:
+Cuando la campaña provenga de archivos del estudiante:
 
 ```text
-spawn
-movement
-collision
-NPC interaction
-dialogue
-quest activation
-puzzle starts inside world
-world remains visible
-failure
-reset
-solution
-door opens
-NPC changes
-BKT updates
-reload persists
+PDF
+DOCX
+PPTX
+TXT
+notes
 ```
 
-Para V2 debe verificarse que no aparece:
+los conceptos importantes deben estar relacionados con la fuente.
+
+Evitar inventar información académica.
+
+Cuando sea viable conservar:
+
+```text
+sourceRefs
+```
+
+Ejemplo:
+
+```json
+{
+  "conceptId": "routing_table",
+  "sourceRefs": [
+    "network_notes/page_12"
+  ]
+}
+```
+
+---
+
+# 38. E2E TESTS
+
+World V2 debe tener tests reales de navegador.
+
+Usar Playwright o equivalente.
+
+Flujo mínimo:
+
+```text
+load world
+ ↓
+player appears
+ ↓
+movement works
+ ↓
+collision works
+ ↓
+interact
+ ↓
+puzzle works
+ ↓
+solve
+ ↓
+world changes
+ ↓
+save
+ ↓
+reload
+ ↓
+state remains
+```
+
+---
+
+# 39. TEST DE CANVAS
+
+Para World V2 obligatorio:
+
+```text
+main gameplay canvas count == 1
+```
+
+No permitir:
+
+```text
+second minigame canvas
+```
+
+como requisito de progreso.
+
+---
+
+# 40. TEST DE LEGACY OVERLAY
+
+Comprobar que contenido obligatorio no dependa de:
 
 ```text
 #mini-game-overlay
+iframe
+launchMiniGame()
 ```
-
-ni una pantalla externa de minijuego.
-
-En test/debug se puede exponer:
-
-```javascript
-window.__MINDCRAFTED_TEST__
-```
-
-con utilidades como:
-
-```text
-getPlayer()
-teleportPlayer()
-getFlag()
-setFlag()
-getEntity()
-getPuzzleState()
-solvePuzzleForTest()
-resetPuzzle()
-getQuest()
-getBKT()
-```
-
-No habilitar cheats de debug en producción.
 
 ---
 
-# 28. Seguridad
+# 41. DIVERSITY TEST
 
-V2 debe reducir el JS generado.
+El generador puede sufrir mode collapse.
 
-Reglas:
+Por tanto crear pruebas de generación múltiple.
 
-- no `eval` para puzzles declarativos
-- validar JSON
-- validar IDs
-- impedir path traversal
-- limitar tamaños
-- limitar solver
-- limitar entidades/graphs
-- no exponer API keys
-- no permitir requests arbitrarios desde contenido generado
-- no usar AI Judge como seguridad
-- sandbox no sustituye aislamiento real
+Ejemplo:
+
+```text
+20 materials
+×
+3 seeds
+=
+60 generated campaigns
+```
+
+Medir:
+
+```text
+archetype frequency
+layout similarity
+solution-pattern similarity
+NPC similarity
+story similarity
+boss similarity
+```
 
 ---
 
-# 29. Material educativo = fuente de verdad
+# 42. EVITAR COLAPSO DE MECÁNICAS
 
-No inventar hechos educativos para hacer funcionar una mecánica.
-
-Separar conceptualmente:
+Si:
 
 ```text
-SOURCE FACTS
-DESIGN INFERENCE
-NARRATIVE FICTION
+80%+
 ```
 
-La ficción ambienta el juego, pero no altera el contenido académico.
+de los mundos utilizan esencialmente la misma mecánica:
 
-KnowledgeGraph debe conservar trazabilidad hacia el material fuente cuando sea posible.
+el sistema debe considerarse poco diverso aunque técnicamente funcione.
 
-Filosofía:
+No resolver diversidad solo cambiando nombres o sprites.
+
+---
+
+# 43. REPAIR LOOP
+
+Máximo recomendado inicial:
 
 ```text
-concepto
-→ comportamiento observable
-→ sistema interactivo
-→ puzzle
+3 generation/repair attempts
+```
+
+Ejemplo:
+
+```text
+candidate 1 → fail
+candidate 2 → fail
+candidate 3 → fail
+```
+
+Resultado:
+
+```text
+DO NOT PUBLISH BROKEN WORLD
+```
+
+Fallback permitido:
+
+```text
+previously approved package
+```
+
+solo cuando sea compatible con el mismo contexto/material.
+
+---
+
+# 44. MODELOS DE IA
+
+Configuración recomendada actual:
+
+## WORLD / PUZZLE / JUDGE
+
+```text
+Groq
+openai/gpt-oss-120b
+```
+
+## DIALOGUE / FAST TASKS
+
+```text
+Groq
+Qwen
+```
+
+## DEVELOPMENT FALLBACK
+
+```text
+OpenRouter Free
+```
+
+No asumir que esta selección será permanente.
+
+Mantener proveedores y modelos configurables.
+
+---
+
+# 45. NO ACOPLAR EL SISTEMA A UN SOLO PROVEEDOR
+
+Crear abstracción equivalente a:
+
+```text
+AIProvider
+```
+
+o reutilizar la existente.
+
+El sistema debe poder cambiar entre:
+
+```text
+Groq
+OpenRouter
+Gemini
+OpenAI-compatible providers
+local models
+```
+
+sin reescribir el pipeline del juego.
+
+---
+
+# 46. MODELOS POR STEP
+
+Cuando sea posible usar configuración por etapa.
+
+Ejemplo:
+
+```text
+WORLD_BLUEPRINT_MODEL
+PUZZLE_MODEL
+JUDGE_MODEL
+REPAIR_MODEL
+DIALOG_MODEL
+```
+
+No obligar a usar un único modelo para todo.
+
+---
+
+# 47. STRUCTURED OUTPUTS
+
+Si un proveedor soporta:
+
+```text
+JSON Schema
+Structured Outputs
+Tool Calling
+```
+
+usarlo.
+
+No confiar únicamente en prompts del tipo:
+
+```text
+"Devuelve JSON válido."
+```
+
+---
+
+# 48. VALIDACIÓN DE IDS
+
+Todo Blueprint debe verificar:
+
+```text
+duplicate IDs
+missing references
+invalid anchorEntity
+invalid region references
+invalid NPC references
+invalid puzzle dependencies
+circular quest dependencies
+```
+
+No permitir referencias silenciosamente rotas.
+
+---
+
+# 49. WORLDSTATE
+
+Preferir un estado autoritativo.
+
+Ejemplo conceptual:
+
+```json
+{
+  "player": {},
+  "world": {},
+  "regions": {},
+  "quests": {},
+  "puzzles": {},
+  "npcs": {},
+  "inventory": {},
+  "flags": {},
+  "knowledge": {},
+  "bkt": {}
+}
+```
+
+Evitar estados duplicados en componentes diferentes.
+
+---
+
+# 50. EVENT SYSTEM
+
+Favorecer comunicación mediante eventos.
+
+Eventos posibles:
+
+```text
+PuzzleStarted
+PuzzleSolved
+PuzzleFailed
+
+QuestStarted
+QuestAdvanced
+QuestCompleted
+
+NPCInteracted
+
+RegionEntered
+RegionUnlocked
+
+ItemCollected
+
+BossStarted
+BossPhaseCompleted
+BossDefeated
+
+KnowledgeDemonstrated
+```
+
+---
+
+# 51. EJEMPLO
+
+```text
+PuzzleSolved
+    ↓
+WorldState
+    ↓
+QuestSystem
+    ↓
+DoorSystem
+    ↓
+DialogueSystem
+    ↓
+BKT
+```
+
+Evitar que cada puzzle conozca directamente todos los sistemas.
+
+---
+
+# 52. NO CREAR MÁS ESCENARIOS VACÍOS
+
+No priorizar:
+
+```text
+20 regions
+```
+
+si cada región posee una sola interacción superficial.
+
+Antes de escalar, conseguir una vertical slice excelente:
+
+```text
+1 coherent region
+1 player
+3 distinct puzzle archetypes
+3+ NPCs with purpose
+quests
+dialogue
+boss
+save/load
+BKT
+AI generation
+solver
+QualityGate
+E2E
+```
+
+---
+
+# 53. ROADMAP OFICIAL
+
+## V2.1 — PUZZLE FOUNDATION
+
+Implementar completamente:
+
+```text
+node_connect
+resource_balance
+machine_configuration
+```
+
+Cada uno debe tener:
+
+```text
+schema
+validator
+compiler
+solver
+simulation
+reset
+persistence
+unit tests
+E2E
+AI generation support
+```
+
+No avanzar demasiado a V2.2 dejando V2.1 roto.
+
+---
+
+# 54. V2.2 — BOSSES
+
+Crear sistema de:
+
+```text
+MULTIPHASE BOSSES
+```
+
+Con:
+
+```text
+2-4 mechanics
+2-4 concepts
+shared world state
+recoverable failure
+verified solution
+```
+
+---
+
+# 55. V2.3 — AGENT API
+
+Convertir generación en agente mediante herramientas.
+
+Implementar:
+
+```text
+tool calling
+structured output
+tool permission boundaries
+repair loop
+context management
+```
+
+La IA no recibe acceso arbitrario al filesystem/runtime durante gameplay.
+
+---
+
+# 56. V2.4 — DYNAMIC NPC
+
+Añadir:
+
+```text
+dynamic dialogue
+contextual hints
+BKT-aware NPC
+adaptive assistance
+```
+
+Siempre sin permitir que el modelo controle directamente el estado crítico.
+
+---
+
+# 57. V2.5 — GENERATIVE VARIETY
+
+Añadir gradualmente:
+
+```text
+classification_zones
+collect_assemble
+spatial_order
+timeline_path
+hazard_pattern
+npc_deduction
+logic_circuit
+dependency_graph
+```
+
+y pruebas de diversidad.
+
+---
+
+# 58. DEFINITION OF DONE — PUZZLE ARCHETYPE
+
+Una mecánica solo está DONE cuando:
+
+```text
+[ ] schema
+[ ] validator
+[ ] compiler
+[ ] runtime implementation
+[ ] world-native integration
+[ ] solver
+[ ] simulation
+[ ] reset/recovery
+[ ] persistence
+[ ] deterministic success/failure
+[ ] world consequence
+[ ] educational coupling
+[ ] unit tests
+[ ] fuzz/random tests
+[ ] E2E
+[ ] generator integration
+[ ] QualityGate integration
+```
+
+---
+
+# 59. DEFINITION OF DONE — GENERATED WORLD
+
+Una campaña solo puede aprobarse cuando:
+
+```text
+[ ] schema valid
+[ ] semantic references valid
+[ ] regions reachable
+[ ] quests valid
+[ ] mandatory puzzles world-native
+[ ] mandatory puzzles solvable
+[ ] no known softlocks
+[ ] collisions valid
+[ ] puzzle anchors exist
+[ ] world consequences valid
+[ ] learning-mechanic coupling accepted
+[ ] hints do not immediately spoil
+[ ] source grounding acceptable
+[ ] persistence works
+[ ] rewards do not duplicate
+[ ] BKT works
+[ ] browser E2E passes
+[ ] deterministic QualityGate passes
+[ ] AI Judge passes
+```
+
+---
+
+# 60. CÓMO TRABAJAR ANTES DE HACER CAMBIOS
+
+Para cada tarea no trivial:
+
+## STEP 1 — INSPECT
+
+Investigar código relacionado.
+
+No asumir arquitectura solo por nombre de archivo.
+
+---
+
+## STEP 2 — CLASSIFY
+
+Determinar:
+
+```text
+V1 / legacy
+V2 / current
+shared
+```
+
+---
+
+## STEP 3 — IDENTIFY CONTRACT
+
+Determinar:
+
+- entradas;
+- salidas;
+- estados;
+- invariantes;
+- tests existentes.
+
+---
+
+## STEP 4 — TEST FIRST WHEN RISKY
+
+Si el sistema no tiene cobertura y se va a refactorizar:
+
+crear primero:
+
+```text
+characterization tests
+```
+
+---
+
+## STEP 5 — IMPLEMENT MINIMUM COHERENT CHANGE
+
+No hacer grandes reescrituras sin necesidad.
+
+---
+
+## STEP 6 — RUN RELEVANT TESTS
+
+Ejecutar:
+
+```text
+unit
+integration
+solver
+simulation
+E2E
+```
+
+según corresponda.
+
+---
+
+## STEP 7 — VERIFY ARCHITECTURE
+
+Confirmar que el cambio no viola:
+
+```text
+AI designs / code decides
+world-native
+safe runtime
+deterministic validation
+```
+
+---
+
+# 61. ANTES DE AÑADIR UNA NUEVA DEPENDENCIA
+
+Preguntar:
+
+```text
+¿ya existe una dependencia que hace esto?
+```
+
+Evitar duplicación.
+
+No añadir frameworks enormes para resolver problemas pequeños.
+
+---
+
+# 62. ANTES DE CREAR UN NUEVO SISTEMA
+
+Buscar primero sistemas existentes.
+
+Ejemplo:
+
+antes de crear:
+
+```text
+NewWorldStateManager
+```
+
+buscar:
+
+```text
+WorldState
+GameState
+CampaignState
+StateManager
+SaveSystem
+```
+
+Reutilizar o extender cuando sea razonable.
+
+---
+
+# 63. NO ROMPER API SIN NECESIDAD
+
+Mantener compatibilidad con interfaces existentes siempre que no impidan World V2.
+
+Si una breaking change es necesaria:
+
+- localizar consumidores;
+- actualizar tests;
+- migrar todas las llamadas;
+- documentar el cambio.
+
+---
+
+# 64. EVITAR DUPLICACIÓN V1/V2
+
+No crear:
+
+```text
+QuestSystem
+QuestSystemV2
+QuestSystemNew
+QuestSystemFinal
+```
+
+sin estrategia de migración.
+
+Cuando sea posible, extraer interfaces comunes y retirar legacy progresivamente.
+
+---
+
+# 65. REGLA SOBRE TODO / FIXES
+
+No ocultar problemas con:
+
+```text
+try:
+    ...
+except:
+    pass
+```
+
+No eliminar errores sin resolver la causa.
+
+Errores del pipeline deben producir información útil:
+
+```text
+step
+candidate
+reason
+failed check
+relevant IDs
+repair context
+```
+
+---
+
+# 66. LOGGING DEL AGENTE
+
+Para generación guardar información suficiente para reproducir errores.
+
+Idealmente:
+
+```text
+generation_id
+material_hash
+model
+provider
+seed
+step
+attempt
+schema_version
+prompt_version
+validation_result
+solver_result
+judge_result
+```
+
+No guardar secretos/API keys.
+
+---
+
+# 67. REPRODUCIBILIDAD
+
+Cuando sea posible utilizar:
+
+```text
+seed
+```
+
+para:
+
+- procedural generation;
+- simulations;
+- fuzz tests;
+- layout generation.
+
+Un fallo debe ser reproducible.
+
+---
+
+# 68. VERSIONADO DE SCHEMAS
+
+Los Blueprints deberían tener:
+
+```json
+{
+  "schemaVersion": "2.x"
+}
+```
+
+Al cambiar estructura de forma importante:
+
+- actualizar versión;
+- crear migración cuando sea necesaria;
+- mantener validators conscientes de versión.
+
+---
+
+# 69. TESTS DE CONTRATO RECOMENDADOS
+
+Crear o mantener pruebas equivalentes a:
+
+```python
+def test_all_mandatory_puzzles_are_world_native(...):
+    ...
+
+def test_every_puzzle_anchor_exists(...):
+    ...
+
+def test_every_required_puzzle_has_world_consequence(...):
+    ...
+
+def test_every_required_puzzle_is_solvable(...):
+    ...
+
+def test_no_required_puzzle_softlocks(...):
+    ...
+
+def test_world_v2_has_no_required_legacy_overlay(...):
+    ...
+
+def test_persistence_does_not_duplicate_rewards(...):
+    ...
+
+def test_ai_judge_cannot_override_deterministic_failure(...):
+    ...
+```
+
+---
+
+# 70. TEST AI JUDGE AUTHORITY
+
+Debe existir un test conceptual equivalente a:
+
+```python
+report.deterministic_pass = False
+report.ai_judge_pass = True
+
+assert report.publishable is False
+```
+
+Esta regla nunca debe romperse.
+
+---
+
+# 71. TEST LEARNING COUPLING
+
+Crear evaluación por heurísticas y AI Judge.
+
+Posibles preguntas:
+
+```text
+¿El conocimiento cambia las decisiones del jugador?
+
+¿Existe una estrategia correcta derivada del concepto?
+
+¿Un jugador ignorante del concepto podría ganar al azar fácilmente?
+
+¿El puzzle representa relaciones del tema o solo usa vocabulario?
+```
+
+---
+
+# 72. TEST DE HINTS
+
+Verificar:
+
+```text
+initial dialogue does not contain full solution
+hint 1 != solution
+hint 2 provides strategy
+hint 3 provides concrete direction
+hint 4 may approximate solution
+```
+
+---
+
+# 73. TEST DE WORLD CONSEQUENCE
+
+Después de resolver un puzzle:
+
+comprobar que al menos una transformación válida ocurra.
+
+Ejemplo:
+
+```python
+assert (
+    door_opened
+    or region_unlocked
+    or npc_state_changed
+    or world_entity_changed
+    or quest_advanced
+)
+```
+
+---
+
+# 74. TEST DE BOSS
+
+Un boss debe comprobar:
+
+```text
+phase progression
+phase reset/recovery
+prior concept usage
+final completion
+world consequence
+save/reload during boss if supported
+```
+
+---
+
+# 75. PERFORMANCE
+
+No llamar a la IA en cada frame.
+
+Nunca.
+
+IA durante gameplay debe ejecutarse solo en eventos específicos.
+
+Ejemplo:
+
+```text
+NPC interaction
+hint request
+optional narrative event
+campaign generation
+repair
+```
+
+No usar IA para:
+
+```text
+movement
+collision
+physics
+rendering
+every enemy tick
+```
+
+---
+
+# 76. COST CONTROL
+
+El proyecto busca poder funcionar con APIs gratuitas o económicas.
+
+Reducir llamadas innecesarias.
+
+Preferir:
+
+```text
+1 strong generation call
++
+deterministic processing
+```
+
+sobre:
+
+```text
+20 small uncontrolled LLM calls
+```
+
+Usar caché cuando sea apropiado.
+
+---
+
+# 77. CONTEXT CONTROL
+
+No enviar el proyecto completo al modelo para cada llamada.
+
+Proporcionar únicamente:
+
+```text
+relevant concepts
+current region
+current quest
+current puzzle
+required schema
+relevant world state
+```
+
+Mantener prompts específicos.
+
+---
+
+# 78. REPAIR PROMPTS
+
+Cuando un candidato falla, no volver a generar a ciegas.
+
+Enviar al Repair Agent:
+
+```text
+original blueprint
+failed tests
+solver report
+validation errors
+AI Judge issues
+constraints that must remain
+```
+
+Pedir modificación mínima.
+
+---
+
+# 79. NO PERDER BUEN CONTENIDO DURANTE REPAIR
+
+Si únicamente falla:
+
+```text
+anchorEntity missing
+```
+
+no regenerar toda la narrativa, mapa y quests.
+
+Reparar el problema localizado.
+
+---
+
+# 80. ERROR TAXONOMY
+
+Clasificar fallos.
+
+Ejemplo:
+
+```text
+SCHEMA_ERROR
+REFERENCE_ERROR
+UNSOLVABLE
+SOFTLOCK
+WORLD_INTEGRATION_ERROR
+EDUCATIONAL_COUPLING_ERROR
+PERSISTENCE_ERROR
+E2E_ERROR
+DIVERSITY_ERROR
+AI_JUDGE_REJECTION
+```
+
+Esto ayudará al Repair Agent.
+
+---
+
+# 81. EXPERIENCIA OBJETIVO
+
+El jugador debe experimentar:
+
+```text
+Explore
+ ↓
+Notice
+ ↓
+Experiment
+ ↓
+Fail
+ ↓
+Understand
+ ↓
+Solve
+ ↓
+World reacts
+ ↓
+Story progresses
+ ↓
+New challenge
 ```
 
 No:
 
 ```text
-concepto → pregunta → opciones
+Walk
+ ↓
+Answer quiz
+ ↓
+Walk
+ ↓
+Answer quiz
 ```
 
 ---
 
-# 30. Pistas
+# 82. REFERENCIA DE CALIDAD
 
-Pistas progresivas recomendadas:
+Una región buena debe parecer diseñada.
+
+Ejemplo:
 
 ```text
-fallo 1 → feedback del sistema
-fallo 2 → observación
-fallo 3 → pista conceptual
-fallo 4+ → pista más explícita
+REGION
+Abandoned Data Center
+
+NPC
+Engineer asks player to restore infrastructure.
+
+PUZZLE 1
+Connect servers based on dependencies.
+
+WORLD CHANGE
+Power restored.
+
+PUZZLE 2
+Route traffic through available nodes.
+
+WORLD CHANGE
+Control room opens.
+
+PUZZLE 3
+Balance traffic under capacity limits.
+
+WORLD CHANGE
+Main elevator activates.
+
+BOSS
+System overload combining all previous concepts.
+
+END
+Engineer changes dialogue.
+New region unlocked.
+BKT updated.
 ```
-
-No entregar inmediatamente la solución exacta.
-
-Las pistas deben usar el estado real del puzzle.
 
 ---
 
-# 31. No hacer todavía
+# 83. NO CONFUNDIR CONTENIDO GENERADO CON ARQUITECTURA GENERADA
 
-Antes de completar la vertical slice NO priorizar:
-
-- React/Vue
-- rediseño total del Studio
-- base de datos
-- cuentas
-- multiplayer
-- marketplace
-- mundo infinito
-- editor avanzado de mapas
-- 20 archetypes
-- combate complejo
-- infraestructura distribuida
-
-Primero demostrar:
+La IA puede generar:
 
 ```text
-learning + world + puzzle + consequence
+content
 ```
 
----
-
-# 32. Anti-rewrite
-
-Antes de crear un subsistema:
-
-1. busca funcionalidad existente;
-2. reutiliza lo útil;
-3. extrae solo lo necesario;
-4. mantiene compatibilidad;
-5. añade tests;
-6. migra por pasos.
-
-No reemplazar todo `engine.js` de una vez si puede extraerse incrementalmente.
-
-No crear implementaciones duplicadas sin justificación.
-
----
-
-# 33. Definition of Done
-
-Una feature está terminada cuando:
-
-- cumple contrato
-- tiene tests
-- no rompe tests existentes
-- maneja errores
-- tiene fallback si depende de IA
-- no introduce softlocks conocidos
-- actualiza documentación si cambia arquitectura
-- funciona en un flujo real
-
-Un archetype está listo cuando tiene:
-
-- schema
-- renderer
-- interacción
-- éxito determinista
-- fallo determinista
-- reset
-- validator
-- solver cuando aplique
-- simulation tests
-- observaciones BKT
-- world effects
-- fixture
-- unit tests
-- E2E básico
-
----
-
-# 34. Procedimiento para Codex
-
-Antes:
-
-1. lee este `AGENTS.md`;
-2. lee archivos relacionados;
-3. revisa tests;
-4. entiende comportamiento existente.
-
-Durante:
-
-1. haz el cambio mínimo coherente;
-2. no mezcles refactors no relacionados;
-3. agrega tests con la feature;
-4. prioriza determinismo.
-
-Después ejecuta lo relevante:
-
-```bash
-python -m compileall mindcrafted
-node --check mindcrafted/engine/engine.js
-node --check mindcrafted/engine/bkt.js
-pytest
-```
-
-Cuando existan:
-
-```bash
-pytest tests/v2
-pytest tests/e2e
-```
-
-No ocultar tests fallidos.
-
-Si una prueba no puede ejecutarse por el entorno, indicarlo.
-
-Al terminar reportar:
+No debería regenerar:
 
 ```text
-CAMBIOS
-- ...
-
-TESTS
-- comando: resultado
-
-RIESGOS / DEUDA
-- ...
-
-SIGUIENTE PASO
-- ...
+engine architecture
 ```
 
-No afirmar que algo funciona sin verificarlo.
+en cada mundo.
+
+El motor permanece estable.
+
+Los datos cambian.
 
 ---
 
-# 35. ¿Vamos por buen camino?
+# 84. SEPARACIÓN RECOMENDADA
 
-Antes de cerrar una tarea importante, comprobar:
-
-### A
-Si desconecto la IA después de generar la campaña,
-¿puedo terminarla?
-
-**Debe ser SÍ.**
-
-### B
-¿El puzzle ocurre donde el personaje lo encontró?
-
-**Debe ser SÍ.**
-
-### C
-¿Resolverlo cambia el mundo?
-
-**Debe ser SÍ** para puzzles obligatorios.
-
-### D
-¿Necesito aplicar el concepto académico?
-
-**Debe ser SÍ.**
-
-### E
-¿Podemos demostrar que existe una solución?
-
-**Debe ser SÍ** cuando el archetype permita solver.
-
-### F
-¿Una opinión del LLM decide si gané?
-
-**Debe ser NO.**
-
----
-
-# 36. Resultado buscado
-
-Ejemplo con Redes:
+Ideal:
 
 ```text
-Ciudad de los Nodos
-│
-├── jugador explora
-├── NPC informa problema
-├── jugador investiga routers
-├── puzzle de routing vive en el mapa
-├── rutas malas producen congestión visible
-├── jugador balancea tráfico
-├── red vuelve a funcionar
-├── cambia el entorno
-├── NPC reacciona
-├── BKT registra errores
-└── se abre el siguiente distrito
-```
+ENGINE
+    stable
 
-Evitar:
+ARCHETYPES
+    deterministic
 
-```text
-NPC habla
-↓
-quiz
-↓
-+100 XP
-↓
-NPC habla
+BLUEPRINTS
+    generated
+
+CONTENT
+    generated
+
+WORLD PACKAGE
+    compiled
+
+SAVE STATE
+    runtime
 ```
 
 ---
 
-# 37. Mantra
+# 85. NO IMPLEMENTAR UNA FEATURE SOLO PORQUE EL PROMPT LA PIDE
+
+Si una instrucción puntual entra en conflicto con la arquitectura central:
+
+buscar una implementación compatible con V2.
+
+No introducir deuda grave para resolver una demo rápida.
+
+---
+
+# 86. PERO NO SOBREINGENIERIZAR
+
+No construir sistemas enormes si el problema actual puede resolverse con una implementación pequeña y extensible.
+
+Aplicar:
 
 ```text
-1. WORLD FIRST.
-2. PLAYER ALWAYS MATTERS.
-3. PUZZLES LIVE IN THE WORLD.
-4. AI DESIGNS; CODE DECIDES.
-5. KNOWLEDGE DRIVES THE MECHANIC.
-6. TEST BEFORE ACCEPTING GENERATED CONTENT.
+SIMPLE
+TESTABLE
+EXTENSIBLE
+DETERMINISTIC
 ```
 
-Ésta es la dirección oficial de **MindCrafted 2.0**.
+---
+
+# 87. REPORTAR CAMBIOS
+
+Después de una tarea importante, resumir:
+
+```text
+WHAT CHANGED
+WHY
+FILES CHANGED
+TESTS RUN
+RESULTS
+REMAINING RISKS
+NEXT RECOMMENDED STEP
+```
+
+No afirmar:
+
+```text
+"todo funciona"
+```
+
+si no se ejecutaron pruebas suficientes.
+
+---
+
+# 88. SI UNA PRUEBA NO PUEDE EJECUTARSE
+
+Decir claramente:
+
+```text
+NOT VERIFIED
+```
+
+y explicar por qué.
+
+No asumir éxito.
+
+---
+
+# 89. PRIORIDAD AL CORREGIR ERRORES
+
+Orden recomendado:
+
+```text
+1. broken build/runtime
+2. corrupted state/save
+3. unsolvable puzzles
+4. softlocks
+5. broken E2E
+6. incorrect educational behavior
+7. architecture violations
+8. content quality
+9. cosmetic issues
+```
+
+---
+
+# 90. CUANDO ENCUENTRES CÓDIGO QUE VA EN DIRECCIÓN INCORRECTA
+
+No sigas extendiéndolo simplemente porque ya existe.
+
+Ejemplo:
+
+si encuentras:
+
+```text
+generated mandatory HTML minigame
+```
+
+y la tarea requiere una nueva mecánica:
+
+NO crear otro HTML minigame.
+
+Implementar o extender un archetype World V2.
+
+---
+
+# 91. PREGUNTA DE CONTROL FINAL
+
+Antes de considerar terminada una feature, responder internamente:
+
+```text
+¿Esto hace que MindCrafted se parezca más a un RPG educativo
+o más a una plataforma de quizzes?
+```
+
+Si se acerca a quizzes:
+
+replantear el diseño.
+
+---
+
+# 92. PRINCIPIOS INNEGOCIABLES
+
+Nunca romper estos principios:
+
+```text
+1. AI DESIGNS — CODE DECIDES.
+
+2. Mandatory puzzles are world-native.
+
+3. Generated LLM output is untrusted.
+
+4. Deterministic tests override AI judgement.
+
+5. Required puzzles must be solvable.
+
+6. Required puzzles must be recoverable.
+
+7. Solving puzzles must affect the world.
+
+8. Educational concepts must affect mechanics.
+
+9. World V2 is the canonical direction.
+
+10. Better integration > more generated content.
+```
+
+---
+
+# 93. ORDEN DE TRABAJO ACTUAL RECOMENDADO
+
+Hasta nueva instrucción, priorizar:
+
+```text
+1. Auditar estado actual de World V2.
+
+2. Confirmar separación V1/V2.
+
+3. Fortalecer contratos y tests existentes.
+
+4. Implementar node_connect.
+
+5. Implementar resource_balance.
+
+6. Implementar machine_configuration.
+
+7. Integrarlos con generación IA.
+
+8. Integrarlos con solver/simulation.
+
+9. Integrarlos con QualityGate.
+
+10. Crear diversity tests.
+
+11. Diseñar sistema multiphase boss.
+
+12. Implementar Agent API/tool calling.
+
+13. Añadir structured outputs reales.
+
+14. Añadir NPC dinámicos.
+
+15. Expandir archetypes.
+```
+
+No invertir este orden sin una razón técnica clara.
+
+---
+
+# 94. CUANDO RECIBAS UNA TAREA GRANDE
+
+No intentes modificar todo MindCrafted en una sola operación.
+
+Dividir internamente en:
+
+```text
+AUDIT
+CONTRACT
+IMPLEMENTATION
+TESTING
+INTEGRATION
+VALIDATION
+```
+
+Implementar un slice funcional completo antes de abrir demasiados frentes.
+
+---
+
+# 95. PRIMERA ACCIÓN DE ASTRA AL USAR ESTE ARCHIVO
+
+Si Astra recibe el repositorio por primera vez, debe:
+
+```text
+1. Read MINDCRAFTED_V2_ASTRA.md
+
+2. Read this AGENTS.md
+
+3. Inspect repository structure.
+
+4. Locate:
+   world_pipeline
+   world_schema
+   world_package
+   generator API
+   runtime
+   save system
+   puzzle implementations
+   E2E tests
+
+5. Identify V1 and V2 paths.
+
+6. Run existing tests before changing architecture.
+
+7. Produce an internal implementation plan.
+
+8. Start with the smallest V2 improvement that moves toward the roadmap.
+```
+
+---
+
+# 96. INSTRUCCIÓN FINAL
+
+Astra:
+
+No intentes impresionar generando mucho código.
+
+El objetivo es construir un sistema que pueda generar contenido difícil sin perder control sobre su calidad.
+
+Cada nueva capa de IA debe tener detrás una capa determinista que pueda decir:
+
+```text
+YES
+```
+
+o:
+
+```text
+NO
+```
+
+a lo que produjo el modelo.
+
+MindCrafted debe combinar:
+
+```text
+LLM creativity
++
+procedural generation
++
+deterministic simulation
++
+game systems
++
+educational modeling
++
+automated testing
+```
+
+La IA imagina el desafío.
+
+El motor demuestra que funciona.
+
+El jugador lo aprende jugando.
+
+Ese es MindCrafted 2.0.

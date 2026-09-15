@@ -76,6 +76,57 @@ class Network(Data):
     packets: Annotated[list[Packet], Field(min_length=1, max_length=6)]
 
 
+class ConnectionNode(Data):
+    id: Id
+    label: Text
+    kind: Id
+
+
+class ConnectionEdge(Edge):
+    id: Id
+
+
+class KindPair(Data):
+    sourceKind: Id
+    targetKind: Id
+
+
+class CompatibleConnections(Data):
+    kind: Literal["compatible"]
+    allowed: Annotated[list[KindPair], Field(min_length=1, max_length=32)]
+    ruleId: Id
+
+
+class ConnectionDegree(Data):
+    kind: Literal["degree"]
+    node: Id
+    direction: Literal["in", "out"]
+    min: Annotated[int, Field(ge=0, le=7)]
+    max: Annotated[int, Field(ge=0, le=7)]
+    ruleId: Id
+
+
+class AcyclicConnections(Data):
+    kind: Literal["acyclic"]
+    ruleId: Id
+
+
+ConnectionRule = Annotated[Union[CompatibleConnections, ConnectionDegree, AcyclicConnections], Field(discriminator="kind")]
+
+
+class ConnectionGoal(Edge):
+    ruleId: Id
+
+
+class NodeConnect(Data):
+    archetype: Literal["node_connect"]
+    schemaVersion: Literal[1]
+    nodes: Annotated[list[ConnectionNode], Field(min_length=3, max_length=8)]
+    edges: Annotated[list[ConnectionEdge], Field(min_length=2, max_length=12)]
+    connectionRules: Annotated[list[ConnectionRule], Field(min_length=1, max_length=12)]
+    goals: Annotated[list[ConnectionGoal], Field(min_length=1, max_length=8)]
+
+
 class Block(Point):
     id: Id
     kind: Id
@@ -97,7 +148,7 @@ class Blocks(Data):
     goals: Annotated[list[Goal], Field(min_length=2, max_length=6)]
 
 
-Mechanics = Annotated[Union[Sequence, Network, Blocks], Field(discriminator="archetype")]
+Mechanics = Annotated[Union[Sequence, Network, Blocks, NodeConnect], Field(discriminator="archetype")]
 
 
 class BlueprintPuzzle(Data):
@@ -125,7 +176,7 @@ class Player(Point):
 
 class Entity(Point):
     id: Id
-    type: Literal["npc", "console", "switch", "router", "door", "exit", "goal"]
+    type: Literal["npc", "console", "switch", "router", "connection_node", "door", "exit", "goal"]
     label: Text
     puzzleId: Id | None = None
     controlId: Id | None = None
@@ -201,7 +252,7 @@ class Difficulty(Data):
 
 class Puzzle(BlueprintPuzzle):
     runtime: Literal["world"]
-    archetype: Literal["switch_sequence", "route_network", "push_blocks"]
+    archetype: Literal["switch_sequence", "route_network", "push_blocks", "node_connect"]
     mandatory: Literal[True]
     resettable: Literal[True]
     world: Anchor

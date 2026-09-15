@@ -395,6 +395,20 @@ def _validate_ai_base_url(value: str) -> str:
     return value
 
 
+def _resolve_ai_config(body: dict) -> tuple[object, str, object]:
+    """Resolve BYOK settings without sending the server key to a new host."""
+    requested_base_url = body.get("base_url")
+    base_url = _validate_ai_base_url(requested_base_url or API_BASE_URL)
+    api_key = body.get("api_key") or API_KEY
+    has_request_key = isinstance(body.get("api_key"), str) and bool(body["api_key"].strip())
+    has_request_url = requested_base_url not in (None, "")
+    if has_request_url and not has_request_key:
+        configured_url = _validate_ai_base_url(API_BASE_URL)
+        if base_url != configured_url:
+            raise HTTPException(400, "Una URL de IA personalizada requiere una clave BYOK explícita")
+    return api_key, base_url, body.get("model") or MODEL
+
+
 def _validate_generation_content(content: object) -> dict:
     if not isinstance(content, dict):
         raise HTTPException(400, "El contenido del curso no es válido")
@@ -856,9 +870,7 @@ async def generate(body: dict):
     locale = "es"
 
     # API key: from body (BYOK) or server env
-    api_key = body.get("api_key") or API_KEY
-    base_url = _validate_ai_base_url(body.get("base_url") or API_BASE_URL)
-    model = body.get("model") or MODEL
+    api_key, base_url, model = _resolve_ai_config(body)
 
     if not isinstance(api_key, str) or not api_key.strip():
         raise HTTPException(400, "La clave de API es obligatoria. Configura API_KEY en .env o envíala en la solicitud.")
@@ -893,9 +905,7 @@ async def get_job(jid: str):
 
 @app.post("/api/ai-chat")
 async def ai_chat(body: dict):
-    api_key = body.get("api_key") or API_KEY
-    base_url = _validate_ai_base_url(body.get("base_url") or API_BASE_URL)
-    model = body.get("model") or MODEL
+    api_key, base_url, model = _resolve_ai_config(body)
     messages = body.get("messages", [])
     max_tokens = body.get("max_tokens", 1024)
 

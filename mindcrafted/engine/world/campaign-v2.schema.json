@@ -1,5 +1,26 @@
 {
   "$defs": {
+    "AcyclicConnections": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "acyclic",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ruleId"
+      ],
+      "title": "AcyclicConnections",
+      "type": "object"
+    },
     "Anchor": {
       "additionalProperties": false,
       "properties": {
@@ -145,6 +166,169 @@
         "world"
       ],
       "title": "CampaignRegion",
+      "type": "object"
+    },
+    "CompatibleConnections": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "compatible",
+          "title": "Kind",
+          "type": "string"
+        },
+        "allowed": {
+          "items": {
+            "$ref": "#/$defs/KindPair"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Allowed",
+          "type": "array"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "allowed",
+        "ruleId"
+      ],
+      "title": "CompatibleConnections",
+      "type": "object"
+    },
+    "ConnectionDegree": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "degree",
+          "title": "Kind",
+          "type": "string"
+        },
+        "node": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Node",
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "in",
+            "out"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "min": {
+          "maximum": 7,
+          "minimum": 0,
+          "title": "Min",
+          "type": "integer"
+        },
+        "max": {
+          "maximum": 7,
+          "minimum": 0,
+          "title": "Max",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "node",
+        "direction",
+        "min",
+        "max",
+        "ruleId"
+      ],
+      "title": "ConnectionDegree",
+      "type": "object"
+    },
+    "ConnectionEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "id"
+      ],
+      "title": "ConnectionEdge",
+      "type": "object"
+    },
+    "ConnectionGoal": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "ruleId"
+      ],
+      "title": "ConnectionGoal",
+      "type": "object"
+    },
+    "ConnectionNode": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind"
+      ],
+      "title": "ConnectionNode",
       "type": "object"
     },
     "Dialogue": {
@@ -303,6 +487,7 @@
             "console",
             "switch",
             "router",
+            "connection_node",
             "door",
             "exit",
             "goal"
@@ -460,6 +645,27 @@
       "title": "Goal",
       "type": "object"
     },
+    "KindPair": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceKind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Sourcekind",
+          "type": "string"
+        },
+        "targetKind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Targetkind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceKind",
+        "targetKind"
+      ],
+      "title": "KindPair",
+      "type": "object"
+    },
     "Knowledge": {
       "additionalProperties": false,
       "properties": {
@@ -594,6 +800,85 @@
         "ruleId"
       ],
       "title": "NetworkNode",
+      "type": "object"
+    },
+    "NodeConnect": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "node_connect",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ConnectionNode"
+          },
+          "maxItems": 8,
+          "minItems": 3,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/ConnectionEdge"
+          },
+          "maxItems": 12,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        },
+        "connectionRules": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "acyclic": "#/$defs/AcyclicConnections",
+                "compatible": "#/$defs/CompatibleConnections",
+                "degree": "#/$defs/ConnectionDegree"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CompatibleConnections"
+              },
+              {
+                "$ref": "#/$defs/ConnectionDegree"
+              },
+              {
+                "$ref": "#/$defs/AcyclicConnections"
+              }
+            ]
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Connectionrules",
+          "type": "array"
+        },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/ConnectionGoal"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "schemaVersion",
+        "nodes",
+        "edges",
+        "connectionRules",
+        "goals"
+      ],
+      "title": "NodeConnect",
       "type": "object"
     },
     "OrderRule": {
@@ -747,6 +1032,7 @@
         "mechanics": {
           "discriminator": {
             "mapping": {
+              "node_connect": "#/$defs/NodeConnect",
               "push_blocks": "#/$defs/Blocks",
               "route_network": "#/$defs/Network",
               "switch_sequence": "#/$defs/Sequence"
@@ -762,6 +1048,9 @@
             },
             {
               "$ref": "#/$defs/Blocks"
+            },
+            {
+              "$ref": "#/$defs/NodeConnect"
             }
           ],
           "title": "Mechanics"
@@ -802,7 +1091,8 @@
           "enum": [
             "switch_sequence",
             "route_network",
-            "push_blocks"
+            "push_blocks",
+            "node_connect"
           ],
           "title": "Archetype",
           "type": "string"
