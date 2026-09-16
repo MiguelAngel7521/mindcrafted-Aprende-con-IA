@@ -17,7 +17,7 @@ from .world_continuity import assert_world_continuity, install_continuity_guard
 
 ENGINE = Path(__file__).resolve().parents[1] / "engine"
 ROOT = ENGINE.parent.parent
-CHECKS = ("schema", "worldGraph", "solver", "educational", "mechanicEligibility", "runtime", "e2e")
+CHECKS = ("schema", "worldGraph", "solver", "educational", "mechanicEligibility", "boss", "runtime", "e2e")
 RUBRIC = ("embodiedLearning", "worldIntegration", "interactionQuality", "technicalSolvability")
 JUDGE_SCHEMA = {"type": "object", "additionalProperties": False,
                 "properties": {"approved": {"type": "boolean"},
@@ -47,7 +47,7 @@ def render_html(package):
         css = css.replace("/assets/fonts/PixelifySans.ttf", "data:font/ttf;base64," + base64.b64encode(font.read_bytes()).decode())
     html = html.replace('<link rel="stylesheet" href="/engine/world/style.css">', '<style>' + css + '</style>')
     for script in ("bkt.js", "world/event-bus.js", "world/flag-system.js", "world/quest-system.js",
-                   "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
+                   "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/boss-system.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
         code = '<script>' + (ENGINE / script).read_text(encoding="utf-8") + '</script>'
         if script == "world/runtime.js":
             code = '<script id="world-data" type="application/json">' + data + '</script>' + code
@@ -136,7 +136,8 @@ def browser_probe(package, walkthrough, screenshot=None):
                     for puzzle in current_world["puzzles"]:
                         key = (region_index, puzzle["id"])
                         if puzzle["archetype"] in ("resource_balance", "machine_configuration") and key not in recovered_connections and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", puzzle["id"]):
-                            _probe_configuration_recovery(page, current_world, puzzle, keys)
+                            effective = page.evaluate("id => worldEngine.puzzles.get(id)", puzzle['id'])
+                            _probe_configuration_recovery(page, current_world, effective, keys)
                             recovered_connections.add(key)
                             recovery = True
                         if puzzle["archetype"] == "node_connect" and key not in recovered_connections and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", puzzle["id"]):
@@ -149,10 +150,21 @@ def browser_probe(package, walkthrough, screenshot=None):
             assert page.locator("canvas").count() == 1
             assert page.locator("#mini-game-overlay, iframe").count() == 0
             completed = page.evaluate("worldEngine.snapshot()")
+            boss_mastery = page.evaluate("__MINDCRAFTED_TEST__.getBKT()")
+            for boss in page.evaluate("worldEngine.spec.bosses || []"):
+                assert completed['bosses'][boss['id']]['status'] == 'complete', 'BOSS_E2E_ERROR: unfinished encounter'
+                for phase in boss['phases']:
+                    assert any(any(e['bossId']==boss['id'] and e['phaseId']==phase['id'] for e in record.get('phaseEvidence',[]))
+                               for record in boss_mastery['records']), 'BOSS_BKT_ERROR: missing phase evidence'
+
             page.reload()
             page.wait_for_function("window.worldEngine && worldEngine.state.completed")
             assert page.evaluate("worldEngine.state.xp") == completed["xp"]
             assert page.evaluate("worldEngine.state.inventory") == completed["inventory"]
+            if 'bosses' in completed:
+                assert page.evaluate("worldEngine.state.bosses") == completed['bosses'], 'BOSS_PERSISTENCE_ERROR'
+                assert page.evaluate("__MINDCRAFTED_TEST__.getBKT()") == boss_mastery, 'BOSS_BKT_ERROR: duplicate evidence'
+
             page.set_viewport_size({"width": 390, "height": 844})
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Mobile horizontal overflow"
             if screenshot:
@@ -209,7 +221,7 @@ def _probe_connection_recovery(page, world, puzzle, keys, screenshot=None):
     interact(entities[puzzle["world"]["anchorEntity"]])
     state = page.evaluate("id => worldEngine.state.puzzles[id]", puzzle["id"])
     assert not state["solved"] and state["attempts"] == state["errors"] == 1
-    assert state["connections"] == [] and edge["id"] in state["effect"]["invalidEdges"]
+    assert state["connections"] == ([] if puzzle["failure"]["autoReset"] else [edge["id"]]) and edge["id"] in state["effect"]["invalidEdges"]
     assert page.evaluate("id => !worldEngine.isOpen(worldEngine.entities.get(id))", puzzle["success"]["openEntity"])
     if screenshot:
         page.screenshot(path=str(Path(screenshot).with_stem(Path(screenshot).stem + "-" + puzzle["id"] + "-failure")), full_page=True)
@@ -283,7 +295,7 @@ def _probe_configuration_recovery(page, world, puzzle, keys):
     touch(entities[puzzle["world"]["anchorEntity"]])
     state = page.evaluate("id => worldEngine.state.puzzles[id]", pid)
     assert not state["solved"] and state["attempts"] == state["errors"] == 1
-    assert state["configuration"] == bad and state["effect"]["ok"] is False
+    assert state["configuration"] == (mechanism.initial(m) if puzzle["failure"]["autoReset"] else bad) and state["effect"]["ok"] is False
     assert page.evaluate("id => !worldEngine.isOpen(worldEngine.entities.get(id))", puzzle["success"]["openEntity"])
     reload()
     page.keyboard.press("h")
@@ -357,7 +369,7 @@ def quality_gate(world, source, *, judge=None, run_probes=True, screenshot=None)
     checks = dict(report["checks"], runtime=False, e2e=False)
     result = {"approved": False, "checks": checks, "errors": list(report["errors"]),
               "worldHash": world_hash(world), "judge": judge, "solutions": report["solutions"],
-              "mechanicEligibility": report["mechanicEligibility"]}
+              "mechanicEligibility": report["mechanicEligibility"], "boss": report["boss"]}
     if report["ok"] and run_probes:
         try:
             result["runtime"] = runtime_probe(world, report["walkthrough"])

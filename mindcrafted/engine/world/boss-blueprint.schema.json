@@ -1,0 +1,1881 @@
+{
+  "$defs": {
+    "AcyclicConnections": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "acyclic",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ruleId"
+      ],
+      "title": "AcyclicConnections",
+      "type": "object"
+    },
+    "Block": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "id",
+        "kind",
+        "ruleId"
+      ],
+      "title": "Block",
+      "type": "object"
+    },
+    "Blocks": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "push_blocks",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "board": {
+          "items": {
+            "pattern": "^[.#]{4,10}$",
+            "type": "string"
+          },
+          "maxItems": 9,
+          "minItems": 4,
+          "title": "Board",
+          "type": "array"
+        },
+        "spawn": {
+          "$ref": "#/$defs/Point"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Blocks",
+          "type": "array"
+        },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/Goal"
+          },
+          "maxItems": 6,
+          "minItems": 2,
+          "title": "Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "board",
+        "spawn",
+        "blocks",
+        "goals"
+      ],
+      "title": "Blocks",
+      "type": "object"
+    },
+    "BlueprintPuzzle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "knowledge": {
+          "$ref": "#/$defs/Knowledge"
+        },
+        "mechanics": {
+          "discriminator": {
+            "mapping": {
+              "machine_configuration": "#/$defs/MachineConfiguration",
+              "node_connect": "#/$defs/NodeConnect",
+              "push_blocks": "#/$defs/Blocks",
+              "resource_balance": "#/$defs/ResourceBalance",
+              "route_network": "#/$defs/Network",
+              "switch_sequence": "#/$defs/Sequence"
+            },
+            "propertyName": "archetype"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Sequence"
+            },
+            {
+              "$ref": "#/$defs/Network"
+            },
+            {
+              "$ref": "#/$defs/Blocks"
+            },
+            {
+              "$ref": "#/$defs/NodeConnect"
+            },
+            {
+              "$ref": "#/$defs/ResourceBalance"
+            },
+            {
+              "$ref": "#/$defs/MachineConfiguration"
+            }
+          ],
+          "title": "Mechanics"
+        },
+        "hint": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Hint",
+          "type": "string"
+        },
+        "introduction": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Introduction",
+          "type": "string"
+        },
+        "reflection": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Reflection",
+          "type": "string"
+        },
+        "role": {
+          "default": "challenge",
+          "enum": [
+            "challenge",
+            "boss"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "objective",
+        "knowledge",
+        "mechanics",
+        "hint",
+        "introduction",
+        "reflection"
+      ],
+      "title": "BlueprintPuzzle",
+      "type": "object"
+    },
+    "BossBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "variable": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Variable",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "resource_capacity",
+            "machine_capacity"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        },
+        "targetId": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Targetid"
+        },
+        "evidence": {
+          "maxLength": 2000,
+          "minLength": 15,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "kind",
+        "ruleId",
+        "targetId",
+        "evidence"
+      ],
+      "title": "BossBinding",
+      "type": "object"
+    },
+    "BossCase": {
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "When"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "when",
+        "value"
+      ],
+      "title": "BossCase",
+      "type": "object"
+    },
+    "BossCompletion": {
+      "additionalProperties": false,
+      "properties": {
+        "flag": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Flag",
+          "type": "string"
+        },
+        "xpBonus": {
+          "maximum": 200,
+          "minimum": 0,
+          "title": "Xpbonus",
+          "type": "integer"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "flag",
+        "xpBonus",
+        "description"
+      ],
+      "title": "BossCompletion",
+      "type": "object"
+    },
+    "BossOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "variable": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Variable",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "edge_present",
+            "configuration_value"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "controlId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Controlid",
+          "type": "string"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/BossCase"
+          },
+          "maxItems": 6,
+          "minItems": 2,
+          "title": "Cases",
+          "type": "array"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        },
+        "evidence": {
+          "maxLength": 2000,
+          "minLength": 15,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "kind",
+        "controlId",
+        "cases",
+        "ruleId",
+        "evidence"
+      ],
+      "title": "BossOutput",
+      "type": "object"
+    },
+    "BossPhaseBlueprint": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next"
+        },
+        "exports": {
+          "items": {
+            "$ref": "#/$defs/BossOutput"
+          },
+          "maxItems": 2,
+          "title": "Exports",
+          "type": "array"
+        },
+        "bindings": {
+          "items": {
+            "$ref": "#/$defs/BossBinding"
+          },
+          "maxItems": 2,
+          "title": "Bindings",
+          "type": "array"
+        },
+        "puzzle": {
+          "$ref": "#/$defs/BlueprintPuzzle"
+        }
+      },
+      "required": [
+        "id",
+        "next",
+        "exports",
+        "bindings",
+        "puzzle"
+      ],
+      "title": "BossPhaseBlueprint",
+      "type": "object"
+    },
+    "BossVariable": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 3,
+          "minItems": 2,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "values"
+      ],
+      "title": "BossVariable",
+      "type": "object"
+    },
+    "CompatibleConnections": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "compatible",
+          "title": "Kind",
+          "type": "string"
+        },
+        "allowed": {
+          "items": {
+            "$ref": "#/$defs/KindPair"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Allowed",
+          "type": "array"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "allowed",
+        "ruleId"
+      ],
+      "title": "CompatibleConnections",
+      "type": "object"
+    },
+    "ConfigurationCapacity": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "capacity",
+          "title": "Kind",
+          "type": "string"
+        },
+        "terms": {
+          "items": {
+            "$ref": "#/$defs/ConfigurationTerm"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Terms",
+          "type": "array"
+        },
+        "max": {
+          "maximum": 800,
+          "minimum": 0,
+          "title": "Max",
+          "type": "integer"
+        },
+        "unit": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "terms",
+        "max",
+        "unit",
+        "ruleId"
+      ],
+      "title": "ConfigurationCapacity",
+      "type": "object"
+    },
+    "ConfigurationCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Control",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "control",
+        "values"
+      ],
+      "title": "ConfigurationCondition",
+      "type": "object"
+    },
+    "ConfigurationCost": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Value",
+          "type": "string"
+        },
+        "amount": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Amount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "value",
+        "amount"
+      ],
+      "title": "ConfigurationCost",
+      "type": "object"
+    },
+    "ConfigurationDependency": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "dependency",
+          "title": "Kind",
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/$defs/ConfigurationCondition"
+        },
+        "then": {
+          "$ref": "#/$defs/ConfigurationCondition"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "when",
+        "then",
+        "ruleId"
+      ],
+      "title": "ConfigurationDependency",
+      "type": "object"
+    },
+    "ConfigurationExclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "exclusion",
+          "title": "Kind",
+          "type": "string"
+        },
+        "left": {
+          "$ref": "#/$defs/ConfigurationCondition"
+        },
+        "right": {
+          "$ref": "#/$defs/ConfigurationCondition"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "left",
+        "right",
+        "ruleId"
+      ],
+      "title": "ConfigurationExclusion",
+      "type": "object"
+    },
+    "ConfigurationRange": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "range",
+          "title": "Kind",
+          "type": "string"
+        },
+        "control": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Control",
+          "type": "string"
+        },
+        "min": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Min",
+          "type": "integer"
+        },
+        "max": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Max",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "control",
+        "min",
+        "max",
+        "ruleId"
+      ],
+      "title": "ConfigurationRange",
+      "type": "object"
+    },
+    "ConfigurationRequired": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "required",
+          "title": "Kind",
+          "type": "string"
+        },
+        "condition": {
+          "$ref": "#/$defs/ConfigurationCondition"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "condition",
+        "ruleId"
+      ],
+      "title": "ConfigurationRequired",
+      "type": "object"
+    },
+    "ConfigurationTerm": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Control",
+          "type": "string"
+        },
+        "costs": {
+          "items": {
+            "$ref": "#/$defs/ConfigurationCost"
+          },
+          "maxItems": 5,
+          "minItems": 2,
+          "title": "Costs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "control",
+        "costs"
+      ],
+      "title": "ConfigurationTerm",
+      "type": "object"
+    },
+    "ConfigurationTradeoff": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Control",
+          "type": "string"
+        },
+        "preferredValues": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Preferredvalues",
+          "type": "array"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "control",
+        "preferredValues",
+        "reason"
+      ],
+      "title": "ConfigurationTradeoff",
+      "type": "object"
+    },
+    "ConnectionDegree": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "degree",
+          "title": "Kind",
+          "type": "string"
+        },
+        "node": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Node",
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "in",
+            "out"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "min": {
+          "maximum": 7,
+          "minimum": 0,
+          "title": "Min",
+          "type": "integer"
+        },
+        "max": {
+          "maximum": 7,
+          "minimum": 0,
+          "title": "Max",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "node",
+        "direction",
+        "min",
+        "max",
+        "ruleId"
+      ],
+      "title": "ConnectionDegree",
+      "type": "object"
+    },
+    "ConnectionEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "id"
+      ],
+      "title": "ConnectionEdge",
+      "type": "object"
+    },
+    "ConnectionGoal": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "ruleId"
+      ],
+      "title": "ConnectionGoal",
+      "type": "object"
+    },
+    "ConnectionNode": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind"
+      ],
+      "title": "ConnectionNode",
+      "type": "object"
+    },
+    "Edge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target"
+      ],
+      "title": "Edge",
+      "type": "object"
+    },
+    "Goal": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "accepts": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Accepts",
+          "type": "array"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "id",
+        "label",
+        "accepts",
+        "ruleId"
+      ],
+      "title": "Goal",
+      "type": "object"
+    },
+    "KindPair": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceKind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Sourcekind",
+          "type": "string"
+        },
+        "targetKind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Targetkind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceKind",
+        "targetKind"
+      ],
+      "title": "KindPair",
+      "type": "object"
+    },
+    "Knowledge": {
+      "additionalProperties": false,
+      "properties": {
+        "concept": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Concept",
+          "type": "string"
+        },
+        "learning_action": {
+          "maxLength": 2000,
+          "minLength": 15,
+          "title": "Learning Action",
+          "type": "string"
+        },
+        "requiredRules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Requiredrules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "concept",
+        "learning_action",
+        "requiredRules"
+      ],
+      "title": "Knowledge",
+      "type": "object"
+    },
+    "MachineConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "machine_configuration",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "machine": {
+          "$ref": "#/$defs/Switch"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/Switch"
+          },
+          "maxItems": 8,
+          "minItems": 2,
+          "title": "Components",
+          "type": "array"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/MachineSlot"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Slots",
+          "type": "array"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/MachineParameter"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Parameters",
+          "type": "array"
+        },
+        "configurationRules": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "capacity": "#/$defs/ConfigurationCapacity",
+                "dependency": "#/$defs/ConfigurationDependency",
+                "exclusion": "#/$defs/ConfigurationExclusion",
+                "range": "#/$defs/ConfigurationRange",
+                "required": "#/$defs/ConfigurationRequired"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ConfigurationRequired"
+              },
+              {
+                "$ref": "#/$defs/ConfigurationDependency"
+              },
+              {
+                "$ref": "#/$defs/ConfigurationExclusion"
+              },
+              {
+                "$ref": "#/$defs/ConfigurationRange"
+              },
+              {
+                "$ref": "#/$defs/ConfigurationCapacity"
+              }
+            ]
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Configurationrules",
+          "type": "array"
+        },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/ConfigurationRequired"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Goals",
+          "type": "array"
+        },
+        "tradeoffs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ConfigurationTradeoff"
+          },
+          "maxItems": 4,
+          "title": "Tradeoffs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "schemaVersion",
+        "machine",
+        "components",
+        "slots",
+        "parameters",
+        "configurationRules",
+        "goals"
+      ],
+      "title": "MachineConfiguration",
+      "type": "object"
+    },
+    "MachineParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/$defs/ParameterValue"
+          },
+          "maxItems": 5,
+          "minItems": 2,
+          "title": "Values",
+          "type": "array"
+        },
+        "initial": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Initial",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "values",
+        "initial"
+      ],
+      "title": "MachineParameter",
+      "type": "object"
+    },
+    "MachineSlot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "components": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 2,
+          "title": "Components",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "components"
+      ],
+      "title": "MachineSlot",
+      "type": "object"
+    },
+    "Network": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "route_network",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/NetworkNode"
+          },
+          "maxItems": 10,
+          "minItems": 3,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "maxItems": 24,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        },
+        "packets": {
+          "items": {
+            "$ref": "#/$defs/Packet"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Packets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "nodes",
+        "edges",
+        "packets"
+      ],
+      "title": "Network",
+      "type": "object"
+    },
+    "NetworkNode": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "capacity": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Capacity",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "capacity",
+        "ruleId"
+      ],
+      "title": "NetworkNode",
+      "type": "object"
+    },
+    "NodeConnect": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "node_connect",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ConnectionNode"
+          },
+          "maxItems": 8,
+          "minItems": 3,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/ConnectionEdge"
+          },
+          "maxItems": 12,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        },
+        "connectionRules": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "acyclic": "#/$defs/AcyclicConnections",
+                "compatible": "#/$defs/CompatibleConnections",
+                "degree": "#/$defs/ConnectionDegree"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CompatibleConnections"
+              },
+              {
+                "$ref": "#/$defs/ConnectionDegree"
+              },
+              {
+                "$ref": "#/$defs/AcyclicConnections"
+              }
+            ]
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Connectionrules",
+          "type": "array"
+        },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/ConnectionGoal"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "schemaVersion",
+        "nodes",
+        "edges",
+        "connectionRules",
+        "goals"
+      ],
+      "title": "NodeConnect",
+      "type": "object"
+    },
+    "OrderRule": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Before",
+          "type": "string"
+        },
+        "after": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "After",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "before",
+        "after",
+        "ruleId"
+      ],
+      "title": "OrderRule",
+      "type": "object"
+    },
+    "Packet": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "amount": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Amount",
+          "type": "integer"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target",
+        "amount",
+        "ruleId"
+      ],
+      "title": "Packet",
+      "type": "object"
+    },
+    "ParameterValue": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quantity"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "quantity"
+      ],
+      "title": "ParameterValue",
+      "type": "object"
+    },
+    "Point": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point",
+      "type": "object"
+    },
+    "ResourceBalance": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "resource_balance",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "loads": {
+          "items": {
+            "$ref": "#/$defs/ResourceLoad"
+          },
+          "maxItems": 6,
+          "minItems": 2,
+          "title": "Loads",
+          "type": "array"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ConnectionNode"
+          },
+          "maxItems": 4,
+          "minItems": 2,
+          "title": "Targets",
+          "type": "array"
+        },
+        "allocationRules": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "capacity": "#/$defs/ResourceLimits",
+                "compatible": "#/$defs/CompatibleConnections"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CompatibleConnections"
+              },
+              {
+                "$ref": "#/$defs/ResourceLimits"
+              }
+            ]
+          },
+          "maxItems": 8,
+          "minItems": 2,
+          "title": "Allocationrules",
+          "type": "array"
+        },
+        "goals": {
+          "items": {
+            "$ref": "#/$defs/ResourceComplete"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "schemaVersion",
+        "loads",
+        "targets",
+        "allocationRules",
+        "goals"
+      ],
+      "title": "ResourceBalance",
+      "type": "object"
+    },
+    "ResourceCapacity": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "min": {
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Min",
+          "type": "integer"
+        },
+        "max": {
+          "maximum": 600,
+          "minimum": 1,
+          "title": "Max",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target",
+        "min",
+        "max"
+      ],
+      "title": "ResourceCapacity",
+      "type": "object"
+    },
+    "ResourceComplete": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "all_assigned",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ruleId"
+      ],
+      "title": "ResourceComplete",
+      "type": "object"
+    },
+    "ResourceLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "capacity",
+          "title": "Kind",
+          "type": "string"
+        },
+        "limits": {
+          "items": {
+            "$ref": "#/$defs/ResourceCapacity"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Limits",
+          "type": "array"
+        },
+        "ruleId": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Ruleid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "limits",
+        "ruleId"
+      ],
+      "title": "ResourceLimits",
+      "type": "object"
+    },
+    "ResourceLoad": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "amount": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Amount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "amount"
+      ],
+      "title": "ResourceLoad",
+      "type": "object"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "skill": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Skill",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "evidence": {
+          "maxLength": 2000,
+          "minLength": 15,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "skill",
+        "description",
+        "evidence"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "Sequence": {
+      "additionalProperties": false,
+      "properties": {
+        "archetype": {
+          "const": "switch_sequence",
+          "title": "Archetype",
+          "type": "string"
+        },
+        "switches": {
+          "items": {
+            "$ref": "#/$defs/Switch"
+          },
+          "maxItems": 7,
+          "minItems": 4,
+          "title": "Switches",
+          "type": "array"
+        },
+        "constraints": {
+          "items": {
+            "$ref": "#/$defs/OrderRule"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Constraints",
+          "type": "array"
+        }
+      },
+      "required": [
+        "archetype",
+        "switches",
+        "constraints"
+      ],
+      "title": "Sequence",
+      "type": "object"
+    },
+    "Switch": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Switch",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "title": "Schemaversion",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "requiredSkills": {
+      "items": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 24,
+      "minItems": 2,
+      "title": "Requiredskills",
+      "type": "array"
+    },
+    "requiredConcepts": {
+      "items": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 4,
+      "minItems": 2,
+      "title": "Requiredconcepts",
+      "type": "array"
+    },
+    "sharedState": {
+      "items": {
+        "$ref": "#/$defs/BossVariable"
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Sharedstate",
+      "type": "array"
+    },
+    "failurePolicy": {
+      "enum": [
+        "retry_current",
+        "checkpoint"
+      ],
+      "title": "Failurepolicy",
+      "type": "string"
+    },
+    "hintPolicy": {
+      "const": "current_phase",
+      "title": "Hintpolicy",
+      "type": "string"
+    },
+    "completion": {
+      "$ref": "#/$defs/BossCompletion"
+    },
+    "introduction": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Introduction",
+      "type": "string"
+    },
+    "phases": {
+      "items": {
+        "$ref": "#/$defs/BossPhaseBlueprint"
+      },
+      "maxItems": 4,
+      "minItems": 2,
+      "title": "Phases",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "requiredSkills",
+    "requiredConcepts",
+    "sharedState",
+    "failurePolicy",
+    "hintPolicy",
+    "completion",
+    "introduction",
+    "phases"
+  ],
+  "title": "BossBlueprint",
+  "type": "object"
+}

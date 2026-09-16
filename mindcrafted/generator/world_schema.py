@@ -378,12 +378,83 @@ class Puzzle(BlueprintPuzzle):
     prerequisites: Annotated[list[Id], Field(max_length=24)] = []
 
 
+class BossVariable(Data):
+    id: Id
+    label: Text
+    values: Annotated[list[Annotated[int, Field(ge=1, le=100)]], Field(min_length=2, max_length=3)]
+
+
+class BossCase(Data):
+    when: Id | bool | None
+    value: Annotated[int, Field(ge=1, le=100)]
+
+
+class BossOutput(Data):
+    variable: Id
+    kind: Literal["edge_present", "configuration_value"]
+    controlId: Id
+    cases: Annotated[list[BossCase], Field(min_length=2, max_length=6)]
+    ruleId: Id
+    evidence: Annotated[str, Field(min_length=15, max_length=2000)]
+
+
+class BossBinding(Data):
+    variable: Id
+    kind: Literal["resource_capacity", "machine_capacity"]
+    ruleId: Id
+    targetId: Id | None
+    evidence: Annotated[str, Field(min_length=15, max_length=2000)]
+
+
+class BossPhase(Data):
+    id: Id
+    next: Id | None
+    exports: Annotated[list[BossOutput], Field(max_length=2)]
+    bindings: Annotated[list[BossBinding], Field(max_length=2)]
+
+
+class BossPhaseBlueprint(BossPhase):
+    puzzle: BlueprintPuzzle
+
+
+class BossPhaseSpec(BossPhase):
+    puzzleId: Id
+
+
+class BossCompletion(Data):
+    flag: Id
+    xpBonus: Annotated[int, Field(ge=0, le=200)]
+    description: Text
+
+
+class BossContract(Data):
+    schemaVersion: Literal[1]
+    id: Id
+    title: Text
+    requiredSkills: Annotated[list[Text], Field(min_length=2, max_length=24)]
+    requiredConcepts: Annotated[list[Text], Field(min_length=2, max_length=4)]
+    sharedState: Annotated[list[BossVariable], Field(min_length=1, max_length=3)]
+    failurePolicy: Literal["retry_current", "checkpoint"]
+    hintPolicy: Literal["current_phase"]
+    completion: BossCompletion
+
+
+class BossBlueprint(BossContract):
+    introduction: Text
+    phases: Annotated[list[BossPhaseBlueprint], Field(min_length=2, max_length=4)]
+
+
+class BossSpec(BossContract):
+    phases: Annotated[list[BossPhaseSpec], Field(min_length=2, max_length=4)]
+
+
 class WorldSpec(Data):
     version: Literal[2]
     id: Id
     title: Text
     introduction: Text
     priorSkills: Annotated[list[Text], Field(max_length=24)] = []
+    bosses: Annotated[list[BossSpec], Field(max_length=1)] = []
     player: Player
     regions: Annotated[list[Region], Field(min_length=1, max_length=1)]
     puzzles: Annotated[list[Puzzle], Field(min_length=1, max_length=24)]
@@ -391,6 +462,7 @@ class WorldSpec(Data):
     dialogues: Annotated[list[Dialogue], Field(min_length=1, max_length=64)]
 
 
+BOSS_BLUEPRINT_SCHEMA = BossBlueprint.model_json_schema()
 WORLD_SCHEMA = WorldSpec.model_json_schema()
 BLUEPRINT_SCHEMA = Blueprint.model_json_schema()
 

@@ -62,10 +62,18 @@
       record.lastScore=clamp(metadata.score==null?0:metadata.score,0,100);
       if(metadata.observations&&typeof metadata.observations==='object'){
         record.lastObservations={};
-        ['correctRoutes','invalidRoutes','congestionEvents','correctActions','invalidActions','solutionSteps','hintsUsed','solutionTime','solutionTimeMs','restarts','attempts'].forEach(function(name){
+        ['correctRoutes','invalidRoutes','congestionEvents','correctActions','invalidActions','solutionSteps','hintsUsed','solutionTime','solutionTimeMs','restarts','attempts','checkpoints','solutionQuality'].forEach(function(name){
           var value=metadata.observations[name];
           if(Number.isFinite(value)&&value>=0)record.lastObservations[name]=Math.min(value,1000000);
         });
+      }
+      var context=metadata.context;
+      if(context && ['worldId','bossId','phaseId'].every(function(k){return typeof context[k]==='string' && /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(context[k]);})){
+        record.phaseEvidence=Array.isArray(record.phaseEvidence)?record.phaseEvidence.slice(-95):[];
+        var previous=record.phaseEvidence.find(function(item){return item.worldId===context.worldId && item.bossId===context.bossId && item.phaseId===context.phaseId;});
+        if(!previous){previous={worldId:context.worldId,bossId:context.bossId,phaseId:context.phaseId,attempts:0,correct:0};record.phaseEvidence.push(previous);}
+        previous.attempts++;previous.correct+=correct?1:0;
+        previous.observations=Object.assign({},record.lastObservations||{});
       }
       record.lastObservedAt=new Date().toISOString();
       record.mastered=record.mastery>=model.masteryThreshold;

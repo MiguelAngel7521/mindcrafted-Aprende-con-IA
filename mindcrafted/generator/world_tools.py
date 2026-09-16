@@ -17,9 +17,40 @@ def main():
     parser.add_argument("--archetype", choices=["machine_configuration", "resource_balance", "node_connect", "route_network", "switch_sequence", "push_blocks"], help="Validar o exportar un único arquetipo")
     parser.add_argument("--pillars", action="store_true", help="Demo integrada de node_connect, resource_balance y machine_configuration")
     parser.add_argument("--selector-demo", action="store_true", help="Seleccionar tres mecánicas por objetivo antes de compilar la demo")
+    parser.add_argument("--boss-demo", type=int, choices=[2,3], help="Lecciones previas y un boss compuesto de dos o tres fases")
     args = parser.parse_args()
-    if sum((bool(args.archetype), args.campaign, args.pillars, args.selector_demo)) > 1:
-        parser.error("--archetype, --campaign, --pillars y --selector-demo son alternativas")
+    if sum((bool(args.archetype), args.campaign, args.pillars, args.selector_demo, bool(args.boss_demo))) > 1:
+        parser.error("--archetype, --campaign, --pillars, --selector-demo y --boss-demo son alternativas")
+    if args.boss_demo:
+        from .boss_demo import SOURCE as two_source, THREE_PHASE_SOURCE, blueprint as two_phases, three_phase_blueprint
+        from .pillar_demo import SOURCE as lesson_source, blueprint as lessons
+        from .world_boss import compile_boss
+        from .world_campaign import assemble_campaign, write_campaign
+        design = two_phases() if args.boss_demo == 2 else three_phase_blueprint()
+        source = two_source if args.boss_demo == 2 else THREE_PHASE_SOURCE
+        lesson_design = lessons()
+        used = {p['puzzle']['mechanics']['archetype'] for p in design['phases']}
+        lesson_design['puzzles'] = [p for p in lesson_design['puzzles'] if p['mechanics']['archetype'] in used]
+        lesson_world = compile_world(lesson_design, lesson_source, difficulty='hard')
+        skills = {r['skill'] for p in lesson_world['puzzles'] for r in p['knowledge']['requiredRules']}
+        boss_world = compile_boss(design, source, prior_skills=skills)
+        packages = []
+        args.output.mkdir(parents=True, exist_ok=True)
+        for index, (world, material) in enumerate(((lesson_world, lesson_source),(boss_world, source))):
+            package = make_package(world, material, 'practice' if index == 0 else 'boss')
+            package['developmentDemo'] = True
+            if args.command == 'check':
+                package['quality'] = quality_gate(world, material)
+                if not all(package['quality']['checks'].values()):
+                    raise ValueError('; '.join(package['quality']['errors']))
+            packages.append(package)
+        campaign = assemble_campaign(packages, 'archive_boss', development=True)
+        manifest = write_campaign(campaign, args.output, screenshot=args.output/'boss.png' if args.command == 'check' else None)
+        (args.output/'boss-blueprint.json').write_text(json.dumps(design, ensure_ascii=False, indent=2), encoding='utf-8')
+        (args.output/'boss-validation.json').write_text(json.dumps(packages[-1].get('quality', {}), ensure_ascii=False, indent=2), encoding='utf-8')
+        print(json.dumps({'developmentDemo':True,'phases':args.boss_demo,'checks':manifest['checks'],
+                          'judge':'not_run','html':str(args.output/'index.html')}, ensure_ascii=False))
+        return
     if args.campaign:
         from .world_campaign import assemble_campaign, write_campaign
         packages = []

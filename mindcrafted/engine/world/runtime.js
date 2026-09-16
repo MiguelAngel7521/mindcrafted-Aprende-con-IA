@@ -14,6 +14,8 @@
   function refresh() {
     const s = engine.state, p = engine.currentPuzzle(), state = s.puzzles[p.id];
     $('position').textContent = session ? `REGIÓN ${session.index + 1} / ${packageData.campaign.regions.length} · SECTOR ${engine.spec.puzzles.indexOf(p) + 1}` : `SECTOR ${engine.spec.puzzles.indexOf(p) + 1} / ${engine.spec.puzzles.length}`;
+    const boss = engine.spec.bosses?.[0], encounter = boss && s.bosses[boss.id];
+    if (boss) $('position').textContent = `${boss.title} · FASE ${Math.min(encounter.phaseIndex + 1, boss.phases.length)} / ${boss.phases.length}`;
     $('progress').textContent = `${Object.values(s.puzzles).filter(p => p.solved).length} / ${engine.spec.puzzles.length}`;
     $('xp').textContent = (session ? session.xp : s.xp) + ' XP';
     $('quest-title').textContent = p.title; $('objective').textContent = state.solved ? 'Compuerta abierta. Avanza hacia el este para continuar.' : p.objective;
@@ -67,6 +69,26 @@
           const [px, py] = point(phase);
           rect(px - 3, py - 3, 6, 6, '#e8ffd1');
         }
+      }
+    }
+  }
+  function drawBoss() {
+    const boss = engine.spec.bosses?.[0]; if (!boss) return;
+    const state = engine.state.bosses[boss.id];
+    for (let i = 0; i < boss.phases.length; i++) {
+      const p = engine.puzzles.get(boss.phases[i].puzzleId), anchor = engine.entities.get(p.world.anchorEntity);
+      const [x,y] = screen(anchor.x + .5, anchor.y - 1);
+      const color = i < state.phaseIndex ? '#96efbe' : i === state.phaseIndex ? '#e0bf7e' : '#315058';
+      rect(x-20,y-9,40,8,color); label(`FASE ${i+1}`,x,y-20,color);
+      if (i) {
+        const previous = engine.entities.get(engine.puzzles.get(boss.phases[i-1].puzzleId).world.anchorEntity);
+        const [px,py] = screen(previous.x+.5, previous.y-1);
+        ctx.strokeStyle=color;ctx.lineWidth=3;ctx.setLineDash(i<=state.phaseIndex?[]:[4,7]);
+        ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x,y);ctx.stroke();ctx.setLineDash([]);
+      }
+      for (const [j,binding] of boss.phases[i].bindings.entries()) {
+        const value=state.shared[binding.variable];
+        if(value!==undefined) label(`${value} · ${boss.sharedState.find(v=>v.id===binding.variable).label}`,x,y+28+j*20,'#96efbe',200);
       }
     }
   }
@@ -146,6 +168,7 @@
         }
       }
     }
+    drawBoss();
     const actors = [...engine.entities.values(), {type: 'player', ...player}];
     for (const p of engine.puzzles.values()) if (p.archetype === 'push_blocks') engine.state.puzzles[p.id].blocks.forEach((b, i) => actors.push({type: 'block', x: b.x + p.world.offset.x, y: b.y + p.world.offset.y, label: p.mechanics.blocks[i].kind}));
     actors.sort((a, b) => a.y - b.y || (a.type === 'goal' ? -1 : 1));
@@ -269,7 +292,7 @@
     if (session) engine = session.engine;
     const events = session ? session.events : engine.events;
     events.on('world.message', event => status(event.text));
-    events.on('learning.observation', event => tracker.observe(event.skill, event.correct, {label: event.label, score: event.correct ? 100 : 0, observations: event.observations}));
+    events.on('learning.observation', event => tracker.observe(event.skill, event.correct, {label: event.label, score: event.observations?.solutionQuality !== undefined ? event.observations.solutionQuality * 100 : event.correct ? 100 : 0, observations: event.observations, context:event.boss}));
     events.on('world.changed', () => { if (!saves.save(session || engine)) status('El guardado no está disponible. Puedes continuar en esta sesión.'); refresh(); });
     events.on('region.completed', () => status('Región completada. Puedes continuar el viaje cuando quieras.'));
     events.on('campaign.region.changed', () => {

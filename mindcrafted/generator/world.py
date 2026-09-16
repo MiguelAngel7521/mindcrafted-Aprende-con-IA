@@ -43,14 +43,25 @@ def compile_puzzle_spec(blueprint, region_id, index, difficulty="normal", prereq
     return puzzle
 
 
-def compile_world(blueprint, source, world_id="learning_world", *, difficulty="normal", prior_skills=()):
-    schema_check(blueprint, BLUEPRINT_SCHEMA)
+def compile_world(blueprint, source, world_id="learning_world", *, difficulty="normal", prior_skills=(), boss=None):
+    schema = deepcopy(BLUEPRINT_SCHEMA)
+    if boss is not None:
+        from .world_schema import BossSpec
+        BossSpec.model_validate(boss)
+        schema['properties']['puzzles']['maxItems'] = 4
+    schema_check(blueprint, schema)
     unique(blueprint["puzzles"], "blueprint")
     # Validate references before invoking combinatorial solvers.
     for puzzle in blueprint["puzzles"]:
         validate_mechanics(puzzle, source)
     region_id = "main_region"
     puzzles = [compile_puzzle_spec(p, region_id, i, difficulty, [q["id"] for q in blueprint["puzzles"][:i]]) for i, p in enumerate(blueprint["puzzles"])]
+    if boss is not None:
+        for puzzle in puzzles:
+            puzzle['difficulty']['minSolutionSteps'] = 6
+            puzzle['failure']['autoReset'] = boss['failurePolicy'] == 'checkpoint'
+        puzzles[-1]['success']['setFlags'].append(boss['completion']['flag'])
+        puzzles[-1]['success']['xp'] += boss['completion']['xpBonus']
     width, height = len(puzzles) * 22 + 2, 19
     tiles = [["#" if x in (0, width - 1) or y in (0, height - 1) else "."
               for x in range(width)] for y in range(height)]
@@ -105,6 +116,8 @@ def compile_world(blueprint, source, world_id="learning_world", *, difficulty="n
              "regions": [{"id": region_id, "title": blueprint["title"], "width": width, "height": height,
                           "tiles": ["".join(row) for row in tiles], "entities": entities}],
              "puzzles": puzzles, "dialogues": dialogues, "quests": quests}
+    if boss is not None:
+        world["bosses"] = [deepcopy(boss)]
     report = validate_world(world, source)
     if not report["ok"]:
         raise ValueError("; ".join(report["errors"]))
@@ -172,9 +185,9 @@ def validate_mechanics(puzzle, source):
 
 
 def validate_world(world, source):
-    checks = {key: False for key in ("schema", "worldGraph", "solver", "educational", "mechanicEligibility")}
+    checks = {key: False for key in ("schema", "worldGraph", "solver", "educational", "mechanicEligibility", "boss")}
     errors, solutions = [], {}
-    eligibility_reports = {}
+    eligibility_reports, boss_reports = {}, {}
     try:
         schema_check(world, WORLD_SCHEMA)
         checks["schema"] = True
@@ -246,7 +259,8 @@ def validate_world(world, source):
                 raise ValueError("Cada puzzle necesita una misión")
             controls = [e.get("controlId") for e in region["entities"] if e.get("puzzleId") == pid and e["type"] in ("switch", "router", "connection_node", "resource_load", "resource_target", "machine_slot", "machine_parameter", "goal")]
             m = puzzle["mechanics"]
-            automatic_reset = puzzle["archetype"] not in ("resource_balance", "machine_configuration")
+            encounter = next((b for b in world.get('bosses', []) if any(phase['puzzleId']==pid for phase in b['phases'])), None)
+            automatic_reset = encounter['failurePolicy']=='checkpoint' if encounter else puzzle["archetype"] not in ("resource_balance", "machine_configuration")
             if puzzle["failure"]["autoReset"] != automatic_reset:
                 raise ValueError("WORLD_INTEGRATION_ERROR: recuperación incompatible con el archetype")
             if puzzle["archetype"] in ("resource_balance", "machine_configuration"):
@@ -306,13 +320,18 @@ def validate_world(world, source):
             if intro["trigger"] != {"event": "entity.interacted", "entityId": giver["id"]}:
                 raise ValueError("El NPC no corresponde al evento del diálogo")
         checks["solver"] = checks["educational"] = True
+        from .world_boss import validate_boss_world
+        boss_reports = validate_boss_world(world, source)
+        for report in boss_reports.values():
+            solutions.update({step['puzzleId']:step['solution'] for step in report['route']})
+        checks['boss'] = True
         walkthrough = build_walkthrough(world, solutions)
         checks["worldGraph"] = True
     except (ValueError, KeyError, TypeError, IndexError, StopIteration) as error:
         errors.append(str(error))
         walkthrough = []
     return {"ok": all(checks.values()), "checks": checks, "errors": errors,
-            "solutions": solutions, "walkthrough": walkthrough, "mechanicEligibility": eligibility_reports}
+            "solutions": solutions, "walkthrough": walkthrough, "mechanicEligibility": eligibility_reports, "boss": boss_reports}
 
 
 def find_path(region, start, targets, obstacles):

@@ -5,7 +5,8 @@ const {WorldEngine} = require('./core.js');
 
 const {world, walkthrough} = JSON.parse(fs.readFileSync(0, 'utf8'));
 const engine = new WorldEngine(world);
-const observations = [], solved = [];
+const observations = [], solved = [], bossCompletions = [];
+engine.events.on("boss.completed", e => bossCompletions.push(e.bossId));
 engine.events.on('learning.observation', e => observations.push(e));
 engine.events.on('puzzle.solved', e => solved.push(e.puzzleId));
 for (const [i, action] of walkthrough.entries()) {
@@ -25,4 +26,10 @@ assert.equal(restored.restore(engine.snapshot()), true);
 assert.equal(restored.state.completed, true);
 assert.equal(restored.state.xp, engine.state.xp);
 assert.deepEqual(restored.state.inventory, engine.state.inventory);
+for (const boss of world.bosses || []) {
+  assert.equal(engine.state.bosses[boss.id].status, 'complete');
+  assert.deepEqual(restored.state.bosses[boss.id], engine.state.bosses[boss.id]);
+  assert.equal(bossCompletions.filter(id => id === boss.id).length, 1);
+  for (const phase of boss.phases) assert.ok(observations.some(o => o.boss?.bossId === boss.id && o.boss.phaseId === phase.id));
+}
 process.stdout.write(JSON.stringify({ok: true, steps: walkthrough.length, observations: observations.length}));

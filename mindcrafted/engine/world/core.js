@@ -13,6 +13,7 @@
 
   const {resourceBalance} = typeof module !== 'undefined' ? require('./resource-balance.js') : root.MindCraftedWorld;
   const {machineConfiguration} = typeof module !== 'undefined' ? require('./machine-configuration.js') : root.MindCraftedWorld;
+  const {BossSystem} = typeof module !== 'undefined' ? require('./boss-system.js') : root.MindCraftedWorld;
   const configurationMechanics = {resource_balance: resourceBalance, machine_configuration: machineConfiguration};
 
   function options(m) {
@@ -91,6 +92,8 @@
       const dependencies = {state: () => this.state, events: this.systemEvents, emit: (name, data) => this.emit(name, data)};
       this.flagSystem = new FlagSystem(dependencies);
       this.questSystem = new QuestSystem({...dependencies, quests: this.spec.quests});
+      this.bossSystem = new BossSystem(this);
+      this.initialState = copy(this.state);
       this.dialogueSystem = new DialogueSystem({...dependencies, dialogues: this.dialogues, entities: this.entities,
         puzzles: this.puzzles, changed: () => this.changed()});
     }
@@ -98,7 +101,7 @@
     changed() { this.emit('world.changed', this.snapshot()); }
     message(text) { this.emit('world.message', {text}); }
     quest(puzzleId) { return this.questSystem.forPuzzle(puzzleId); }
-    active(puzzleId) { return this.questSystem.active(puzzleId); }
+    active(puzzleId) { return this.questSystem.active(puzzleId) && this.bossSystem.allowed(puzzleId); }
     currentPuzzle() {
       return [...this.puzzles.values()].reduce((best, p) => distance(this.state.player, this.entities.get(p.world.anchorEntity)) < distance(this.state.player, this.entities.get(best.world.anchorEntity)) ? p : best);
     }
@@ -237,8 +240,10 @@
       s.invalidActions += Object.values(result.rules).filter(value => !value).length;
       if (!result.ok) s.errors++;
       for (const r of p.knowledge.requiredRules) {
-        this.emit('learning.observation', {puzzleId: p.id, skill: r.skill, label: r.description, correct: result.rules[r.id] === true,
-          observations: {correctRoutes: s.correctRoutes, invalidRoutes: s.invalidRoutes, congestionEvents: s.congestionEvents,
+        this.emit('learning.observation', {puzzleId: p.id, ...(this.bossSystem.context(p.id) ? {boss:this.bossSystem.context(p.id)} : {}), skill: r.skill, label: r.description, correct: result.rules[r.id] === true,
+          observations: {...(this.bossSystem.context(p.id) ? {
+            checkpoints:this.spec.bosses[0].failurePolicy === 'checkpoint' ? s.errors : 0,
+            solutionQuality:result.ok ? Math.max(.2,1-s.errors*.1-s.hintsUsed*.05) : 0} : {}), correctRoutes: s.correctRoutes, invalidRoutes: s.invalidRoutes, congestionEvents: s.congestionEvents,
             correctActions: s.correctActions, invalidActions: s.invalidActions, solutionSteps: s.solutionSteps,
             hintsUsed: s.hintsUsed, solutionTime: Math.round(s.elapsed), solutionTimeMs: Math.round(s.elapsed * 1000), restarts: s.restarts, attempts: s.attempts}});
       }
@@ -255,7 +260,7 @@
         if (s.attempts >= 2) this.message(this.hintText(p, s.attempts - 1));
       }
     }
-    reset(puzzleId = this.currentPuzzle().id, manual = true) {
+    reset(puzzleId = (this.bossSystem.currentPuzzle() || this.currentPuzzle()).id, manual = true) {
       const p = this.puzzles.get(puzzleId), s = this.state.puzzles[puzzleId];
       if (!p || s.solved || !this.active(puzzleId) || this.state.dialogue) return false;
       s.sequence = []; s.routes = {}; s.blocks = initialPuzzle(p).blocks;
@@ -266,11 +271,12 @@
       this.emit('puzzle.reset', {puzzleId, manual}); this.changed(); return true;
     }
     hint() {
-      const p = this.currentPuzzle(), s = this.state.puzzles[p.id];
+      const p = this.bossSystem.currentPuzzle() || this.currentPuzzle(), s = this.state.puzzles[p.id];
       if (s.solved || !this.active(p.id) || this.state.dialogue || this.state.completed) return;
       s.hintsUsed++; this.message(this.hintText(p, s.hintsUsed)); this.emit('puzzle.hint', {puzzleId: p.id}); this.changed();
     }
     hintText(p, level) {
+      if (this.bossSystem.context(p.id) && !this.bossSystem.allowed(p.id)) return 'Completa la fase actual antes de explorar las siguientes.';
       const s = this.state.puzzles[p.id], m = p.mechanics;
       if (level <= 0) return '';
       if (level >= Math.max(4, p.failure.hintAfterAttempts)) return p.hint;
@@ -312,8 +318,10 @@
     restore(raw) {
       if (!raw || typeof raw !== 'object') return false;
       this.state = copy(this.initialState);
+      this.bossSystem.prepareRestore();
       // Derive gates, rewards and completion from validated solutions, never stored flags.
       for (const p of this.puzzles.values()) {
+        if (!this.bossSystem.allowed(p.id)) continue;
         const saved = raw.puzzles?.[p.id], fresh = initialPuzzle(p);
         if (!saved || typeof saved !== 'object') continue;
         for (const name of ['attempts', 'errors', 'hintsUsed', 'restarts', 'correctRoutes', 'invalidRoutes', 'congestionEvents', 'solutionTime', 'elapsed', 'correctActions', 'invalidActions', 'solutionSteps']) {
@@ -339,6 +347,10 @@
         const result = mechanism ? mechanism.result(p.mechanics, fresh.configuration) : p.archetype === 'node_connect' ? nodeConnectResult(p.mechanics, fresh.connections) : p.archetype === 'route_network' ? networkResult(p.mechanics, fresh.routes) : p.archetype === 'switch_sequence' ? sequenceResult(p.mechanics, fresh.sequence) : blocksResult(p.mechanics, fresh.blocks);
         fresh.solved = saved.solved === true && result.ok && (!mechanism || validConfiguration);
         if (mechanism && validConfiguration && (fresh.solved || (fresh.attempts > 0 && saved.effect && !result.ok))) fresh.effect = result;
+        if (mechanism && p.failure.autoReset && fresh.attempts > 0 && !fresh.solved && saved.effect?.configuration) {
+          try { const failure = mechanism.result(p.mechanics, saved.effect.configuration); if (!failure.ok) fresh.effect = failure; }
+          catch (error) { if (!error.message.startsWith('STATE_ERROR:')) throw error; }
+        }
         if (p.archetype === 'node_connect') {
           if (fresh.solved) { fresh.effect = result; fresh.selectedNode = null; }
           else if (fresh.attempts > 0 && Array.isArray(saved.effect?.connections)) {
@@ -364,7 +376,9 @@
           this.state.inventory.push(p.id + '_energy'); this.state.xp += p.success.xp;
           for (const effect of this.dialogues.get(p.success.dialogue).onComplete) if (effect.type === 'setFlag' && raw.flags?.[effect.target] === true) this.state.flags[effect.target] = true;
         }
+        this.bossSystem.reconcile();
       }
+      this.bossSystem.reconcile();
       const dialogueAllowed = d => {
         if (d.trigger.event === 'puzzle.solved') return this.state.puzzles[d.trigger.puzzleId]?.solved === true;
         const npc = this.entities.get(d.trigger.entityId);
