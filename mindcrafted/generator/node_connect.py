@@ -145,3 +145,8 @@ def solve(puzzle):
             "solutionCount": len(valid), "alternativeSolutions": valid[1:4], "evaluatedStates": len(candidates),
             "randomSuccessProbability": chance, "randomSuccessRate": random_wins / RANDOM_TRIALS,
             "randomTrials": RANDOM_TRIALS, "randomSeed": RANDOM_SEED}
+
+
+def eligibility(source):
+    from .mechanic_selector import eligibility as assess
+    return assess(source, "node_connect")

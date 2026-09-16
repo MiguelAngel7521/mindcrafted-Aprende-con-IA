@@ -141,8 +141,9 @@ Listas de palabras y repeticiones de la misma afirmación no bastan:
 `SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION`.
 
 La elegibilidad se comprueba antes de llamar al proveedor si se pide este archetype,
-y siempre al validar su contenido. Es una heurística local, **no un Mechanic Selector**
-ni un validador semántico completo. Las citas literales y sus spans se preservan
+y siempre al validar su contenido. Ahora utiliza el contrato común del
+[Mechanic Selector](MECHANIC_SELECTOR.md), con alcance por objetivo y relaciones
+de dependencia o compatibilidad. No es un validador semántico completo. Las citas literales y sus spans se preservan
 en KnowledgeGraph con bindings a `configurationRules` y `goals`.
 
 El archetype integra BlueprintPuzzle, schemas canónicos/API, Structured Outputs,
@@ -190,5 +191,5 @@ MACHINE_CONFIGURATION ARCHETYPE: DONE
 Las exportaciones son demos de desarrollo con `judge: not_run`, nunca una
 aprobación IA inventada. La generación con LLM real, evaluación pedagógica y
 pruebas con estudiantes continúan como **Integration Gate pendiente**.
-Mechanic Selector, bosses multifase, Agent API y otros archetypes no forman parte
-de esta entrega.
+El selector determinista posterior se documenta en [MECHANIC_SELECTOR.md](MECHANIC_SELECTOR.md).
+Bosses multifase, Agent API y otros archetypes no forman parte de esta entrega.

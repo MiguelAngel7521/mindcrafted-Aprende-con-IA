@@ -17,7 +17,7 @@ from .world_continuity import assert_world_continuity, install_continuity_guard
 
 ENGINE = Path(__file__).resolve().parents[1] / "engine"
 ROOT = ENGINE.parent.parent
-CHECKS = ("schema", "worldGraph", "solver", "educational", "runtime", "e2e")
+CHECKS = ("schema", "worldGraph", "solver", "educational", "mechanicEligibility", "runtime", "e2e")
 RUBRIC = ("embodiedLearning", "worldIntegration", "interactionQuality", "technicalSolvability")
 JUDGE_SCHEMA = {"type": "object", "additionalProperties": False,
                 "properties": {"approved": {"type": "boolean"},
@@ -356,7 +356,8 @@ def quality_gate(world, source, *, judge=None, run_probes=True, screenshot=None)
     report = validate_world(world, source)
     checks = dict(report["checks"], runtime=False, e2e=False)
     result = {"approved": False, "checks": checks, "errors": list(report["errors"]),
-              "worldHash": world_hash(world), "judge": judge, "solutions": report["solutions"]}
+              "worldHash": world_hash(world), "judge": judge, "solutions": report["solutions"],
+              "mechanicEligibility": report["mechanicEligibility"]}
     if report["ok"] and run_probes:
         try:
             result["runtime"] = runtime_probe(world, report["walkthrough"])

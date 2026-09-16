@@ -19,8 +19,8 @@ def content_error_category(error, stage):
     if isinstance(error, GenerationError):
         return error.category
     for category in ("UNSOLVABLE", "REFERENCE_ERROR", "EDUCATIONAL_COUPLING_ERROR", "RANDOM_SUCCESS_ERROR",
-                     "DIFFICULTY_ERROR", "WORLD_INTEGRATION_ERROR", "PERSISTENCE_ERROR", "SOLUTION_BOUNDS_ERROR",
-                     "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE", "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION"):
+                     "OBJECTIVE_SCOPE_ERROR", "INELIGIBLE_MECHANIC", "DIFFICULTY_ERROR", "WORLD_INTEGRATION_ERROR", "PERSISTENCE_ERROR", "SOLUTION_BOUNDS_ERROR",
+                     "SOURCE_TOO_WEAK_FOR_NODE_CONNECT", "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE", "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION"):
         if category in str(error):
             return category
     return {"schema": "LLM_SCHEMA_ERROR", "semantic": "SEMANTIC_VALIDATION_ERROR",
@@ -29,18 +29,34 @@ def content_error_category(error, stage):
 
 
 async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_id="", title="", difficulty="normal", previous_context=None, require_boss=False,
-                            archetype=None, generation_id=None, trace=None):
+                            archetype=None, generation_id=None, trace=None, learning_objective=None, mechanic_history=()):
     """Generate one source-grounded region; course orchestration connects regions."""
     if not isinstance(source, str) or not 60 <= len(source.strip()) <= 60000:
         raise ValueError("El mundo necesita entre 60 y 60000 caracteres de material educativo")
-    if archetype == "machine_configuration":
-        from .machine_configuration import eligibility
-        if eligibility(source)["status"] != "PASS":
-            raise ValueError("SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION")
-    if archetype == "resource_balance":
-        from .resource_balance import eligibility
-        if eligibility(source)["status"] != "PASS":
-            raise ValueError("SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE")
+    from .mechanic_selector import (PROFILE_BY_ID, MechanicSelector, generation_contract)
+    from .knowledge_features import build_structure_graph, LearningObjective
+    graph = build_structure_graph(source)
+    objective = learning_objective or LearningObjective("region", title or "Represent source knowledge")
+    selection_context = {}
+    if archetype == "AUTO" or archetype in PROFILE_BY_ID:
+        # Preserve source rejection categories consumed by forced-authoring clients.
+        result = MechanicSelector().select(graph, source, objective)
+        if archetype in PROFILE_BY_ID:
+            candidate = next(c for c in result["candidates"] if c["archetype"] == archetype)
+            if not candidate["eligible"]:
+                raise ValueError(candidate["status"])
+        selection_context = generation_contract(graph, source, objective,
+                                                mode=archetype, history=mechanic_history)
+        archetype = selection_context["recommendedMechanic"]
+        selection_context["allowedMechanics"] = [archetype]
+    else:
+        # Existing authoring API retains legacy fixtures; AUTO is explicit opt-in.
+        result = MechanicSelector().select(graph, source, objective)
+        selection_context = {"eligibleMechanics": result["eligibleMechanics"],
+                             "recommendedMechanic": result["recommendedMechanic"],
+                             "allowedMechanics": ([archetype] if archetype else
+                                 ["switch_sequence", "route_network", "push_blocks"] + result["eligibleMechanics"]),
+                             "legacyAuthoring": True}
     previous_context = deepcopy(previous_context or {"skills": [], "rules": []})
     original_hash = hashlib.sha256(source.encode()).hexdigest()
     retained = []
@@ -55,7 +71,7 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
     previous_context["rules"] = retained
     previous_context["skills"] = list(dict.fromkeys(r["skill"] for r in retained))
     generation_id = generation_id or str(uuid4())
-    response_schema = blueprint_response_schema(archetype)
+    response_schema = blueprint_response_schema(archetype, allowed_archetypes=selection_context["allowedMechanics"])
     schema_version = "world-blueprint-2" + ("/" + archetype.replace("_", "-") + "-1" if archetype in ("node_connect", "resource_balance", "machine_configuration") else "")
 
     def record(stage, status, attempt, **details):
@@ -67,6 +83,7 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
 
     request = {"title": title, "difficulty": difficulty, "source": source, "schema": response_schema,
                "priorKnowledge": previous_context, "progression": "boss" if require_boss else "transfer" if previous_context.get("skills") else "introduction"}
+    request.update(selection_context)
     repair = None
     for attempt in range(3):
         print(f"  [{attempt + 1}/3] Diseñando una región integrada al mundo...", file=sys.stderr)
@@ -90,6 +107,11 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
             stage = "semantic"
             unique(blueprint["puzzles"], "blueprint")
             for puzzle in blueprint["puzzles"]:
+                if puzzle["mechanics"]["archetype"] not in selection_context["allowedMechanics"]:
+                    raise ValueError("INELIGIBLE_MECHANIC: outside allowedMechanics")
+                if learning_objective is not None:
+                    from .mechanic_selector import verify_objective_binding
+                    verify_objective_binding(puzzle, graph, objective)
                 validate_mechanics(puzzle, source)
             record(stage, "pass", attempt)
             stage = "compiler"
@@ -113,6 +135,8 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
             if not check_judge(judge):
                 raise ValueError("Juez <85 o rechazo: " + json.dumps(judge, ensure_ascii=False))
             record(stage, "pass", attempt, judge=judge)
+            if "mechanicSelection" in selection_context:
+                report["mechanicSelection"] = selection_context["mechanicSelection"]
             report["judge"] = judge
             report["approved"] = True
             package = make_package(world, source, chunk_id, title or None)
@@ -132,15 +156,26 @@ async def generate_campaign(source, output_dir, *, generate, parse_json, chunk_i
             repair = {"candidate": candidate[:40000], "errors": str(error)[:6000], "category": category, "stage": stage}
             record("solver" if category == "UNSOLVABLE" else stage, "fail", attempt, error_category=category, errors=str(error)[:6000])
             print(f"  [world] Candidato rechazado; reparación {attempt + 1}/3: {str(error)[:500]}", file=sys.stderr)
-    return await build_safe_fallback(source, output_dir, repair["errors"], require_boss=require_boss)
+    return await build_safe_fallback(source, output_dir, repair["errors"], require_boss=require_boss,
+                                     selection=selection_context.get("mechanicSelection"),
+                                     objective=learning_objective, structure_graph=graph)
 
 
-async def build_safe_fallback(source, output_dir, reason, *, require_boss=False):
+async def build_safe_fallback(source, output_dir, reason, *, require_boss=False,
+                              selection=None, objective=None, structure_graph=None):
     """Only reuse a previously approved, source-identical world, re-probed today."""
     path = Path(output_dir) / "game.pkg.json"
     if path.exists():
         try:
             package = json.loads(path.read_text(encoding="utf-8"))
+            if selection is not None:
+                archetypes = [p["archetype"] for p in package["world"]["puzzles"]]
+                if archetypes != [selection["recommendedMechanic"]]:
+                    raise ValueError("FALLBACK_MECHANIC_MISMATCH")
+            if objective is not None:
+                from .mechanic_selector import verify_objective_binding
+                for puzzle in package["world"]["puzzles"]:
+                    verify_objective_binding(puzzle, structure_graph, objective)
             if require_boss and package["world"]["puzzles"][-1].get("role") != "boss":
                 raise ValueError("El fallback no contiene el boss requerido")
             source_hash = hashlib.sha256(source.encode()).hexdigest()
@@ -150,8 +185,10 @@ async def build_safe_fallback(source, output_dir, reason, *, require_boss=False)
                     report = await asyncio.to_thread(quality_gate, package["world"], source, judge=old["judge"])
                     if report["approved"]:
                         report["fallback"] = "previously_approved_source_identical"
+                        if selection is not None:
+                            report["mechanicSelection"] = selection
                         print("  [world] Se reutiliza el mundo aprobado de estos mismos apuntes tras repetir sus pruebas.", file=sys.stderr)
                         return write_world_package(package, source, report, output_dir)
-        except (ValueError, KeyError, TypeError):
-            pass
+        except (ValueError, KeyError, TypeError) as error:
+            reason += "; fallback rejected: " + str(error)
     raise ValueError("No se publicó un mundo: tres candidatos rechazados y no existe un fallback aprobado para este material. " + reason)

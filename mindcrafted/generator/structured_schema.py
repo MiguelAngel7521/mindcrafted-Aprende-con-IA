@@ -43,7 +43,7 @@ def schema_hash(schema):
     return hashlib.sha256(json.dumps(schema, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def blueprint_response_schema(archetype=None, *, puzzle_only=False):
+def blueprint_response_schema(archetype=None, *, puzzle_only=False, allowed_archetypes=None):
     schema = deepcopy(BLUEPRINT_SCHEMA)
     definitions = schema["$defs"]
     if archetype:
@@ -54,6 +54,17 @@ def blueprint_response_schema(archetype=None, *, puzzle_only=False):
         definitions["BlueprintPuzzle"]["properties"]["mechanics"] = {"$ref": reference}
         schema["properties"]["puzzles"]["minItems"] = 1
         schema["properties"]["puzzles"]["maxItems"] = 1
+    if allowed_archetypes is not None:
+        allowed = set(allowed_archetypes)
+        original = BLUEPRINT_SCHEMA["$defs"]["BlueprintPuzzle"]["properties"]["mechanics"]
+        mapping = original["discriminator"]["mapping"]
+        if not allowed or not allowed <= set(mapping) or (archetype and archetype not in allowed):
+            raise ValueError("Invalid allowed mechanics")
+        if not archetype:
+            references = {mapping[name] for name in allowed}
+            mechanics = definitions["BlueprintPuzzle"]["properties"]["mechanics"]
+            mechanics["oneOf"] = [variant for variant in mechanics["oneOf"] if variant["$ref"] in references]
+            mechanics["discriminator"]["mapping"] = {name: ref for name, ref in mapping.items() if name in allowed}
     if puzzle_only:
         schema = dict(deepcopy(definitions["BlueprintPuzzle"]), **{"$defs": definitions})
     # Remove unreferenced archetypes so the request only carries its actual contract.

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "opendsa_graphs",
+    "title": "OpenDSA — Graph Traversals, Virginia Tech",
+    "url": "https://opendsa.cs.vt.edu/ODSA/Books/CS3S26masterslides/html/Graphs.html",
+    "location": "Graph Traversals: first bullet and opening of second bullet",
+    "retrieved": "2026-09-15",
+    "scope": "Two literal excerpts, 23 words total; not the complete lecture",
+    "source": "Some applications require visiting every vertex in the graph exactly once.\nThe application may require that vertices be visited in some special order",
+    "expectedStatus": "SELECTED",
+    "expectedMechanic": "node_connect"
+  },
+  {
+    "id": "thinkcs_dictionaries",
+    "title": "How to Think Like a Computer Scientist — Dictionaries",
+    "url": "https://www.openbookproject.net/thinkcs/python/english3e/dictionaries.html",
+    "location": "Chapter 20, paragraph immediately preceding Hashing",
+    "retrieved": "2026-09-15",
+    "scope": "One complete literal paragraph; not the complete chapter",
+    "source": "The key:value pairs of the dictionary are separated by commas. Each pair contains a key and a value separated by a colon.",
+    "expectedStatus": "NO_ELIGIBLE_MECHANIC",
+    "expectedMechanic": null
+  },
+  {
+    "id": "ostep_address_space",
+    "title": "Operating Systems: Three Easy Pieces — The Abstraction: Address Spaces",
+    "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/vm-intro.pdf",
+    "location": "Section 13.3, page 3, first sentence of second paragraph",
+    "retrieved": "2026-09-15",
+    "scope": "One complete literal sentence; PDF line wraps represented by spaces",
+    "source": "The address space of a process contains all of the memory state of the running program.",
+    "expectedStatus": "NO_ELIGIBLE_MECHANIC",
+    "expectedMechanic": null
+  }
+]

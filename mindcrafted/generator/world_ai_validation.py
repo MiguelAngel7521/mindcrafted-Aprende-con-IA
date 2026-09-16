@@ -6,7 +6,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
@@ -19,39 +18,9 @@ from .world import validate_mechanics
 from .world_pipeline import generate_campaign
 
 
-_RELATION_RE = re.compile(
-    r"\b(?:depende(?:n)?\s+(?:únicamente\s+)?de|conecta(?:do|n)?\s+(?:con|a)|"
-    r"relacion(?:a|es?)\s+(?:con|entre)|recibe|extrae(?:n)?|produce|ajusta|"
-    r"permite|requiere|utiliza|aprende\s+con|encuentra|reconoce|impulsa|"
-    r"contiene|incluye)\b",
-    re.IGNORECASE,
-)
-
-
 def source_quality(source):
-    """Measure whether source text has enough grounded relations for node_connect."""
-    segments = [re.sub(r"\s+", " ", item).strip(" •\t") for item in re.split(r"[\n.;]+", source)]
-    segments = [item for item in segments if len(item) >= 15]
-    related = [item for item in segments if _RELATION_RE.search(item) or "→" in item or "->" in item]
-    concepts = set()
-    for item in related:
-        match = _RELATION_RE.search(item)
-        if match:
-            left = item[:match.start()].split()[-5:]
-            right = item[match.end():].split()[:5]
-            if left:
-                concepts.add(" ".join(left).casefold())
-            if right:
-                concepts.add(" ".join(right).casefold())
-        else:
-            concepts.update(part.strip().casefold() for part in item.split("→") if part.strip())
-    relationship_count = len(related)
-    grounded_facts = len(segments)
-    coverage = relationship_count / max(1, grounded_facts)
-    status = "PASS" if relationship_count >= 2 and len(concepts) >= 3 else "SOURCE_TOO_WEAK_FOR_NODE_CONNECT"
-    return {"status": status, "conceptCount": len(concepts), "relationshipCount": relationship_count,
-            "groundedFacts": grounded_facts, "usableNodeRelations": relationship_count,
-            "sourceCoverage": round(coverage, 3)}
+    from .node_connect import eligibility
+    return eligibility(source)
 
 
 def save(path, value):

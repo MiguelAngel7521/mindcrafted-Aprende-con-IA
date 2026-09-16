@@ -1,16 +1,12 @@
 """Indivisible workloads, conceptual compatibility and aggregate resource budgets."""
-import re
 
 from . import finite_puzzle as finite
 from .world_schema import ResourceBalance
 
 
 def eligibility(source):
-    facts = {" ".join(s.split()).casefold() for s in re.split(r"[\n.;]+", source) if len(s.strip()) >= 15}
-    relations = [s for s in facts if re.search(r"carga|capacidad|recurso|presupuesto|load|capacity|budget", s)
-                 and re.search(r"requiere|asign|super|necesita|consume|máximo|require|exceed|limit", s)]
-    return {"status": "PASS" if len(relations) >= 2 else "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE",
-            "relationshipCount": len(relations)}
+    from .mechanic_selector import eligibility as assess
+    return assess(source, "resource_balance")
 
 
 def domains(m):

@@ -231,6 +231,33 @@ Los borrados preexistentes de la suite anterior se preservaron. Los tests nuevos
 incluyen contratos de PDF/PPTX, API, paquetes y BKT relacionados con esta migración;
 esto no equivale a recuperar toda la cobertura histórica borrada.
 
+## V2.2 — Elegibilidad y selector determinista
+
+Los tres pilares quedaron congelados en `306d485`, sincronizado con `main`,
+con **366 tests aprobados** antes de esta fase. El selector posterior se describe
+en [MECHANIC_SELECTOR.md](MECHANIC_SELECTOR.md).
+
+El flujo nuevo es fuente → grafo de estructura educativa → objetivo/subgrafo →
+features → perfiles de elegibilidad → selección → Blueprint → compilador → gate.
+`AUTO` puede devolver `NO_ELIGIBLE_MECHANIC` o `AMBIGUOUS_MECHANIC_SELECTION`;
+no fuerza un puzzle ni llama a un Planner IA. Conserva authoring forzado compatible
+y la entrada legacy existente. Cada objetivo puede seleccionar una mecánica distinta.
+
+El QualityGate incluye `mechanicEligibility` y razones/evidencia por puzzle.
+Los contratos de generación restringen los schemas a `allowedMechanics` y aportan
+`eligibleMechanics` y `recommendedMechanic`. Una sugerencia IA no puede superar
+el veto determinista.
+
+```sh
+.venv/bin/python -m mindcrafted.generator.world_tools check --selector-demo --output output/mechanic-selector
+```
+
+La demo selecciona los tres pilares por objetivo y los ejecuta en el mismo canvas.
+La suite incluye E2E de AUTO con mocks y campaña mixta, además de resultados con
+fragmentos académicos y un capítulo completo de OSTEP. Los límites lingüísticos
+y de cobertura se documentan explícitamente; no equivalen a validación pedagógica.
+Esta fase se detiene en el selector, sin ampliar bosses, Agent API o NPC dinámicos.
+
 ## Límites y siguientes fases
 
 - La auditoría completa y la separación legacy/canónico están en `WORLD_V2_AUDIT.md`.

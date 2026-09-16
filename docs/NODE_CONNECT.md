@@ -191,3 +191,11 @@ con material académico y su juez, antes de ampliar los archetypes. No se adelan
 `resource_balance` en aquel bloque, bosses nuevos, NPC dinámicos ni otras capas de generación.
 Actualización: `resource_balance` y `machine_configuration` ya están implementados;
 ver [WORLD_V2.md](WORLD_V2.md) para el estado de los tres pilares.
+
+## Selección por objetivo
+
+`node_connect.eligibility(source)` expone el contrato común de
+[MECHANIC_SELECTOR.md](MECHANIC_SELECTOR.md). Se requieren dos relaciones
+explícitas distintas y tres extremos textuales. El selector compara el ajuste
+educativo con los otros dos pilares; no usa node_connect como fallback.
+El QualityGate vuelve a verificar las relaciones citadas por cada puzzle.

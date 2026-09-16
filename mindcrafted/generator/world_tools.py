@@ -16,9 +16,10 @@ def main():
     parser.add_argument("--campaign", action="store_true", help="Recorrido continuo de tres regiones con boss de transferencia")
     parser.add_argument("--archetype", choices=["machine_configuration", "resource_balance", "node_connect", "route_network", "switch_sequence", "push_blocks"], help="Validar o exportar un único arquetipo")
     parser.add_argument("--pillars", action="store_true", help="Demo integrada de node_connect, resource_balance y machine_configuration")
+    parser.add_argument("--selector-demo", action="store_true", help="Seleccionar tres mecánicas por objetivo antes de compilar la demo")
     args = parser.parse_args()
-    if sum((bool(args.archetype), args.campaign, args.pillars)) > 1:
-        parser.error("--archetype, --campaign y --pillars son alternativas")
+    if sum((bool(args.archetype), args.campaign, args.pillars, args.selector_demo)) > 1:
+        parser.error("--archetype, --campaign, --pillars y --selector-demo son alternativas")
     if args.campaign:
         from .world_campaign import assemble_campaign, write_campaign
         packages = []
@@ -32,7 +33,11 @@ def main():
         manifest = write_campaign(campaign, args.output, screenshot=args.output / "world.png" if args.command == "check" else None)
         print(json.dumps({"developmentDemo": True, "regions": len(manifest["regions"]), "judge": "not_run", "html": str(args.output / "index.html")}, ensure_ascii=False))
         return
-    if args.pillars:
+    selection_evidence = None
+    if args.selector_demo:
+        from .selector_demo import SOURCE as source, selected_blueprint
+        design, selection_evidence = selected_blueprint()
+    elif args.pillars:
         from .pillar_demo import SOURCE as source, blueprint
         design = blueprint()
     elif args.archetype == "machine_configuration":
@@ -47,11 +52,13 @@ def main():
     else:
         source = SOURCE
         design = demo_blueprint((args.archetype,) if args.archetype else ("route_network", "switch_sequence", "push_blocks"))
-    world = compile_world(design, source, difficulty="hard" if args.pillars or args.archetype in ("node_connect", "resource_balance", "machine_configuration") else "normal")
+    world = compile_world(design, source, difficulty="hard" if args.selector_demo or args.pillars or args.archetype in ("node_connect", "resource_balance", "machine_configuration") else "normal")
     package = make_package(world, source, "demo")
     package["developmentDemo"] = True
     package["subtitle"] = "Demo prehecha de desarrollo; sin aprobación de juez IA"
     args.output.mkdir(parents=True, exist_ok=True)
+    if selection_evidence is not None:
+        (args.output / "mechanic-selection.json").write_text(json.dumps(selection_evidence, ensure_ascii=False, indent=2), encoding="utf-8")
     if args.command == "check":
         report = quality_gate(world, source, screenshot=args.output / "world.png")
         (args.output / "validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

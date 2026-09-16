@@ -20,8 +20,9 @@ no conoce asignaturas; el ejemplo de scheduling es contenido declarativo.
 - Máximo nueve objetos y 4096 estados, incluyendo cargas sin asignar.
 - IDs únicos/no reservados, referencias verificadas, ningún código ejecutable.
 
-La elegibilidad local requiere al menos dos afirmaciones distintas sobre cargas,
-asignación y capacidad. Una lista de palabras no basta:
+La elegibilidad usa el contrato común del [Mechanic Selector](MECHANIC_SELECTOR.md):
+al menos dos relaciones distintas de recursos y una capacidad cuantificada en
+la misma evidencia, dentro del objetivo. Una lista de palabras no basta:
 `SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE`. Es una heurística, no validación semántica.
 
 ## Solver, simulación y causalidad

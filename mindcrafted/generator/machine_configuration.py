@@ -1,17 +1,12 @@
 """Bounded machine configuration: data predicates, pure arbitration, causal proof."""
-import re
 
 from . import finite_puzzle as finite
 from .world_schema import MachineConfiguration
 
 
 def eligibility(source):
-    """Local signals only; does not select another mechanic or invent relations."""
-    facts = {" ".join(s.split()).casefold() for s in re.split(r"[\n.;]+", source) if len(s.strip()) >= 15}
-    related = [s for s in facts if re.search(r"configur|component|parámetr|parameter|modo|mode|módulo|module|opci[oó]n|estado|state", s)
-               and re.search(r"requiere|necesita|depende|incompatible|no puede|compatible|debe|permite|require|depend|must|cannot", s)]
-    return {"status": "PASS" if len(related) >= 2 else "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION",
-            "relationshipCount": len(related)}
+    from .mechanic_selector import eligibility as assess
+    return assess(source, "machine_configuration")
 
 
 def domains(m):

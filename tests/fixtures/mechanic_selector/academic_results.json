@@ -1,0 +1,270 @@
+{
+  "opendsa_graphs": {
+    "version": 1,
+    "objectiveId": "objective",
+    "sourceHash": "eee5f5ec9d3f3f25c7e40da3a042cbf4c083e5362a3615d46283e00f25da375e",
+    "features": {
+      "dependencyCount": 2,
+      "connectionCount": 2,
+      "resourceCount": 0,
+      "capacityCount": 0,
+      "quantityCount": 0,
+      "constraintCount": 2,
+      "componentCount": 0,
+      "parameterCount": 0,
+      "compatibilityCount": 0,
+      "configurationCount": 0,
+      "quantifiedCapacityCount": 0,
+      "featureEvidence": {
+        "connection": [
+          "relation_12b3d80d2744c227013a01eb",
+          "relation_98f90de28208345d4d71634b"
+        ],
+        "resource": [],
+        "configuration": [],
+        "quantifiedCapacity": []
+      },
+      "conceptCount": 4,
+      "relationCount": 2,
+      "relationIds": [
+        "relation_12b3d80d2744c227013a01eb",
+        "relation_98f90de28208345d4d71634b"
+      ]
+    },
+    "candidates": [
+      {
+        "archetype": "node_connect",
+        "eligible": true,
+        "score": 0.8333,
+        "reasons": [
+          "2 grounded connection relationships; minimum 2",
+          "4 source endpoints; minimum 3",
+          "2 relationships in objective objective",
+          "objective intent explore: bonus 0.00"
+        ],
+        "status": "PASS",
+        "relationshipCount": 2,
+        "evidenceRelationIds": [
+          "relation_12b3d80d2744c227013a01eb",
+          "relation_98f90de28208345d4d71634b"
+        ]
+      },
+      {
+        "archetype": "resource_balance",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "0 grounded resource relationships; minimum 2",
+          "4 source endpoints; minimum 3",
+          "2 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Quantified budget required: 0 capacity relationships with quantities in the same evidence",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE",
+        "relationshipCount": 0,
+        "evidenceRelationIds": []
+      },
+      {
+        "archetype": "machine_configuration",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "0 grounded configuration relationships; minimum 2",
+          "4 source endpoints; minimum 3",
+          "2 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Linked controls required: 2 dependencies and 0 compatibilities",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION",
+        "relationshipCount": 0,
+        "evidenceRelationIds": []
+      }
+    ],
+    "eligibleMechanics": [
+      "node_connect"
+    ],
+    "selectedMechanic": "node_connect",
+    "recommendedMechanic": "node_connect",
+    "status": "SELECTED",
+    "margin": null,
+    "reason": "Highest educational fit with sufficient margin"
+  },
+  "thinkcs_dictionaries": {
+    "version": 1,
+    "objectiveId": "objective",
+    "sourceHash": "e06b14892d82189ce0d398471fa56e98dac8bb963f0a8aa8a028d4f0e12f9e03",
+    "features": {
+      "dependencyCount": 0,
+      "connectionCount": 1,
+      "resourceCount": 0,
+      "capacityCount": 0,
+      "quantityCount": 0,
+      "constraintCount": 0,
+      "componentCount": 0,
+      "parameterCount": 0,
+      "compatibilityCount": 0,
+      "configurationCount": 0,
+      "quantifiedCapacityCount": 0,
+      "featureEvidence": {
+        "connection": [
+          "relation_91acd7c55ba6090d1b886151"
+        ],
+        "resource": [],
+        "configuration": [],
+        "quantifiedCapacity": []
+      },
+      "conceptCount": 2,
+      "relationCount": 1,
+      "relationIds": [
+        "relation_91acd7c55ba6090d1b886151"
+      ]
+    },
+    "candidates": [
+      {
+        "archetype": "node_connect",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "1 grounded connection relationships; minimum 2",
+          "2 source endpoints; minimum 3",
+          "1 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_NODE_CONNECT",
+        "relationshipCount": 1,
+        "evidenceRelationIds": [
+          "relation_91acd7c55ba6090d1b886151"
+        ]
+      },
+      {
+        "archetype": "resource_balance",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "0 grounded resource relationships; minimum 2",
+          "2 source endpoints; minimum 3",
+          "1 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Quantified budget required: 0 capacity relationships with quantities in the same evidence",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE",
+        "relationshipCount": 0,
+        "evidenceRelationIds": []
+      },
+      {
+        "archetype": "machine_configuration",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "0 grounded configuration relationships; minimum 2",
+          "2 source endpoints; minimum 3",
+          "1 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Linked controls required: 0 dependencies and 0 compatibilities",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION",
+        "relationshipCount": 0,
+        "evidenceRelationIds": []
+      }
+    ],
+    "eligibleMechanics": [],
+    "selectedMechanic": null,
+    "recommendedMechanic": null,
+    "status": "NO_ELIGIBLE_MECHANIC",
+    "margin": null,
+    "reason": "No eligible mechanic for this objective"
+  },
+  "ostep_address_space": {
+    "version": 1,
+    "objectiveId": "objective",
+    "sourceHash": "18ee6337b3d1f1882a45a5d65cda39b0f7b5a3b6fca9b7cb95957e85037b21ff",
+    "features": {
+      "dependencyCount": 0,
+      "connectionCount": 1,
+      "resourceCount": 0,
+      "capacityCount": 0,
+      "quantityCount": 0,
+      "constraintCount": 0,
+      "componentCount": 0,
+      "parameterCount": 0,
+      "compatibilityCount": 0,
+      "configurationCount": 0,
+      "quantifiedCapacityCount": 0,
+      "featureEvidence": {
+        "connection": [
+          "relation_6e412d672f2ded8d992b19cb"
+        ],
+        "resource": [],
+        "configuration": [],
+        "quantifiedCapacity": []
+      },
+      "conceptCount": 2,
+      "relationCount": 1,
+      "relationIds": [
+        "relation_6e412d672f2ded8d992b19cb"
+      ]
+    },
+    "candidates": [
+      {
+        "archetype": "node_connect",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "1 grounded connection relationships; minimum 2",
+          "2 source endpoints; minimum 3",
+          "1 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_NODE_CONNECT",
+        "relationshipCount": 1,
+        "evidenceRelationIds": [
+          "relation_6e412d672f2ded8d992b19cb"
+        ]
+      },
+      {
+        "archetype": "resource_balance",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "0 grounded resource relationships; minimum 2",
+          "2 source endpoints; minimum 3",
+          "1 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Quantified budget required: 0 capacity relationships with quantities in the same evidence",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE",
+        "relationshipCount": 0,
+        "evidenceRelationIds": []
+      },
+      {
+        "archetype": "machine_configuration",
+        "eligible": false,
+        "score": 0.0,
+        "reasons": [
+          "0 grounded configuration relationships; minimum 2",
+          "2 source endpoints; minimum 3",
+          "1 relationships in objective objective",
+          "objective intent explore: bonus 0.00",
+          "Linked controls required: 0 dependencies and 0 compatibilities",
+          "Insufficient structural evidence; no fallback"
+        ],
+        "status": "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION",
+        "relationshipCount": 0,
+        "evidenceRelationIds": []
+      }
+    ],
+    "eligibleMechanics": [],
+    "selectedMechanic": null,
+    "recommendedMechanic": null,
+    "status": "NO_ELIGIBLE_MECHANIC",
+    "margin": null,
+    "reason": "No eligible mechanic for this objective"
+  }
+}

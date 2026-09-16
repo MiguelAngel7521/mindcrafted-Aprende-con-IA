@@ -118,6 +118,10 @@ def validate_mechanics(puzzle, source):
     for rule in rules.values():
         if not rule["evidence"].strip() or " ".join(rule["evidence"].split()).casefold() not in normalized:
             raise ValueError(f"La evidencia de {rule['id']} no aparece en el material")
+    from .mechanic_selector import puzzle_eligibility
+    source_report = puzzle_eligibility(puzzle, source)
+    if not source_report["eligible"]:
+        raise ValueError(source_report["status"])
     m = puzzle["mechanics"]
     references = []
     if m["archetype"] == "switch_sequence":
@@ -137,17 +141,11 @@ def validate_mechanics(puzzle, source):
                 raise ValueError("Red con referencia inválida")
         references = [n["ruleId"] for n in m["nodes"] + m["packets"]]
     elif m["archetype"] == "machine_configuration":
-        from .machine_configuration import validate, eligibility
-        source_report = eligibility(source)
-        if source_report["status"] != "PASS":
-            raise ValueError(source_report["status"])
+        from .machine_configuration import validate
         validate(m, set(rules))
         references = [r["ruleId"] for r in m["configurationRules"] + m["goals"]]
     elif m["archetype"] == "resource_balance":
-        from .resource_balance import validate, eligibility
-        source_report = eligibility(source)
-        if source_report["status"] != "PASS":
-            raise ValueError(source_report["status"])
+        from .resource_balance import validate
         validate(m, set(rules))
         references = [r["ruleId"] for r in m["allocationRules"] + m["goals"]]
     elif m["archetype"] == "node_connect":
@@ -174,11 +172,17 @@ def validate_mechanics(puzzle, source):
 
 
 def validate_world(world, source):
-    checks = {key: False for key in ("schema", "worldGraph", "solver", "educational")}
+    checks = {key: False for key in ("schema", "worldGraph", "solver", "educational", "mechanicEligibility")}
     errors, solutions = [], {}
+    eligibility_reports = {}
     try:
         schema_check(world, WORLD_SCHEMA)
         checks["schema"] = True
+        from .mechanic_selector import puzzle_eligibility
+        eligibility_reports = {p["id"]: puzzle_eligibility(p, source) for p in world["puzzles"]}
+        checks["mechanicEligibility"] = all(r["eligible"] for r in eligibility_reports.values())
+        if not checks["mechanicEligibility"]:
+            raise ValueError("; ".join(r["status"] for r in eligibility_reports.values() if not r["eligible"]))
         regions = unique(world["regions"], "regions")
         puzzles = unique(world["puzzles"], "puzzles")
         entities = unique([e for r in world["regions"] for e in r["entities"]], "entities")
@@ -308,7 +312,7 @@ def validate_world(world, source):
         errors.append(str(error))
         walkthrough = []
     return {"ok": all(checks.values()), "checks": checks, "errors": errors,
-            "solutions": solutions, "walkthrough": walkthrough}
+            "solutions": solutions, "walkthrough": walkthrough, "mechanicEligibility": eligibility_reports}
 
 
 def find_path(region, start, targets, obstacles):

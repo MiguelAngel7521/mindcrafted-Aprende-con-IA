@@ -387,3 +387,9 @@ def learning_context(previous_worlds):
                 context = candidate
                 evidence_chars += count
     return context
+
+
+# Pre-design analysis has a separate versioned contract: it contains only source
+# structures, and must not confuse post-design bindings with academic evidence.
+from .knowledge_features import (build_structure_graph, extract_features,  # noqa: E402,F401
+                                 LearningObjective, validate_structure_graph)

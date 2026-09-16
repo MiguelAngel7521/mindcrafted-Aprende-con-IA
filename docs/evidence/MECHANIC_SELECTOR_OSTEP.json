@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "objectiveId": "memory",
+  "sourceHash": "add42d011e5e117ddb8e365b97127542a1042b86b549b877e23e67d56ea0c975",
+  "features": {
+    "dependencyCount": 3,
+    "connectionCount": 21,
+    "resourceCount": 0,
+    "capacityCount": 0,
+    "quantityCount": 1,
+    "constraintCount": 1,
+    "componentCount": 0,
+    "parameterCount": 0,
+    "compatibilityCount": 0,
+    "configurationCount": 0,
+    "quantifiedCapacityCount": 0,
+    "featureEvidence": {
+      "connection": [
+        "relation_cf213a9aee5a7b48eb0fa686",
+        "relation_f58b63b7e1e3d1df01e0137f",
+        "relation_945b0194e4b3a578a4490f59",
+        "relation_25cd5e4d0c1dff7f82acdfec",
+        "relation_549db1fa159c7aba999b1bcd",
+        "relation_d02b2efceab60f2e721f7335",
+        "relation_04834b87a3a4a8facc7d2512",
+        "relation_00ecb22fe44b8a10b0f9a39c",
+        "relation_b631efd44c21e2ccb15e524e",
+        "relation_76e1ba21755b853fb9010174",
+        "relation_0ddad9b775983cde91c7ffb1",
+        "relation_ed859f024337ebae45eea167",
+        "relation_5cb91bb824993c6da1259fc4",
+        "relation_06a28ce5187ff3b60dadfecb",
+        "relation_3943355ee6a2106b5a012eac",
+        "relation_1853992917f0b1cc3832e5fa",
+        "relation_338fbb14995f93a7482dd074",
+        "relation_2f3c56d8baaa1f7d378ce53b",
+        "relation_e8b87736d7f4e9407119871b",
+        "relation_54f6fc7a6a039403d378105a",
+        "relation_540de82490f359640943fea1"
+      ],
+      "resource": [],
+      "configuration": [],
+      "quantifiedCapacity": []
+    },
+    "conceptCount": 41,
+    "relationCount": 21,
+    "relationIds": [
+      "relation_cf213a9aee5a7b48eb0fa686",
+      "relation_f58b63b7e1e3d1df01e0137f",
+      "relation_945b0194e4b3a578a4490f59",
+      "relation_25cd5e4d0c1dff7f82acdfec",
+      "relation_549db1fa159c7aba999b1bcd",
+      "relation_d02b2efceab60f2e721f7335",
+      "relation_04834b87a3a4a8facc7d2512",
+      "relation_00ecb22fe44b8a10b0f9a39c",
+      "relation_b631efd44c21e2ccb15e524e",
+      "relation_76e1ba21755b853fb9010174",
+      "relation_0ddad9b775983cde91c7ffb1",
+      "relation_ed859f024337ebae45eea167",
+      "relation_5cb91bb824993c6da1259fc4",
+      "relation_06a28ce5187ff3b60dadfecb",
+      "relation_3943355ee6a2106b5a012eac",
+      "relation_1853992917f0b1cc3832e5fa",
+      "relation_338fbb14995f93a7482dd074",
+      "relation_2f3c56d8baaa1f7d378ce53b",
+      "relation_e8b87736d7f4e9407119871b",
+      "relation_54f6fc7a6a039403d378105a",
+      "relation_540de82490f359640943fea1"
+    ]
+  },
+  "candidates": [
+    {
+      "archetype": "node_connect",
+      "eligible": true,
+      "score": 0.9,
+      "reasons": [
+        "21 grounded connection relationships; minimum 2",
+        "41 source endpoints; minimum 3",
+        "21 relationships in objective memory",
+        "objective intent explore: bonus 0.00"
+      ],
+      "status": "PASS",
+      "relationshipCount": 21,
+      "evidenceRelationIds": [
+        "relation_cf213a9aee5a7b48eb0fa686",
+        "relation_f58b63b7e1e3d1df01e0137f",
+        "relation_945b0194e4b3a578a4490f59",
+        "relation_25cd5e4d0c1dff7f82acdfec",
+        "relation_549db1fa159c7aba999b1bcd",
+        "relation_d02b2efceab60f2e721f7335",
+        "relation_04834b87a3a4a8facc7d2512",
+        "relation_00ecb22fe44b8a10b0f9a39c",
+        "relation_b631efd44c21e2ccb15e524e",
+        "relation_76e1ba21755b853fb9010174",
+        "relation_0ddad9b775983cde91c7ffb1",
+        "relation_ed859f024337ebae45eea167",
+        "relation_5cb91bb824993c6da1259fc4",
+        "relation_06a28ce5187ff3b60dadfecb",
+        "relation_3943355ee6a2106b5a012eac",
+        "relation_1853992917f0b1cc3832e5fa",
+        "relation_338fbb14995f93a7482dd074",
+        "relation_2f3c56d8baaa1f7d378ce53b",
+        "relation_e8b87736d7f4e9407119871b",
+        "relation_54f6fc7a6a039403d378105a",
+        "relation_540de82490f359640943fea1"
+      ]
+    },
+    {
+      "archetype": "resource_balance",
+      "eligible": false,
+      "score": 0.0,
+      "reasons": [
+        "0 grounded resource relationships; minimum 2",
+        "41 source endpoints; minimum 3",
+        "21 relationships in objective memory",
+        "objective intent explore: bonus 0.00",
+        "Quantified budget required: 0 capacity relationships with quantities in the same evidence",
+        "Insufficient structural evidence; no fallback"
+      ],
+      "status": "SOURCE_TOO_WEAK_FOR_RESOURCE_BALANCE",
+      "relationshipCount": 0,
+      "evidenceRelationIds": []
+    },
+    {
+      "archetype": "machine_configuration",
+      "eligible": false,
+      "score": 0.0,
+      "reasons": [
+        "0 grounded configuration relationships; minimum 2",
+        "41 source endpoints; minimum 3",
+        "21 relationships in objective memory",
+        "objective intent explore: bonus 0.00",
+        "Linked controls required: 3 dependencies and 0 compatibilities",
+        "Insufficient structural evidence; no fallback"
+      ],
+      "status": "SOURCE_TOO_WEAK_FOR_MACHINE_CONFIGURATION",
+      "relationshipCount": 0,
+      "evidenceRelationIds": []
+    }
+  ],
+  "eligibleMechanics": [
+    "node_connect"
+  ],
+  "selectedMechanic": "node_connect",
+  "recommendedMechanic": "node_connect",
+  "status": "SELECTED",
+  "margin": null,
+  "reason": "Highest educational fit with sufficient margin",
+  "sourceLength": 25288,
+  "material": {
+    "title": "Operating Systems: Three Easy Pieces — The Abstraction: Address Spaces",
+    "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/vm-intro.pdf",
+    "retrieved": "2026-09-15",
+    "scope": "Complete 9-page chapter, unedited; pdftotext -layout output used verbatim",
+    "pdfSha256": "c57de8420ea7bc8afbca5ce3ba92bcc0b32d5f719f4ab613dd9ceb698d537acc",
+    "extractor": "pdftotext version 26.08.0",
+    "extractionWarning": "Initial pypdf extraction warned about missing optional fontTools for CFF encodings; this report uses pdftotext instead."
+  }
+}
