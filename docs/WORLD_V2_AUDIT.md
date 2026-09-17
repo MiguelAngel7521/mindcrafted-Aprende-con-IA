@@ -198,3 +198,12 @@ Recomendación histórica de esa auditoría (superada por los tres pilares descr
 compilador, solver, simulación, recuperación, persistencia, acoplamiento educativo,
 generación y QualityGate/E2E. Los bosses multifase y Agent API siguen después de
 consolidar los tres arquetipos prioritarios. No se adelantaron esas fases aquí.
+
+
+## Cierre V2.3: Boss compuesto
+
+El workspace recibido en `9868e91` ya incluía BossBlueprint, composición, runtime y
+30 pruebas Boss. La revisión de cierre conserva ese código y separa claramente
+`generator/boss.py` (V1) de `generator/world_boss.py` (V2). Se añadió el contador
+explícito de errores BKT por fase y se amplió el E2E independiente para comenzar
+en una región de práctica real. Contrato y límites: [MULTIPHASE_BOSSES.md](MULTIPHASE_BOSSES.md).

@@ -242,7 +242,7 @@
       for (const r of p.knowledge.requiredRules) {
         this.emit('learning.observation', {puzzleId: p.id, ...(this.bossSystem.context(p.id) ? {boss:this.bossSystem.context(p.id)} : {}), skill: r.skill, label: r.description, correct: result.rules[r.id] === true,
           observations: {...(this.bossSystem.context(p.id) ? {
-            checkpoints:this.spec.bosses[0].failurePolicy === 'checkpoint' ? s.errors : 0,
+            errors:s.errors, checkpoints:this.spec.bosses[0].failurePolicy === 'checkpoint' ? s.errors : 0,
             solutionQuality:result.ok ? Math.max(.2,1-s.errors*.1-s.hintsUsed*.05) : 0} : {}), correctRoutes: s.correctRoutes, invalidRoutes: s.invalidRoutes, congestionEvents: s.congestionEvents,
             correctActions: s.correctActions, invalidActions: s.invalidActions, solutionSteps: s.solutionSteps,
             hintsUsed: s.hintsUsed, solutionTime: Math.round(s.elapsed), solutionTimeMs: Math.round(s.elapsed * 1000), restarts: s.restarts, attempts: s.attempts}});

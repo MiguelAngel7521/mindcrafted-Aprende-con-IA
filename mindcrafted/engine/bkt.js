@@ -62,7 +62,7 @@
       record.lastScore=clamp(metadata.score==null?0:metadata.score,0,100);
       if(metadata.observations&&typeof metadata.observations==='object'){
         record.lastObservations={};
-        ['correctRoutes','invalidRoutes','congestionEvents','correctActions','invalidActions','solutionSteps','hintsUsed','solutionTime','solutionTimeMs','restarts','attempts','checkpoints','solutionQuality'].forEach(function(name){
+        ['correctRoutes','invalidRoutes','congestionEvents','correctActions','invalidActions','solutionSteps','hintsUsed','solutionTime','solutionTimeMs','restarts','attempts','errors','checkpoints','solutionQuality'].forEach(function(name){
           var value=metadata.observations[name];
           if(Number.isFinite(value)&&value>=0)record.lastObservations[name]=Math.min(value,1000000);
         });

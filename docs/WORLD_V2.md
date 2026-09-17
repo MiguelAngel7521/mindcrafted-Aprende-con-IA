@@ -124,7 +124,7 @@ El contexto entre lecciones se obtiene sin nuevas llamadas de IA: conserva hasta
 se incorporan al material efectivo sin superar 60000 caracteres. Esto describe
 contenido presentado anteriormente; no afirma que el alumno ya lo domine.
 
-`role: boss` exige de 2 a 4 habilidades previas, al menos seis acciones y las mismas
+El rol histórico `role: boss` (distinto del nuevo BossBlueprint multiphase) exige de 2 a 4 habilidades previas, al menos seis acciones y las mismas
 pruebas de causalidad, solución y recuperación. La última lección solicita este
 rol. `difficulty: hard` también exige seis acciones verificables. El boss prehecho
 transfiere capacidad y entrega a cinco emisores y tres routers; no añade combate.
@@ -256,7 +256,7 @@ La demo selecciona los tres pilares por objetivo y los ejecuta en el mismo canva
 La suite incluye E2E de AUTO con mocks y campaña mixta, además de resultados con
 fragmentos académicos y un capítulo completo de OSTEP. Los límites lingüísticos
 y de cobertura se documentan explícitamente; no equivalen a validación pedagógica.
-Esta fase se detiene en el selector, sin ampliar bosses, Agent API o NPC dinámicos.
+El milestone del selector precede al Boss multiphase; no crea otro selector.
 
 ## Límites y siguientes fases
 
@@ -265,8 +265,10 @@ Esta fase se detiene en el selector, sin ampliar bosses, Agent API o NPC dinámi
   incorporan contratos, solver, simulación, recuperación, persistencia, BKT,
   generación con mocks y E2E. La campaña mixta verifica aislamiento y transiciones.
   La generación con LLM real sigue como Integration Gate pendiente.
-- El boss actual combina habilidades en un arquetipo; todavía falta el sistema
-  multifase de 2–4 mecánicas exigido por el contrato actualizado.
+- El sistema compuesto de 2–4 fases se documenta en
+  [MULTIPHASE_BOSSES.md](MULTIPHASE_BOSSES.md). Reutiliza los tres pilares, verifica
+  todas las transiciones y conserva práctica previa, recuperación y BKT por fase.
+  `world_tools check --boss-demo 3` exporta la campaña de desarrollo completa.
 - Structured Outputs en el protocolo y la separación retry/repair están
   implementados en [V2.1.1](RELIABLE_AI_GENERATION.md); la aprobación de generación
   real depende de la evidencia enlazada allí. Agent API restringida, detección

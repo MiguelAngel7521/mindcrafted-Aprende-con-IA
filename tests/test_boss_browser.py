@@ -3,17 +3,20 @@ import json
 import shutil
 from playwright.sync_api import sync_playwright
 
-from mindcrafted.generator.world_boss import compile_boss
-from mindcrafted.generator.boss_demo import THREE_PHASE_SOURCE as SOURCE,three_phase_blueprint
+from mindcrafted.generator.world import validate_world
+from mindcrafted.generator.world_campaign import assemble_campaign
+from test_boss_campaign import packages
 from mindcrafted.generator import machine_configuration,resource_balance
-from mindcrafted.generator.world_package import make_package,render_html
-from mindcrafted.generator.world_continuity import install_continuity_guard
+from mindcrafted.generator.world_package import render_html
+from mindcrafted.generator.world_continuity import install_continuity_guard, assert_world_continuity
 from test_world_native_routing import Player
 
 
 def test_three_phase_boss_physical_failure_recovery_persistence_and_bkt(tmp_path):
-    blueprint=three_phase_blueprint();world=compile_boss(blueprint,SOURCE,prior_skills=blueprint['requiredSkills'])
-    package=make_package(world,SOURCE);package['config']['debug']=True
+    lesson,boss_package=packages()
+    world=boss_package['world']
+    package=assemble_campaign([lesson,boss_package],'boss_keyboard_journey',development=True)
+    package['config']['debug']=True
     html=render_html(package);errors=[]
     with sync_playwright() as playwright:
         browser=playwright.chromium.launch(headless=True,executable_path=shutil.which('chromium') or shutil.which('chromium-browser'))
@@ -25,7 +28,22 @@ def test_three_phase_boss_physical_failure_recovery_persistence_and_bkt(tmp_path
                 else:errors.append('Unexpected request: '+route.request.url);route.abort()
             page.route('**/*',serve);page.goto('http://mindcrafted.test/')
             page.wait_for_function("window.worldEngine && document.getElementById('loading').hidden")
-            install_continuity_guard(page);player=Player(page,world)
+            install_continuity_guard(page)
+            # Earn the prerequisites through actual keyboard gameplay in the previous region.
+            from mindcrafted.generator.pillar_demo import SOURCE as lesson_source
+            practice=validate_world(lesson['world'],lesson_source)
+            assert practice['ok'],practice['errors']
+            for action in practice['walkthrough']:
+                if action['type']=='interact':
+                    assert page.evaluate('worldEngine.nearby()[0].id')==action['entityId']
+                page.keyboard.press('Arrow'+action['direction'].capitalize() if action['type']=='move' else 'e')
+                assert_world_continuity(page)
+            campaign=page.evaluate('__MINDCRAFTED_TEST__.getCampaign()')
+            assert campaign['currentRegion']==1 and campaign['regions'][0]['state']['completed']
+            assert all(p['solved'] for p in campaign['regions'][0]['state']['puzzles'].values())
+            assert set(world['priorSkills']) <= {r['skillId'] for r in page.evaluate('__MINDCRAFTED_TEST__.getBKT()')['records']}
+            page.evaluate('__WORLD_CONTINUITY__.enterRegion()')
+            player=Player(page,world)
             def touch(id):player.approach(id);player.press('e')
             def boss():return player.state()['bosses']['archive_recovery']
             def bkt():return page.evaluate('__MINDCRAFTED_TEST__.getBKT()')
@@ -78,15 +96,18 @@ def test_three_phase_boss_physical_failure_recovery_persistence_and_bkt(tmp_path
             player.press('ArrowRight');player.press('ArrowRight');touch('region_exit')
             assert player.state()['completed'] and player.state()['xp']==350
             final=player.state();mastery=bkt()
+            final_campaign=page.evaluate('__MINDCRAFTED_TEST__.getCampaign()')
             for record in mastery['records']:
                 context=record['phaseEvidence'][0]
                 assert context['bossId']=='archive_recovery'
                 assert context['attempts']==(2 if record['skillId'].startswith('configuration.') else 1)
+                assert context['observations']['errors']==(1 if record['skillId'].startswith('configuration.') else 0)
             player.reload();assert player.state()==final and bkt()==mastery
+            assert page.evaluate('__MINDCRAFTED_TEST__.getCampaign()')==final_campaign
             player.press('r');assert player.state()['xp']==350 and bkt()==mastery
             player.check();assert page.locator('canvas').count()==1
             page.screenshot(path=str(tmp_path/'boss-completed.png'),full_page=True)
-            (tmp_path/'boss-e2e.json').write_text(json.dumps({'completed':True,'phase1InfluencedPhase2':True,'partialReload':True,
+            (tmp_path/'boss-e2e.json').write_text(json.dumps({'completed':True,'practicedPreviousRegion':True,'phase1InfluencedPhase2':True,'partialReload':True,
                 'solvedReload':True,'sameCanvas':True,'boss':boss(),'bkt':mastery},ensure_ascii=False,indent=2))
             assert not errors,errors
         finally:browser.close()

@@ -66,6 +66,7 @@ assert.equal(bkt.summary().records.length,13);
 for(const r of bkt.summary().records){
  assert.equal(r.phaseEvidence.length,1);assert.equal(r.phaseEvidence[0].bossId,'archive_recovery');
  assert.equal(r.phaseEvidence[0].attempts,r.skillId.startsWith('configuration.')?2:1);
+ assert.equal(r.phaseEvidence[0].observations.errors,r.skillId.startsWith('configuration.')?1:0);
  if(r.skillId.startsWith('configuration.'))assert.equal(r.phaseEvidence[0].observations.restarts,2);
 }
 const final=e.snapshot(),observed=bkt.summary(),count=events.length;
