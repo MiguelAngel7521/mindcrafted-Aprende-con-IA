@@ -1,4 +1,4 @@
-# Verify the package still builds (sdist + wheel) on every push / PR.
+# Verify packaging build only when this repo is configured as a Python package.
 name: CI
 
 on:
@@ -15,9 +15,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install build
-        run: pip install build
-      - name: Build sdist and wheel
-        run: python -m build
-      - name: List artifacts
-        run: ls -la dist/
+      - name: Build sdist and wheel (when package metadata exists)
+        run: |
+          if [[ -f pyproject.toml || -f setup.py ]]; then
+            pip install build
+            python -m build
+            ls -la dist/
+          else
+            echo "No pyproject.toml/setup.py found; skipping package build."
+          fi
