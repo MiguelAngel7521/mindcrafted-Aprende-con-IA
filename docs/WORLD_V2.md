@@ -271,8 +271,9 @@ El milestone del selector precede al Boss multiphase; no crea otro selector.
   `world_tools check --boss-demo 3` exporta la campaña de desarrollo completa.
 - Structured Outputs en el protocolo y la separación retry/repair están
   implementados en [V2.1.1](RELIABLE_AI_GENERATION.md); la aprobación de generación
-  real depende de la evidencia enlazada allí. Agent API restringida, detección
-  semántica de spoilers y pruebas estadísticas de diversidad siguen pendientes.
+  real depende de la evidencia enlazada allí. La Agent API restringida se describe
+  en [AGENT_API.md](AGENT_API.md); detección semántica de spoilers y pruebas
+  estadísticas de diversidad siguen pendientes.
 - Planificación espacial libre, campañas ramificadas y misiones con dependencias
   entre regiones. La campaña actual avanza por regiones en orden.
 - Adaptación del siguiente puzzle a partir de BKT, narrativa contextual generada
@@ -297,3 +298,12 @@ de tests sí se instalaron en `.venv` y se declararon en requirements.
 `playwright-interactive` es opcional para depuración visual persistente. Para esta
 suite reproducible se utilizó Playwright desde Python. La skill `imagegen` no es
 necesaria para este cambio: se reutilizaron el sprite y la fuente existentes.
+
+
+## V2.4 — Agent API restringida
+
+[AGENT_API.md](AGENT_API.md) documenta el dispatcher existente extendido con
+orquestación configurable, comandos estructurados, reparación acotada, Boss
+compuesto y publicación autorizada por la aplicación. Reutiliza todos los gates
+y mantiene TEST_ONLY_JUDGE separado de aprobación IA real. No introduce Planner,
+NPC dinámicos ni nuevos archetypes. El flujo es opt-in y conserva los endpoints V1.
