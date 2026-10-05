@@ -78,20 +78,20 @@ class AgentRunner:
             'purpose':'Evaluate educational coupling, narrative, fairness and progressive hints. '
                       'Score four categories out of 25; reject concerns.'},JUDGE_SCHEMA,'world_judge')
 
-    async def run(self, *, boss=False):
+    async def run(self, *, boss=False, plan_only=False):
         s=self.session
         if s.state!='NEW':
             raise ValueError('INVALID_AGENT_TRANSITION: runner requires a fresh session')
         try:
-            while s.state!='PACKAGED':
+            while s.state!=('PLAN_VALIDATED' if plan_only else 'PACKAGED'):
                 s.assert_budget()
                 if s.state=='REPAIR_REQUIRED' and s.repairs>=s.budgets.max_repairs:
                     s.state='REJECTED'
                     raise ValueError('REPAIR_BUDGET_EXHAUSTED')
-                name={'NEW':'analyze_material','ANALYZED':'design_boss' if boss else 'select_mechanic',
+                name={'NEW':'analyze_material','ANALYZED':'plan_campaign' if plan_only else 'design_boss' if boss else 'select_mechanic',
                     'PLANNED':'design_world','VALIDATED':'compile_world','COMPILED':'solve_world',
                     'SOLVED':'run_quality_gate','GATED':'judge_candidate','JUDGED':'package_campaign',
-                    'REPAIR_REQUIRED':'repair_boss' if boss else 'repair_world'}.get(s.state)
+                    'REPAIR_REQUIRED':'repair_plan' if plan_only else 'repair_boss' if boss else 'repair_world'}.get(s.state)
                 if name is None:
                     raise ValueError('INVALID_AGENT_TRANSITION')
                 tool=next(t for t in TOOLS if t.name==name)
@@ -101,12 +101,12 @@ class AgentRunner:
                     raise ValueError('TOOL_BUDGET_EXHAUSTED')
                 schema=command_schema(tool,s.generation_id,self._step)
                 payload={'generationId':s.generation_id,'step':self._step,'state':s.state,'tool':name,
-                    'source':s._source,'knowledgeGraph':s._graph,'selections':s._selections,
+                    'source':s._source,'planBinding':s._plan_binding,'knowledgeGraph':s._graph,'selections':s._selections,
                     'priorSkills':sorted(s._prior_skills),'diagnostic':self._diagnostic,
                     'previousCandidate':self._last_candidate if name.startswith('repair_') else None}
                 try:
                     command=await self._request(payload,schema,'agent_command')
-                    if name.startswith(('design_','repair_')):
+                    if name.startswith(('design_','repair_')) or name=='plan_campaign':
                         self._last_candidate=deepcopy(command['arguments'])
                     await s.dispatch(command['tool'],command['arguments'])
                     self._diagnostic=None
@@ -126,7 +126,7 @@ class AgentRunner:
                     elif s.state!='REPAIR_REQUIRED':
                         s.state='REJECTED'
                         raise
-            return deepcopy(s._package)
+            return deepcopy(s._plan if plan_only else s._package)
         except BaseException:
             s.invalidate()
             s.state='REJECTED'

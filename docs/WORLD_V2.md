@@ -307,3 +307,11 @@ orquestación configurable, comandos estructurados, reparación acotada, Boss
 compuesto y publicación autorizada por la aplicación. Reutiliza todos los gates
 y mantiene TEST_ONLY_JUDGE separado de aprobación IA real. No introduce Planner,
 NPC dinámicos ni nuevos archetypes. El flujo es opt-in y conserva los endpoints V1.
+
+## V2.5 — AI Planner
+
+[AI_PLANNER.md](AI_PLANNER.md) describe CampaignPlan, evidencia de fuente,
+prerrequisitos, regiones y quests, selección por ajuste educativo y planificación
+de Boss con habilidades realmente practicadas. Usa Agent API y su reparación
+existente; cada mundo conserva solver, QualityGate, Judge y publicación protegida.
+El Planner no ejecuta gameplay ni aprueba campañas por sí mismo.

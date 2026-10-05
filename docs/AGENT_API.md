@@ -182,3 +182,11 @@ Hosted CI status must be read from its run; local results do not claim remote PA
 
 FIRST VERIFIED AI CAMPAIGN: NOT YET APPROVED. No live provider/Judge approval was
 fabricated. AI Planner, dynamic NPCs and subsequent phases remain outside this milestone.
+
+## Optional V2.5 planning entry point
+
+[AI_PLANNER.md](AI_PLANNER.md) adds `plan_campaign` (PLAN), `repair_plan` (REPAIR)
+and the terminal planning state `PLAN_VALIDATED`. `run(plan_only=True)` returns
+validated intentions, not a package. Campaign realization uses the same dispatcher,
+provider, repair, gate and publication boundary with application-owned plan bindings.
+Existing single-world and Boss callers remain compatible.

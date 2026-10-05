@@ -13,6 +13,7 @@ from .knowledge_features import build_structure_graph, LearningObjective
 from .mechanic_selector import MechanicSelector
 from .structured_schema import schema_hash
 from .world_schema import Data, Id, Text, Blueprint, BossBlueprint
+from .campaign_plan import CampaignPlan, validate_plan, validate_realization, validate_compiled_plan
 
 
 class EmptyArguments(Data):
@@ -30,6 +31,10 @@ class SelectionArguments(Data):
 class DesignArguments(Data):
     objectiveId: Id
     blueprint: Blueprint
+
+
+class PlanArguments(Data):
+    plan: CampaignPlan
 
 
 class BossArguments(Data):
@@ -81,6 +86,8 @@ TOOLS = (
     Tool('judge_candidate', 'REVIEW', EmptyArguments, 'Request review only after deterministic PASS.'),
     Tool('package_campaign', 'PACKAGE', EmptyArguments, 'Package the current approved snapshot.'),
     Tool('compile_world', 'COMPILE', EmptyArguments, 'Compile the current candidate using deterministic validation.'),
+    Tool('plan_campaign', 'PLAN', PlanArguments, 'Propose a grounded campaign; no runtime or publication authority.'),
+    Tool('repair_plan', 'REPAIR', PlanArguments, 'Replace a rejected campaign plan.'),
 )
 
 
@@ -96,7 +103,7 @@ class AgentSession:
     Analysis, selection, design and compilation reuse the canonical contracts.
     Publication is an application-owned operation after all gates.
     """
-    def __init__(self, source, *, provider='none', model='none', budgets=None, previous_lessons=()):
+    def __init__(self, source, *, provider='none', model='none', budgets=None, previous_lessons=(), plan_binding=None):
         if not isinstance(source, str) or not 60 <= len(source.strip()) <= 60000:
             raise ValueError('SOURCE_ERROR: expected 60–60000 characters')
         self.budgets = budgets or Budgets()
@@ -106,6 +113,10 @@ class AgentSession:
         self._calls = 0
         self._busy = False
         self._boss = False
+        self._plan = None
+        self._plan_binding = deepcopy(plan_binding)
+        if plan_binding is not None:
+            validate_plan(plan_binding['plan'], source)
         self._proof = self._gate = self._judge = self._package = None
         self._review = None
         self._test_only = True
@@ -147,6 +158,7 @@ class AgentSession:
 
     def invalidate(self):
         self._candidate = self._world = self._proof = self._gate = self._judge = self._package = None
+        self._plan = None
 
     async def dispatch(self, name, arguments):
         if self._busy:
@@ -201,11 +213,11 @@ class AgentSession:
                     self.state='REJECTED'
                     raise ValueError('REPAIR_BUDGET_EXHAUSTED')
                 self.repairs += 1
-            elif name.startswith('design_'):
+            elif name.startswith('design_') or name=='plan_campaign':
                 self.invalidate()
                 if self.state=='REPAIR_REQUIRED':
                     raise ValueError('INVALID_AGENT_TRANSITION: use repair')
-            required={'run_quality_gate':{'SOLVED'},'solve_world':{'COMPILED'},
+            required={'plan_campaign':{'ANALYZED'},'run_quality_gate':{'SOLVED'},'solve_world':{'COMPILED'},
                       'judge_candidate':{'GATED'},'package_campaign':{'JUDGED'},
                       'compile_world':{'VALIDATED'},'validate_blueprint':{'VALIDATED'}}
             if name in required and self.state not in required[name]:
@@ -217,6 +229,10 @@ class AgentSession:
                 self._selections.clear(); self._objectives.clear()
                 self.state='ANALYZED'
                 result = self._graph
+            elif name in ('plan_campaign','repair_plan'):
+                self._plan = validate_plan(args.plan.model_dump(), self._source).model_dump()
+                self.state='PLAN_VALIDATED'
+                result={'planHash':schema_hash(self._plan)}
             elif name == 'select_mechanic':
                 if self._graph is None:
                     raise ValueError('TOOL_PRECONDITION: analyze material first')
@@ -236,7 +252,13 @@ class AgentSession:
                 candidate = args.blueprint.model_dump()
                 from .mechanic_selector import verify_objective_binding
                 from .world import validate_mechanics
+                if self._plan_binding is not None:
+                    validate_realization(self._plan_binding['plan'], self._source, candidate,
+                        self._plan_binding['regionId'])
                 for puzzle in candidate['puzzles']:
+                    if self._plan_binding is not None:
+                        validate_mechanics(puzzle, self._source)
+                        continue
                     if puzzle['mechanics']['archetype'] != selection['selectedMechanic']:
                         raise ValueError('INELIGIBLE_MECHANIC')
                     verify_objective_binding(puzzle, self._graph, self._objectives[args.objectiveId])
@@ -254,6 +276,8 @@ class AgentSession:
                     'boss':self._boss,'priorSkills':sorted(self._prior_skills)},
                     min(self.budgets.tool_timeout,self.budgets.total_timeout-(time.monotonic()-self._started)))
                 self._world,self._proof=compiled['world'],compiled['report']
+                if self._plan_binding is not None:
+                    validate_compiled_plan(self._plan_binding, self._source, self._world)
                 self.state='COMPILED'
                 result={'worldHash':world_hash(self._world),'checks':self._proof['checks']}
             elif name in ('design_boss','repair_boss'):
@@ -261,6 +285,9 @@ class AgentSession:
                     raise ValueError('TOOL_PRECONDITION: analyze first')
                 self._candidate=args.blueprint.model_dump()
                 self._boss=True
+                if self._plan_binding is not None:
+                    validate_realization(self._plan_binding['plan'], self._source, self._candidate,
+                        previous_lessons=self._previous_lessons)
                 # Composed solver validates each phase's eligibility and all outgoing branches.
                 from .agent_execution import worker
                 await worker({'operation':'compile','candidate':self._candidate,'source':self._source,
@@ -312,7 +339,11 @@ class AgentSession:
                     if self._test_only:
                         for p in previous: p['developmentDemo']=True
                     self._package=assemble_campaign(previous+[self._package],
-                        course_id='agent_'+self.generation_id.replace('-',''),development=self._test_only)
+                        course_id=self._plan_binding['plan']['id'] if self._plan_binding else 'agent_'+self.generation_id.replace('-',''),
+                        title=self._plan_binding['plan']['narrativeTitle'] if self._plan_binding else None,
+                        development=self._test_only)
+                if self._plan_binding is not None:
+                    self._package['campaignPlan']=deepcopy(self._plan_binding['plan'])
                 self._package_hash=schema_hash(self._package)
                 self.state='PACKAGED'
                 result={'worldHash':world_hash(self._world),'status':'TEST_ONLY_PACKAGE' if self._test_only else 'READY_FOR_PUBLICATION'}
@@ -337,7 +368,7 @@ class AgentSession:
             if isinstance(error,TimeoutError):
                 self.invalidate()
                 self.state='REJECTED'
-            elif name in ('design_world','design_boss','repair_world','repair_boss','compile_world','run_quality_gate','judge_candidate') and self.state!='REJECTED':
+            elif name in ('plan_campaign','repair_plan','design_world','design_boss','repair_world','repair_boss','compile_world','run_quality_gate','judge_candidate') and self.state!='REJECTED':
                 self.invalidate()
                 self.state='REPAIR_REQUIRED'
             raise
