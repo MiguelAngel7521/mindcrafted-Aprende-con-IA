@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 import re
 from pydantic import Field
 from .world_schema import Data, Id, Text
+from .npc_schema import NPCProfile
 from .knowledge_features import build_structure_graph, LearningObjective, normalized
 from .mechanic_selector import MechanicSelector, verify_objective_binding
 
@@ -34,6 +35,7 @@ class PlannedObjective(Data):
 
 
 class QuestPlan(Data):
+    npc: NPCProfile = Field(default_factory=NPCProfile)
     id: Id
     objectiveId: Id
     puzzleId: Id

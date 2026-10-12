@@ -190,3 +190,9 @@ and the terminal planning state `PLAN_VALIDATED`. `run(plan_only=True)` returns
 validated intentions, not a package. Campaign realization uses the same dispatcher,
 provider, repair, gate and publication boundary with application-owned plan bindings.
 Existing single-world and Boss callers remain compatible.
+
+## Optional V2.6 read-only NPC wording
+
+[DYNAMIC_NPCS.md](DYNAMIC_NPCS.md) adds NPCDialogueAgent using the existing bounded
+structured provider request path. It exposes no dispatcher mutation tools. Invalid
+wording uses immediate contextual fallback, not generation/publication authority.

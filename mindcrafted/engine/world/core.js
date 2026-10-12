@@ -13,6 +13,7 @@
 
   const {resourceBalance} = typeof module !== 'undefined' ? require('./resource-balance.js') : root.MindCraftedWorld;
   const {machineConfiguration} = typeof module !== 'undefined' ? require('./machine-configuration.js') : root.MindCraftedWorld;
+  const {NPCContextSystem} = typeof module !== 'undefined' ? require('./npc-context.js') : root.MindCraftedWorld;
   const {BossSystem} = typeof module !== 'undefined' ? require('./boss-system.js') : root.MindCraftedWorld;
   const configurationMechanics = {resource_balance: resourceBalance, machine_configuration: machineConfiguration};
 
@@ -93,9 +94,10 @@
       this.flagSystem = new FlagSystem(dependencies);
       this.questSystem = new QuestSystem({...dependencies, quests: this.spec.quests});
       this.bossSystem = new BossSystem(this);
+      this.npcSystem = new NPCContextSystem(this);
       this.initialState = copy(this.state);
       this.dialogueSystem = new DialogueSystem({...dependencies, dialogues: this.dialogues, entities: this.entities,
-        puzzles: this.puzzles, changed: () => this.changed()});
+        puzzles: this.puzzles, npc: this.npcSystem, changed: () => this.changed()});
     }
     emit(name, data) { this.systemEvents.emit(name, data); this.events.emit(name, data); }
     changed() { this.emit('world.changed', this.snapshot()); }
@@ -257,7 +259,7 @@
         this.message(configurationMechanics[p.archetype] ? 'El sistema no arranca. Los indicadores muestran las restricciones incumplidas. Cambia los módulos con E o reinicia con R.' : p.archetype === 'node_connect' ? 'La infraestructura sigue desconectada. Observa los enlaces del último intento y las reglas incumplidas; puedes reconstruir con E o limpiar con R.' : result.congested?.length ? 'Los routers se saturaron: las luces del distrito se apagaron. Reparte la carga.' : 'La energía no llega a destino. Revisa las reglas y vuelve a intentarlo.');
         this.emit('puzzle.failed', {puzzleId: p.id, worldEffect: p.failure.worldEffect});
         if (p.failure.autoReset) this.reset(p.id, false);
-        if (s.attempts >= 2) this.message(this.hintText(p, s.attempts - 1));
+        if (s.attempts >= 2) this.message(this.npcSystem.build(p,'hint').allowedTexts[0]);
       }
     }
     reset(puzzleId = (this.bossSystem.currentPuzzle() || this.currentPuzzle()).id, manual = true) {
@@ -273,7 +275,7 @@
     hint() {
       const p = this.bossSystem.currentPuzzle() || this.currentPuzzle(), s = this.state.puzzles[p.id];
       if (s.solved || !this.active(p.id) || this.state.dialogue || this.state.completed) return;
-      s.hintsUsed++; this.message(this.hintText(p, s.hintsUsed)); this.emit('puzzle.hint', {puzzleId: p.id}); this.changed();
+      s.hintsUsed++; this.npcSystem.hint(p); this.emit('puzzle.hint', {puzzleId: p.id}); this.changed();
     }
     hintText(p, level) {
       if (this.bossSystem.context(p.id) && !this.bossSystem.allowed(p.id)) return 'Completa la fase actual antes de explorar las siguientes.';
@@ -405,6 +407,7 @@
         const d = this.dialogues.get(raw.dialogue.id), npc = this.entities.get(d.speaker);
         if (d.trigger.event === 'puzzle.solved' ? dialogueAllowed(d) : npc?.dialogueId === d.id && distance(npc, this.state.player) <= 1) this.state.dialogue = {id: d.id, line: raw.dialogue.line};
       }
+      this.npcSystem.restore(raw.npcMemory);
       this.state.activePuzzle = this.currentPuzzle().id;
       this.state.completed = raw.completed === true && [...this.puzzles.keys()].every(id => this.state.puzzles[id].solved);
       this.changed(); return true;

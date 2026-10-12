@@ -290,13 +290,23 @@
     saves = new core.SaveSystem(storage, scope, config.worldHash);
     saves.load(session || engine);
     if (session) engine = session.engine;
+    function configureNPC() {
+      engine.npcSystem.configure({profiles:packageData.npcProfiles?.[engine.spec.id] || {},
+        readMastery:skill=>tracker.get(skill).mastery,
+        provider:typeof window.mindcraftedNPCProvider==='function'?window.mindcraftedNPCProvider:
+          /^https?:$/.test(location.protocol)?async(context,{signal})=>{
+            const response=await fetch('/api/v2/npc-dialogue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(context),signal});
+            if(!response.ok)throw Error('NPC_PROVIDER_UNAVAILABLE');return response.json();
+          }:null});
+    }
+    configureNPC();
     const events = session ? session.events : engine.events;
     events.on('world.message', event => status(event.text));
     events.on('learning.observation', event => tracker.observe(event.skill, event.correct, {label: event.label, score: event.observations?.solutionQuality !== undefined ? event.observations.solutionQuality * 100 : event.correct ? 100 : 0, observations: event.observations, context:event.boss}));
     events.on('world.changed', () => { if (!saves.save(session || engine)) status('El guardado no está disponible. Puedes continuar en esta sesión.'); refresh(); });
     events.on('region.completed', () => status('Región completada. Puedes continuar el viaje cuando quieras.'));
     events.on('campaign.region.changed', () => {
-      engine = session.engine; release(); camera = {x: 0, y: 0}; uiKey = '';
+      engine.npcSystem.cancel(); engine = session.engine; configureNPC(); release(); camera = {x: 0, y: 0}; uiKey = '';
       $('region-name').textContent = engine.region.title;
       $('introduction').textContent = engine.spec.introduction;
       status('Entraste en ' + engine.region.title + '. Tu progreso anterior está guardado.');

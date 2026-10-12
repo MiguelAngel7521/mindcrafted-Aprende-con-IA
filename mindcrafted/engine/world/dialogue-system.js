@@ -2,8 +2,8 @@
 (function (root) {
   'use strict';
   class DialogueSystem {
-    constructor({dialogues, entities, puzzles, state, events, emit, changed}) {
-      Object.assign(this, {dialogues, entities, puzzles, state, emit, changed});
+    constructor({dialogues, entities, puzzles, state, events, emit, changed, npc}) {
+      Object.assign(this, {dialogues, entities, puzzles, state, emit, changed, npc});
       events.on('entity.interacted', ({entityId}) => {
         const entity = entities.get(entityId), puzzle = puzzles.get(entity?.puzzleId);
         if (entity?.type === 'npc' && puzzle) this.open(state().puzzles[puzzle.id].solved ? puzzle.success.dialogue : entity.dialogueId);
@@ -12,15 +12,26 @@
     }
     open(id) {
       if (!this.dialogues.has(id)) throw new Error('Diálogo inexistente');
-      this.state().dialogue = {id, line: 0}; this.changed();
+      this.state().dialogue = {id, line: 0};
+      const d=this.dialogues.get(id), entity=this.entities.get(d.speaker);
+      if(entity?.puzzleId)this.npc?.open(this.puzzles.get(entity.puzzleId));
+      this.changed();
     }
     line() {
       const active = this.state().dialogue;
-      return active ? this.dialogues.get(active.id).lines[active.line] : null;
+      if(!active)return null;
+      const dialogue=this.dialogues.get(active.id), p=this.puzzles.get(this.entities.get(dialogue.speaker)?.puzzleId);
+      if(active.line===0 && p && this.npc && this.npc.profile(p).mode!=='STATIC') {
+        const answer=this.npc.response?.puzzle===p.id?this.npc.response.answer:null;
+        const text=answer?.text || this.npc.build(p,'reaction').allowedTexts[0];
+        return {...dialogue.lines[active.line],text};
+      }
+      return dialogue.lines[active.line];
     }
     advance() {
       const state = this.state(), active = state.dialogue;
       if (!active) return;
+      this.npc?.cancel();
       const dialogue = this.dialogues.get(active.id);
       if (++active.line >= dialogue.lines.length) {
         state.dialogue = null;

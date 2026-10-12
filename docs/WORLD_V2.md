@@ -315,3 +315,10 @@ prerrequisitos, regiones y quests, selección por ajuste educativo y planificaci
 de Boss con habilidades realmente practicadas. Usa Agent API y su reparación
 existente; cada mundo conserva solver, QualityGate, Judge y publicación protegida.
 El Planner no ejecuta gameplay ni aprueba campañas por sí mismo.
+
+## V2.6 — NPC y pistas contextuales
+
+[DYNAMIC_NPCS.md](DYNAMIC_NPCS.md) documenta contexto acotado de estado real,
+memoria estructurada, hints 0–4, lectura BKT y perfiles del Planner. DialogueSystem
+conserva sus efectos estáticos; la IA solo propone redacción restringida. La respuesta
+contextual es inmediata y funciona offline. No se cambian dificultad ni archetypes.

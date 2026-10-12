@@ -47,7 +47,7 @@ def render_html(package):
         css = css.replace("/assets/fonts/PixelifySans.ttf", "data:font/ttf;base64," + base64.b64encode(font.read_bytes()).decode())
     html = html.replace('<link rel="stylesheet" href="/engine/world/style.css">', '<style>' + css + '</style>')
     for script in ("bkt.js", "world/event-bus.js", "world/flag-system.js", "world/quest-system.js",
-                   "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/boss-system.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
+                   "world/npc-contract.js", "world/npc-context.js", "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/boss-system.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
         code = '<script>' + (ENGINE / script).read_text(encoding="utf-8") + '</script>'
         if script == "world/runtime.js":
             code = '<script id="world-data" type="application/json">' + data + '</script>' + code

@@ -1079,3 +1079,22 @@ if ASSETS_DIR.exists():
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.post("/api/v2/npc-dialogue")
+async def npc_dialogue(request: Request):
+    """Optional read-only wording endpoint. No gameplay or publication authority."""
+    from .generator.npc_schema import NPCContext
+    from .generator.npc_dialogue import NPCDialogueAgent
+    from pydantic import ValidationError
+    raw = await _read_limited_upload(request, 24000, "NPC context")
+    try:
+        context = NPCContext.model_validate_json(raw).model_dump()
+    except (ValidationError, ValueError) as error:
+        raise HTTPException(422, "NPC_CONTEXT_INVALID") from error
+    # Explicit application configuration only. Never accept provider/key/model in
+    # the model response or request; offline is the default and needs no secret.
+    provider = getattr(app.state, "npc_dialogue_provider", None)
+    if provider is None:
+        raise HTTPException(503, "NPC_PROVIDER_UNAVAILABLE")
+    return await NPCDialogueAgent(provider).respond(context)

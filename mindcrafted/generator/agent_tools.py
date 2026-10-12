@@ -343,6 +343,16 @@ class AgentSession:
                         title=self._plan_binding['plan']['narrativeTitle'] if self._plan_binding else None,
                         development=self._test_only)
                 if self._plan_binding is not None:
+                    plan=validate_plan(self._plan_binding['plan'],self._source)
+                    quests={q.objectiveId:q for r in plan.regions for q in r.quests}
+                    if self._boss:
+                        profiles={p['puzzleId']:quests[q.objectiveId].npc.model_dump()
+                            for p,q in zip(self._world['bosses'][0]['phases'],plan.bossPlan.phases)}
+                    else:
+                        region=next(r for r in plan.regions if r.id==self._plan_binding['regionId'])
+                        profiles={q.puzzleId:q.npc.model_dump() for q in region.quests}
+                    prior_profiles={k:v for package,_ in self._previous_lessons for k,v in package.get('npcProfiles',{}).items()}
+                    self._package['npcProfiles']={**prior_profiles,self._world['id']:profiles}
                     self._package['campaignPlan']=deepcopy(self._plan_binding['plan'])
                 self._package_hash=schema_hash(self._package)
                 self.state='PACKAGED'

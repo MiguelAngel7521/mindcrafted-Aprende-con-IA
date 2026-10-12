@@ -138,3 +138,13 @@ the full suite (including Planner E2E), syntax checks and a playable campaign bu
   remain blocked by missing HTTPS authentication, not declared successful.
 
 AI PLANNER: DONE (local deterministic milestone; remote delivery remains blocked).
+
+## V2.6 NPC policy extension
+
+Quest plans optionally include a closed `npc` profile: role, narrative purpose and
+STATIC/CONTEXTUAL/AI_DYNAMIC mode. The existing objectiveId binds the policy to its
+practice puzzle and Boss phase. Packaging retains profiles as data; no NPC receives
+runtime or publication authority. See [DYNAMIC_NPCS.md](DYNAMIC_NPCS.md).
+
+The previous delivery block was resolved: commit `1ebd306` passed hosted CI run
+`38166784795`. The blocked status above records the earlier local verification date.
