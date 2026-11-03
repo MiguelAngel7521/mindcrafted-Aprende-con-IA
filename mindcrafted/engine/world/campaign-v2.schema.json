@@ -21,6 +21,51 @@
       "title": "AcyclicConnections",
       "type": "object"
     },
+    "AdaptiveRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "policyVersion": {
+          "const": 1,
+          "title": "Policyversion",
+          "type": "integer"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "base": {
+          "enum": [
+            "EASY",
+            "NORMAL",
+            "HARD"
+          ],
+          "title": "Base",
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/DifficultyPolicyConfig"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/DifficultyVariant"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Variants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "policyVersion",
+        "objective",
+        "base",
+        "variants"
+      ],
+      "title": "AdaptiveRegion",
+      "type": "object"
+    },
     "Anchor": {
       "additionalProperties": false,
       "properties": {
@@ -498,6 +543,17 @@
         },
         "world": {
           "$ref": "#/$defs/WorldSpec"
+        },
+        "adaptive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AdaptiveRegion"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -1037,6 +1093,142 @@
         "randomSuccessProbabilityMax"
       ],
       "title": "Difficulty",
+      "type": "object"
+    },
+    "DifficultyParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "choiceCount": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Choicecount",
+          "type": "integer"
+        },
+        "constraintCount": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Constraintcount",
+          "type": "integer"
+        },
+        "conceptCombinationCount": {
+          "maximum": 24,
+          "minimum": 1,
+          "title": "Conceptcombinationcount",
+          "type": "integer"
+        },
+        "initialHintLevel": {
+          "const": 1,
+          "title": "Initialhintlevel",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "choiceCount",
+        "constraintCount",
+        "conceptCombinationCount",
+        "initialHintLevel"
+      ],
+      "title": "DifficultyParameters",
+      "type": "object"
+    },
+    "DifficultyPolicyConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1,
+          "default": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "low": {
+          "default": 0.45,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Low",
+          "type": "number"
+        },
+        "high": {
+          "default": 0.85,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "High",
+          "type": "number"
+        },
+        "minEvidence": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 2,
+          "title": "Minevidence",
+          "type": "integer"
+        },
+        "cooldown": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 2,
+          "title": "Cooldown",
+          "type": "integer"
+        },
+        "minDifficulty": {
+          "default": "EASY",
+          "enum": [
+            "EASY",
+            "NORMAL",
+            "HARD"
+          ],
+          "title": "Mindifficulty",
+          "type": "string"
+        },
+        "maxDifficulty": {
+          "default": "HARD",
+          "enum": [
+            "EASY",
+            "NORMAL",
+            "HARD"
+          ],
+          "title": "Maxdifficulty",
+          "type": "string"
+        },
+        "maxStepChange": {
+          "const": 1,
+          "default": 1,
+          "title": "Maxstepchange",
+          "type": "integer"
+        }
+      },
+      "title": "DifficultyPolicyConfig",
+      "type": "object"
+    },
+    "DifficultyVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "enum": [
+            "EASY",
+            "NORMAL",
+            "HARD"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/DifficultyParameters"
+        },
+        "worldHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Worldhash",
+          "type": "string"
+        },
+        "world": {
+          "$ref": "#/$defs/WorldSpec"
+        }
+      },
+      "required": [
+        "level",
+        "parameters",
+        "worldHash",
+        "world"
+      ],
+      "title": "DifficultyVariant",
       "type": "object"
     },
     "Edge": {

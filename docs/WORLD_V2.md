@@ -322,3 +322,10 @@ El Planner no ejecuta gameplay ni aprueba campañas por sí mismo.
 memoria estructurada, hints 0–4, lectura BKT y perfiles del Planner. DialogueSystem
 conserva sus efectos estáticos; la IA solo propone redacción restringida. La respuesta
 contextual es inmediata y funciona offline. No se cambian dificultad ni archetypes.
+
+## V2.7 — Future adaptive practice
+
+Optional validated EASY/NORMAL/HARD catalogs select a future practice region from
+read-only BKT and repeated performance. Active puzzles, objectives and Boss phases
+stay frozen, including reload. See [ADAPTIVE_DIFFICULTY.md](ADAPTIVE_DIFFICULTY.md)
+for policy, catalog validation, publication limits and browser trajectories.

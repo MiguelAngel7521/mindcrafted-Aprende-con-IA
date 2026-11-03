@@ -73,6 +73,10 @@
       else if(s.restarts) text='Puedes reconstruir este intento sin perder lo que ya resolviste.';
       else if(s.errors) text=`El último intento no funcionó. Llevas ${count(s.errors)} errores; podemos revisar una pista antes de probar otra vez.`;
       else text=m.met?'Seguimos aquí. Observa el mecanismo y prueba cuando estés listo.':'Bienvenido. Estoy aquí para acompañarte; observa el mecanismo antes de comenzar.';
+      if(intent!=='hint' && !s.solved && !s.errors && e.difficultyDecision) {
+        const d=e.difficultyDecision;
+        text+=d.selectedDifficulty==='EASY'?' Mantendremos el mismo concepto con menos opciones simultáneas. Puedes pedir una pista conceptual.':d.selectedDifficulty==='HARD'?' El siguiente reto mantiene el concepto y ofrece más alternativas que tendrás que contrastar.':' Seguimos con el desafío previsto para este concepto.';
+      }
       text=text.slice(0,1600);
       const context={version:1,npc:npc.id,role:profile.role,region:e.region.id,quest:e.quest(p.id).id,
         stage:s.solved?'completed':e.state.quests[e.quest(p.id).id]==='active'?'active':'ready',puzzle:p.id,archetype:p.archetype,

@@ -196,3 +196,12 @@ Existing single-world and Boss callers remain compatible.
 [DYNAMIC_NPCS.md](DYNAMIC_NPCS.md) adds NPCDialogueAgent using the existing bounded
 structured provider request path. It exposes no dispatcher mutation tools. Invalid
 wording uses immediate contextual fallback, not generation/publication authority.
+
+## V2.7 optional adaptation
+
+Existing guarded generation can supply compiled variants to
+`adaptive_difficulty.attach_variants`. Every variant independently passes the
+canonical gate; model difficulty suggestions must match `recommend_difficulty`
+on application-owned evidence. This adds no runtime mutation tool or provider.
+Adaptive development export cannot assert real approval from a base-world Judge;
+real adaptive publication requires per-variant review and is currently rejected.

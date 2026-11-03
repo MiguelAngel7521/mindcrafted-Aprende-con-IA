@@ -133,3 +133,11 @@ is `output/npc-full-suite.xml`; generated artifacts are not committed.
 No live LLM or real Judge was run: FIRST VERIFIED AI CAMPAIGN remains NOT YET
 APPROVED. This milestone verifies deterministic infrastructure and scripted-provider
 integration, not production model reliability.
+
+## V2.7 difficulty explanation
+
+The NPC can read the frozen `WorldEngine.difficultyDecision` and explain that the
+next challenge retains the same concept with fewer options or more alternatives.
+It cannot select a level or change rules. Existing HintPolicy remains authoritative;
+all levels begin with conceptual help, never an automatically disclosed solution.
+V2.6 commit `29343d3` passed hosted CI run `38196451942`.

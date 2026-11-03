@@ -470,11 +470,45 @@ CampaignId = Annotated[str, Field(pattern=re.compile(r"^(?!\.{1,2}$)(?!.*\.\.)[a
 Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 
 
+class DifficultyParameters(Data):
+    choiceCount: Annotated[int, Field(ge=1, le=1000000)]
+    constraintCount: Annotated[int, Field(ge=1, le=1000)]
+    conceptCombinationCount: Annotated[int, Field(ge=1, le=24)]
+    initialHintLevel: Literal[1]
+
+
+class DifficultyVariant(Data):
+    level: Literal['EASY', 'NORMAL', 'HARD']
+    parameters: DifficultyParameters
+    worldHash: Digest
+    world: WorldSpec
+
+
+class DifficultyPolicyConfig(Data):
+    version: Literal[1] = 1
+    low: Annotated[float, Field(ge=0, le=1)] = 0.45
+    high: Annotated[float, Field(ge=0, le=1)] = 0.85
+    minEvidence: Annotated[int, Field(ge=2, le=20)] = 2
+    cooldown: Annotated[int, Field(ge=2, le=20)] = 2
+    minDifficulty: Literal['EASY', 'NORMAL', 'HARD'] = 'EASY'
+    maxDifficulty: Literal['EASY', 'NORMAL', 'HARD'] = 'HARD'
+    maxStepChange: Literal[1] = 1
+
+
+class AdaptiveRegion(Data):
+    policyVersion: Literal[1]
+    objective: Text
+    base: Literal['EASY', 'NORMAL', 'HARD']
+    policy: DifficultyPolicyConfig = Field(default_factory=DifficultyPolicyConfig)
+    variants: Annotated[list[DifficultyVariant], Field(min_length=3, max_length=3)]
+
+
 class CampaignRegion(Data):
     id: CampaignId
     worldHash: Digest
     sourceHash: Digest
     world: WorldSpec
+    adaptive: AdaptiveRegion | None = None
 
 
 class CampaignSpec(Data):

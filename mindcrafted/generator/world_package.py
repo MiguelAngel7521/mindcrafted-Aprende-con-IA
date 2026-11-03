@@ -47,7 +47,7 @@ def render_html(package):
         css = css.replace("/assets/fonts/PixelifySans.ttf", "data:font/ttf;base64," + base64.b64encode(font.read_bytes()).decode())
     html = html.replace('<link rel="stylesheet" href="/engine/world/style.css">', '<style>' + css + '</style>')
     for script in ("bkt.js", "world/event-bus.js", "world/flag-system.js", "world/quest-system.js",
-                   "world/npc-contract.js", "world/npc-context.js", "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/boss-system.js", "world/core.js", "world/campaign.js", "world/runtime.js"):
+                   "world/npc-contract.js", "world/npc-context.js", "world/dialogue-system.js", "world/node-connect.js", "world/finite-state.js", "world/resource-balance.js", "world/machine-configuration.js", "world/boss-system.js", "world/core.js", "world/difficulty-policy.js", "world/campaign.js", "world/runtime.js"):
         code = '<script>' + (ENGINE / script).read_text(encoding="utf-8") + '</script>'
         if script == "world/runtime.js":
             code = '<script id="world-data" type="application/json">' + data + '</script>' + code
@@ -75,6 +75,7 @@ def browser_probe(package, walkthrough, screenshot=None):
     debug_package["config"]["debug"] = True
     html = render_html(debug_package)
     errors = []
+    walkthrough = deepcopy(walkthrough)
     with sync_playwright() as playwright:
         executable = shutil.which("chromium") or shutil.which("chromium-browser")
         browser = playwright.chromium.launch(headless=True, executable_path=executable)
@@ -114,6 +115,13 @@ def browser_probe(package, walkthrough, screenshot=None):
                     assert page.evaluate("__MINDCRAFTED_TEST__.getCampaign().currentRegion") == action["index"], "Region transition failed"
                     assert page.locator("canvas").count() == 1
                     page.evaluate("__WORLD_CONTINUITY__.enterRegion()")
+                    if package['campaign']['regions'][action['index']].get('adaptive'):
+                        selected = page.evaluate('worldEngine.spec')
+                        source = '\n'.join(r['evidence'] for p in selected['puzzles'] for r in p['knowledge']['requiredRules'])
+                        proof = validate_world(selected, source)
+                        assert proof['ok'], proof['errors']
+                        end = next((j for j in range(i+1,len(walkthrough)) if walkthrough[j]['type']=='region'),len(walkthrough))
+                        walkthrough[i+1:end] = proof['walkthrough']
                     if screenshot:
                         path = Path(screenshot)
                         page.screenshot(path=str(path.with_stem(path.stem + f"-region-{action['index'] + 1}")), full_page=True)
@@ -132,7 +140,7 @@ def browser_probe(package, walkthrough, screenshot=None):
                     recovery = True
                 if action["type"] == "dialogue":
                     region_index = page.evaluate("__MINDCRAFTED_TEST__.getCampaign()?.currentRegion || 0")
-                    current_world = package["campaign"]["regions"][region_index]["world"] if package.get("campaign") else package["world"]
+                    current_world = page.evaluate('worldEngine.spec') if package.get("campaign") else package["world"]
                     for puzzle in current_world["puzzles"]:
                         key = (region_index, puzzle["id"])
                         if puzzle["archetype"] in ("resource_balance", "machine_configuration") and key not in recovered_connections and page.evaluate("id => worldEngine.active(id) && !worldEngine.state.dialogue", puzzle["id"]):

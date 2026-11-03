@@ -62,6 +62,19 @@ def write_campaign(package, output_dir, *, screenshot=None):
     """All gameplay data commit together in game.pkg.json; HTML is a portable export."""
     campaign = package["campaign"]
     schema_check(campaign, CAMPAIGN_SCHEMA)
+    for index, region in enumerate(campaign['regions']):
+        if region.get('adaptive'):
+            from .adaptive_difficulty import verify_catalog
+            if not package.get('developmentDemo'):
+                raise ValueError('ADAPTIVE_REAL_PUBLICATION_REQUIRES_VARIANT_JUDGES')
+            source = '\n'.join(e['quote'] for e in package['regionKnowledge'][index]['evidence'])
+            catalog = verify_catalog(region['adaptive'], source)
+            if index==0 or next(v for v in catalog['variants'] if v['level']==catalog['base'])['worldHash']!=region['worldHash']:
+                raise ValueError('ADAPTATION_BASE_MISMATCH')
+            for variant in catalog['variants']:
+                gate = package.get('adaptiveQuality', {}).get(region['id'], {}).get(variant['level'], {})
+                if gate.get('worldHash') != variant['worldHash'] or gate.get('errors') or not all(gate.get('checks', {}).get(k) is True for k in CHECKS):
+                    raise ValueError('ADAPTATION_QUALITY_GATE_REQUIRED')
     if package["config"]["worldHash"] != campaign_hash(campaign):
         raise ValueError("La campaña cambió antes de publicarse")
     if len(package["regionKnowledge"]) != len(campaign["regions"]) or len(package["regionQuality"]) != len(campaign["regions"]):

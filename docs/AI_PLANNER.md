@@ -148,3 +148,12 @@ runtime or publication authority. See [DYNAMIC_NPCS.md](DYNAMIC_NPCS.md).
 
 The previous delivery block was resolved: commit `1ebd306` passed hosted CI run
 `38166784795`. The blocked status above records the earlier local verification date.
+
+## V2.7 adaptation boundary
+
+The Planner continues to own the objective and region sequence. The application can
+attach three independently gated variants to a future single-objective practice
+region using `adaptive_difficulty.attach_variants`. Each preserves the objective,
+skills and evidence and passes existing `validate_realization` when a CampaignPlan
+is present. No LLM changes an active world; the deterministic policy chooses at
+region entry. See [ADAPTIVE_DIFFICULTY.md](ADAPTIVE_DIFFICULTY.md).

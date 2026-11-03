@@ -287,6 +287,7 @@
     engine = session ? session.engine : new core.WorldEngine(world);
     const storage = localStorageSafe(), scope = (config.courseId || config.sourceHash || world.id) + ':' + (session ? 'campaign' : config.chunkId || world.id);
     tracker = window.MindCraftedBKT.createTracker({scope: config.courseId || config.sourceHash || world.id, storage});
+    if(session)session.readMastery=skill=>tracker.get(skill);
     saves = new core.SaveSystem(storage, scope, config.worldHash);
     saves.load(session || engine);
     if (session) engine = session.engine;
