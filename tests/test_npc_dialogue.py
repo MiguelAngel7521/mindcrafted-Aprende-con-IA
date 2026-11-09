@@ -137,16 +137,19 @@ assert.deepEqual(api.validateDialogue(good,c),good);
 
 def test_endpoint_offline_and_explicit_provider(context,monkeypatch):
     import httpx
+    from starlette.datastructures import State
     from mindcrafted import server
     before=Path('courses.json').read_bytes()
+    # Patch the actual app attribute once, rather than monkeypatching State's
+    # dynamically resolved attributes twice (new pytest teardown deletes twice).
+    monkeypatch.setattr(server.app,'state',State({'npc_dialogue_provider':None}))
     async def run():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app),base_url='http://npc.test') as client:
-            monkeypatch.setattr(server.app.state,'npc_dialogue_provider',None,raising=False)
             assert (await client.post('/api/v2/npc-dialogue',json=context)).status_code==503
             assert (await client.post('/api/v2/npc-dialogue',json={'savegame':{}})).status_code==422
             assert (await client.post('/api/v2/npc-dialogue',content='x'*24001)).status_code==413
             provider=ScriptedProvider([contextual(context)])
-            monkeypatch.setattr(server.app.state,'npc_dialogue_provider',provider,raising=False)
+            server.app.state.npc_dialogue_provider=provider
             result=await client.post('/api/v2/npc-dialogue',json=context)
             assert result.status_code==200 and not result.json()['fallback']
     asyncio.run(run());assert Path('courses.json').read_bytes()==before

@@ -143,3 +143,13 @@ add archetypes, run a model bake-off or claim real-provider approval.
 - Ignored local evidence: `output/adaptive-full-suite.xml`,
   `output/adaptive-campaign-20261103/`, `output/adaptive-regression-campaign/`.
   These development artifacts do not assert real AI/Judge approval.
+
+### Hosted CI compatibility correction
+
+The first V2.7 hosted run (`41696024797`) passed all 594 test bodies but failed
+teardown of the existing NPC endpoint test: repeated monkeypatches of dynamic
+`Starlette.State` attributes caused a second deletion of the same missing key.
+The test now isolates and restores the application's State object once. All
+endpoint assertions remain, and no runtime or gate was relaxed. The full local
+suite was repeated after this fix: **594 passed, zero errors/skips**, with the
+four existing deprecation warnings.
